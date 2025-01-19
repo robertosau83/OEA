@@ -1,6 +1,5 @@
 import { createSignal, createEffect } from 'solid-js';
 import { supabase } from './lib/supabaseClient.js';
-import { loadIncassi } from './lib/loadFromDB.js'; // Importa la funzione di caricamento
 import Auth from './components/Auth.jsx';
 import Incassi from './components/Incassi.jsx';
 import Spese from './components/Spese.jsx';
@@ -9,28 +8,15 @@ import Fornitori from './components/Fornitori.jsx';
 
 const App = () => {
   const [session, setSession] = createSignal(null);
-  const [currentBtmBarComponent, setCurrentBtmBarComponent] = createSignal(() => <Incassi incassi={[]} />);
+  const [currentBtmBarComponent, setCurrentBtmBarComponent] = createSignal(() => Incassi);
   const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Incassi");
-
-  const [incassi, setIncassi] = createSignal([]);
-
-  const loadInitialData = async () => {
-    const { data, error } = await supabase.from('incassi').select('*');
-  
-    if (error) {
-      console.error('Errore durante il caricamento dei dati:', error.message);
-    } else {
-      setIncassi(data || []); // Salva i dati nel formato JavaScript
-      console.log('Dati caricati:', data);
-    }
-  };
 
   createEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session); // Aggiorna lo stato della sessione
-      if (session) {
-        loadInitialData(); // Carica i dati dopo l'autenticazione
-      }
+      // if (session) {
+      //   loadInitialData(); // Carica i dati dopo l'autenticazione
+      // }
     });
 
     return () => {
@@ -63,14 +49,14 @@ const App = () => {
 
           {/* Main Content */}
           <div class="flex-grow bg-gray-100">
-            {currentBtmBarComponent()({ incassi: incassi() })}
+            {currentBtmBarComponent()}
           </div>
 
           {/* Bottom Bar */}
           <div class="bg-white border-t flex">
 
             <button
-              onClick={() => { setCurrentBtmBarComponent(() => (props) => <Incassi {...props} />); setCurrentBtmBarComponentName("Incassi"); }}
+              onClick={() => { setCurrentBtmBarComponent(() => Incassi); setCurrentBtmBarComponentName("Incassi"); }}
               class={`flex-1 py-4 text-center hover:bg-gray-200 ${currentBtmBarComponentName() === "Incassi" ? 'bg-gray-200' : ''}`}
             >
               <img src="/incassi.svg" alt="Incassi" class="h-6 mx-auto mb-1" />

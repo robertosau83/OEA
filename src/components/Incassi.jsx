@@ -1,7 +1,8 @@
-import { createSignal } from 'solid-js';
+import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Incassi = (props) => {
+const Incassi = () => {
+  const [incassi, setIncassi] = createSignal([]); // Stato locale per gli incassi
   const [view, setView] = createSignal('month'); // 'month' | 'day' | 'detail'
   const [selectedMonth, setSelectedMonth] = createSignal('');
   const [selectedDay, setSelectedDay] = createSignal('');
@@ -14,11 +15,28 @@ const Incassi = (props) => {
     contanti_cassa: 0,
   });
 
+  // Funzione per caricare i dati dal database
+  const fetchIncassi = async () => {
+    const { data, error } = await supabase.from('incassi').select('*');
+
+    if (error) {
+      console.error('Errore durante il caricamento degli incassi:', error.message);
+      setIncassi([]); // In caso di errore, imposta un array vuoto
+    } else {
+      setIncassi(data || []); // Salva i dati ricevuti
+    }
+  };
+
+  // Esegui la fetch dei dati quando il componente viene montato
+  onMount(() => {
+    fetchIncassi();
+  });
+
   // Raggruppa gli incassi per mese e calcola la somma totale
   const groupByMonth = () => {
     const grouped = {}; // Ogni chiave è un mese e il valore è la somma totale
 
-    props.incassi.forEach((entry) => {
+    incassi().forEach((entry) => {
       const month = new Date(entry.data_competenza).toLocaleString('default', {
         month: 'long',
         year: 'numeric',
@@ -42,7 +60,7 @@ const Incassi = (props) => {
 
   // Filtra gli incassi per giorno per il mese selezionato
   const filterByDay = () => {
-    return props.incassi
+    return incassi()
       .filter((entry) => {
         const month = new Date(entry.data_competenza).toLocaleString('default', {
           month: 'long',
@@ -59,7 +77,7 @@ const Incassi = (props) => {
 
   // Dettagli di un singolo giorno
   const getDailyDetails = () => {
-    return props.incassi.find((entry) => entry.data_competenza === selectedDay());
+    return incassi().find((entry) => entry.data_competenza === selectedDay());
   };
 
   const addNewIncasso = async () => {
