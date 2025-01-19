@@ -90,8 +90,16 @@ const Incassi = () => {
     }
   };
 
+  // Calcola il totale di tutti gli incassi nella view day
+  const calculateTotal = (entries) => {
+    return entries.reduce((sum, entry) => {
+      return sum + (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa || 0);
+    }, 0);
+  };
+
   return (
     <div class="w-full h-full p-2">
+
       {/* View degli incassi per mese */}
       {view() === 'month' && (
         <div>
@@ -106,8 +114,8 @@ const Incassi = () => {
                 }}
               >
                 <div class="flex justify-between">
-                  <span class="font-semibold">{month}</span>
-                  <span class="text-green-600 font-bold">
+                  <span class="">{month}</span>
+                  <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
@@ -116,9 +124,25 @@ const Incassi = () => {
                 </div>
               </li>
             ))}
+
+            {/* Totale complessivo di tutti i mesi */}
+            <li class="py-2 px-4 bg-gray-100 font-semibold">
+              <div class="flex justify-end">
+                {/* <span>Totale complessivo</span> */}
+                <span class="text-green-800 font-bold">
+                  {new Intl.NumberFormat('it-IT', {
+                    style: 'decimal',
+                    maximumFractionDigits: 0,
+                  }).format(
+                    groupByMonth().reduce((sum, [, total]) => sum + total, 0)
+                  )} €
+                </span>
+              </div>
+            </li>
           </ul>
         </div>
       )}
+
 
       {/* View degli incassi giornalieri */}
       {view() === 'day' && (
@@ -143,8 +167,8 @@ const Incassi = () => {
                 }}
               >
                 <div class="flex justify-between">
-                  <span class="font-semibold">{new Date(entry.data_competenza).toLocaleDateString()}</span>
-                  <span class="text-green-600 font-bold">
+                  <span class="">{new Date(entry.data_competenza).toLocaleDateString()}</span>
+                  <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
@@ -153,6 +177,19 @@ const Incassi = () => {
                 </div>
               </li>
             ))}
+
+            {/* Totale complessivo del mese selezionato */}
+            <li class="py-2 px-4 bg-gray-100 font-semibold">
+              <div class="flex justify-end">
+                {/* <span>Totale giornaliero</span> */}
+                <span class="text-green-800 font-bold">
+                  {new Intl.NumberFormat('it-IT', {
+                    style: 'decimal',
+                    maximumFractionDigits: 0,
+                  }).format(calculateTotal(filterByDay()))} €
+                </span>
+              </div>
+            </li>
           </ul>
         </div>
       )}
@@ -180,8 +217,8 @@ const Incassi = () => {
                   { label: 'Contanti in cassa', value: getDailyDetails()?.contanti_cassa },
                 ].map(({ label, value }) => (
                   <div class="flex justify-between py-2 px-4 border-b">
-                    <span class="font-semibold">{label}:</span>
-                    <span class="text-green-600 font-bold">
+                    <span class="">{label}:</span>
+                    <span class="text-green-600">
                       {new Intl.NumberFormat('it-IT', {
                         style: 'decimal',
                         maximumFractionDigits: 0,
@@ -200,7 +237,7 @@ const Incassi = () => {
         onClick={() => setShowPopup(true)} // Mostra il popup
         class="fixed bottom-[98px] right-4 w-16 h-16 bg-blue-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-600"
       >
-        <span class="text-2xl font-bold">+</span>
+        <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
       </button>
 
       {/* Popup per aggiungere un nuovo incasso */}
