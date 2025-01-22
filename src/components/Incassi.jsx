@@ -23,17 +23,64 @@ const Incassi = () => {
     contanti_cassa: 0,
   });
 
-  // Funzione per caricare i dati dal database
+  // Funzione per caricare gli incassi e calcolare le spese serata
   const fetchIncassi = async () => {
-    const { data, error } = await supabase.from('incassi').select('*');
+    try {
+      // Fetch incassi dalla tabella "incassi"
+      const { data: incassiData, error: incassiError } = await supabase.from('incassi').select('*');
 
-    if (error) {
-      console.error('Errore durante il caricamento degli incassi:', error.message);
+      if (incassiError) {
+        console.error('Errore durante il caricamento degli incassi:', incassiError.message);
+        setIncassi([]); // In caso di errore, imposta un array vuoto
+        return;
+      }
+
+      // Fetch spese raggruppate per data_di_competenza
+      const { data: speseData, error: speseError } = await supabase
+        .from('spese')
+        .select('data_competenza, importo')
+        .eq('metodo_di_pagamento', 'Presi dalla cassa in serata');
+
+      if (speseError) {
+        console.error('Errore durante il caricamento delle spese:', speseError.message);
+        return;
+      }
+
+      // Raggruppa le spese per data_di_competenza e somma gli importi
+      const speseGrouped = speseData.reduce((acc, spesa) => {
+        const date = spesa.data_competenza;
+        if (!acc[date]) {
+          acc[date] = 0;
+        }
+        acc[date] += spesa.importo || 0;
+        return acc;
+      }, {});
+
+      // Aggiungi il campo "NB" e "spese_serata" agli incassi
+      const updatedIncassi = (incassiData || []).map((entry) => {
+        const speseSerata = speseGrouped[entry.data_competenza] || 0;
+        return {
+          ...entry,
+          spese_serata: speseSerata,
+          contanti_cassa_lordo_spese: (entry.contanti_cassa || 0) + speseSerata, // Calcolo opzionale
+          NB:
+            (entry.carte || 0) +
+            (entry.satispay || 0) +
+            (entry.contanti_cassa || 0) +
+            (speseSerata || 0) -
+            (entry.battuti_cassa || 0),
+        };
+      });
+
+      // Aggiorna lo stato locale con i dati elaborati
+      setIncassi(updatedIncassi);
+      console.log(incassi());
+    } catch (error) {
+      console.error('Errore durante il caricamento dei dati:', error.message);
       setIncassi([]); // In caso di errore, imposta un array vuoto
-    } else {
-      setIncassi(data || []); // Salva i dati ricevuti
     }
   };
+
 
   // Esegui la fetch dei dati quando il componente viene montato
   onMount(() => {
@@ -53,7 +100,7 @@ const Incassi = () => {
       }
 
       // Somma i campi 'carte', 'satispay' e 'battuti_cassa' per il mese
-      grouped[monthKey] += entry.carte + entry.satispay + entry.contanti_cassa;
+      grouped[monthKey] += entry.carte + entry.satispay + entry.contanti_cassa_lordo_spese;
     });
 
     // Ordina i mesi dalla più recente alla meno recente
@@ -118,7 +165,8 @@ const Incassi = () => {
       console.error("Errore durante l'inserimento:", error.message);
     } else {
       console.log('Incasso aggiunto con successo:', data);
-      setIncassi((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale
+      fetchIncassi();
+      //setIncassi((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale
       setShowPopup(false); // Chiudi il popup
     }
   };
@@ -126,7 +174,7 @@ const Incassi = () => {
   // Calcola il totale di tutti gli incassi nella view day
   const calculateTotal = (entries) => {
     return entries.reduce((sum, entry) => {
-      return sum + (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa || 0);
+      return sum + (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
     }, 0);
   };
 
@@ -179,13 +227,14 @@ const Incassi = () => {
     } else {
       console.log('Incasso aggiornato con successo');
       // Aggiorna lo stato locale
-      setIncassi((prev) =>
-        prev.map((entry) =>
-          entry.data_competenza === selectedIncasso.data_competenza
-            ? { ...entry, ...editIncasso() }
-            : entry
-        )
-      );
+      // setIncassi((prev) =>
+      //   prev.map((entry) =>
+      //     entry.data_competenza === selectedIncasso.data_competenza
+      //       ? { ...entry, ...editIncasso() }
+      //       : entry
+      //   )
+      // );
+      fetchIncassi();
       setShowEditPopup(false); // Chiudi il popup
     }
   };
@@ -265,7 +314,7 @@ const Incassi = () => {
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
-                    }).format(Math.round(entry.carte + entry.satispay + entry.contanti_cassa))} €
+                    }).format(Math.round(entry.carte + entry.satispay + entry.contanti_cassa_lordo_spese))} €
                   </span>
                 </div>
               </li>
@@ -303,24 +352,86 @@ const Incassi = () => {
           <div class="overflow-y-auto h-[calc(100vh-220px)]">
             {getDailyDetails() && (
               <div>
-                {[
-                  { label: 'Battuti cassa', value: getDailyDetails()?.battuti_cassa },
-                  { label: 'Carte', value: getDailyDetails()?.carte },
-                  { label: 'Satispay', value: getDailyDetails()?.satispay },
-                  { label: 'Contanti in cassa', value: getDailyDetails()?.contanti_cassa },
-                ].map(({ label, value }) => (
-                  <div class="flex justify-between py-2 px-4 border-b">
-                    <span class="">{label}:</span>
-                    <span class="text-green-600">
-                      {new Intl.NumberFormat('it-IT', {
-                        style: 'decimal',
-                        maximumFractionDigits: 0,
-                      }).format(Math.round(value || 0))} €
-                    </span>
-                  </div>
-                ))}
+                {/* Battuti cassa */}
+                <div class="flex justify-between py-2 px-4 border-b bg-gray-100">
+                  <span class="">Battuti cassa:</span>
+                  <span class="text-green-600">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.battuti_cassa || 0))} €
+                  </span>
+                </div>
+
+                {/* Carte */}
+                <div class="flex justify-between py-2 px-4 border-b">
+                  <span>Carte:</span>
+                  <span class="text-green-600 font-semibold">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.carte || 0))} €
+                  </span>
+                </div>
+
+                {/* Satispay */}
+                <div class="flex justify-between py-2 px-4 border-b">
+                  <span class="">Satispay:</span>
+                  <span class="text-green-600 font-semibold">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.satispay || 0))} €
+                  </span>
+                </div>
+
+                {/* Contanti in cassa (netto spese) */}
+                <div class="flex justify-between py-2 px-4 border-b">
+                  <span>Contanti in cassa (netto spese):</span>
+                  <span class="text-green-600">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.contanti_cassa || 0))} €
+                  </span>
+                </div>
+
+                {/* Spese serata */}
+                <div class="flex justify-between py-2 px-4 border-b bg-yellow-50">
+                  <span>Spese serata:</span>
+                  <span class="text-red-500">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.spese_serata || 0))} €
+                  </span>
+                </div>
+
+                {/* Contanti in cassa (lordo spese) */}
+                <div class="flex justify-between py-2 px-4 border-b">
+                  <span class="">Contanti in cassa (lordo spese):</span>
+                  <span class="text-green-600 font-semibold">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.contanti_cassa_lordo_spese || 0))} €
+                  </span>
+                </div>
+              
+                {/* Totale Incasso reale giornaliero */}
+                <div class="flex justify-between py-2 px-4">
+                  <span class=""></span>
+                  <span class="text-green-800 font-bold">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round((getDailyDetails()?.contanti_cassa_lordo_spese || 0)+(getDailyDetails()?.carte || 0)+(getDailyDetails()?.satispay || 0)))} €
+                  </span>
+                </div>
+
               </div>
             )}
+
             <div class="flex justify-around mt-6">
               <button
                 onClick={() => setShowDeletePopup(true)}
