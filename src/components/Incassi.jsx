@@ -63,12 +63,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     }
   };
 
-
   // Esegui la fetch dei dati quando il componente viene montato
   onMount(() => {
     aggregateIncassiWithSpese();
-    //console.log(incassi());
-    //console.log(spese());
   });
 
   // Raggruppa gli incassi per mese e calcola la somma totale
@@ -161,6 +158,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     }, 0);
   };
 
+  //Elimina un incasso giornaliero dal db
   const deleteIncasso = async () => {
     const selectedIncasso = getDailyDetails(); // Ottieni l'incasso selezionato
     if (!selectedIncasso) return;
@@ -184,6 +182,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     }
   };
 
+  //Apre il popup per l'edit di un incasso
   const openEditPopup = () => {
     const selectedIncasso = getDailyDetails();
     if (!selectedIncasso) return;
@@ -197,6 +196,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     setShowEditPopup(true);
   };
 
+  //Gestisce il vero e proprio update di un Incasso esistente
   const updateIncasso = async () => {
     const selectedIncasso = getDailyDetails();
     if (!selectedIncasso) return;
@@ -254,7 +254,6 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
             {/* Totale complessivo di tutti i mesi */}
             <li class="py-2 px-4 bg-gray-100 font-semibold">
               <div class="flex justify-end">
-                {/* <span>Totale complessivo</span> */}
                 <span class="text-green-800 font-bold">
                   {new Intl.NumberFormat('it-IT', {
                     style: 'decimal',
@@ -432,6 +431,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
             </div>
           </div>
 
+          {/* popup di conferma cancellazione incasso */}
           {showDeletePopup() && (
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div class="bg-red-100 rounded-lg p-6 w-96 relative">
@@ -458,6 +458,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
             </div>
           )}
 
+          {/* popup di modifica di un incasso */}
           {showEditPopup() && (
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div class="bg-yellow-100 rounded-lg p-6 w-96 relative">
@@ -524,7 +525,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
         </div>
       )}
 
-      {/* Bottone rotondo */}
+      {/* Bottone rotondo per aggiungere un nuovo incasso*/}
       <button
         onClick={() => setShowPopup(true)} // Mostra il popup
         class="fixed bottom-[98px] right-4 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-green-600"
