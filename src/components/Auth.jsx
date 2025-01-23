@@ -1,29 +1,30 @@
 import { createSignal } from 'solid-js';
 import { supabase } from '../lib/supabaseClient.js';
 
-const Auth = () => {
+const Auth = ({ setSession }) => {
   const [email, setEmail] = createSignal('');
   const [password, setPassword] = createSignal('');
   const [error, setError] = createSignal('');
 
   const signIn = async () => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email(),
       password: password(),
     });
-    if (error) setError(error.message);
+    if (error) {
+      setError(error.message);
+    } else {
+      setSession(data.session); // Aggiorna la sessione autenticata
+    }
   };
 
   return (
     <div class="flex w-full h-[100vh] flex-col items-center justify-center">
-
-      {/* Immagine centrata */}
       <img
         src="/ElSanto Business.jpg"
         alt="ElSanto Business"
         class="w-[70%] max-w-[300px] h-auto mb-12"
       />
-
       <input
         type="email"
         placeholder="Email"

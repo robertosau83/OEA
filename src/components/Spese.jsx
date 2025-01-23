@@ -1,8 +1,8 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Spese = () => {
-    const [spese, setSpese] = createSignal([]); // Stato locale per le spese
+const Spese = ({ spese, setSpese }) => {
+    //const [spese, setSpese] = createSignal([]); // Stato locale per le spese
     const [view, setView] = createSignal('month'); // 'month' | 'day' | 'detail'
     const [selectedMonth, setSelectedMonth] = createSignal('');
     const [selectedDay, setSelectedDay] = createSignal('');

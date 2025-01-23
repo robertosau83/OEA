@@ -1,46 +1,85 @@
-import { createSignal, createEffect } from 'solid-js';
+import { createSignal, onMount } from 'solid-js';
 import { supabase } from './lib/supabaseClient.js';
-import Auth from './components/Auth.jsx';
 import Incassi from './components/Incassi.jsx';
 import Spese from './components/Spese.jsx';
 import Trasf from './components/Trasf.jsx';
 import Fornitori from './components/Fornitori.jsx';
 
-const App = () => {
-  const [session, setSession] = createSignal(null);
-  const [currentBtmBarComponent, setCurrentBtmBarComponent] = createSignal(() => Incassi);
+const App = ({ onLogout }) => {
   const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Incassi");
+  const [isLoading, setIsLoading] = createSignal(true);
+  const [incassi, setIncassi] = createSignal([]);
+  const [spese, setSpese] = createSignal([]);
 
-  createEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session); // Aggiorna lo stato della sessione
-      // if (session) {
-      //   loadInitialData(); // Carica i dati dopo l'autenticazione
-      // }
-    });
+  // Funzione per caricare i dati dal database
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
 
-    return () => {
-      authListener.subscription.unsubscribe(); // Disiscriviti quando il componente viene smontato
-    };
+      // Fetch incassi
+      const { data: incassiData, error: incassiError } = await supabase
+        .from('incassi')
+        .select('*');
+      if (incassiError) throw incassiError;
+
+      // Fetch spese
+      const { data: speseData, error: speseError } = await supabase
+        .from('spese')
+        .select('*');
+      if (speseError) throw speseError;
+
+      // Aggiorna gli stati locali con i dati
+      setIncassi(incassiData || []);
+      setSpese(speseData || []);
+    } catch (error) {
+      console.error("Errore nel caricamento dei dati:", error.message);
+    } finally {
+      setIsLoading(false); // Fine del caricamento
+    }
+  };
+
+  // Esegui il caricamento dei dati quando il componente viene montato
+  onMount(async () => {
+    await loadData();
   });
 
-  const handleLogout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Errore durante il logout:', error.message);
+  const sharedProps = {
+    incassi,
+    setIncassi,
+    spese,
+    setSpese,
+  };
+
+  const renderMainContent = () => {
+    if (currentBtmBarComponentName() === "Incassi") {
+      return <Incassi {...sharedProps} />;
     }
-    setSession(null); // Resetta lo stato della sessione
+    if (currentBtmBarComponentName() === "Spese") {
+      return <Spese {...sharedProps} />;
+    }
+    if (currentBtmBarComponentName() === "Trasf") {
+      return <Trasf {...sharedProps} />;
+    }
+    if (currentBtmBarComponentName() === "Fornitori") {
+      return <Fornitori {...sharedProps} />;
+    }
+    return null; // In caso di valore non gestito
   };
 
   return (
     <div class="flex flex-col h-screen">
-      {session() ? (
+      {isLoading() ? (
+        // Pagina di caricamento
+        <div class="flex items-center justify-center h-full">
+          <p class="text-lg font-semibold">Caricamento dati in corso...</p>
+        </div>
+      ) : (
         <>
           {/* Top Bar */}
           <div class="bg-blue-500 text-white flex justify-between items-center px-4 py-2">
             <h1 class="text-xl">{currentBtmBarComponentName()}</h1>
             <button
-              onClick={handleLogout}
+              onClick={onLogout}
               class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
             >
               Logout
@@ -49,49 +88,49 @@ const App = () => {
 
           {/* Main Content */}
           <div class="flex-grow bg-gray-100">
-            {currentBtmBarComponent()}
+            {renderMainContent()}
           </div>
 
           {/* Bottom Bar */}
           <div class="bg-white border-t flex">
-
             <button
-              onClick={() => { setCurrentBtmBarComponent(() => Incassi); setCurrentBtmBarComponentName("Incassi"); }}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${currentBtmBarComponentName() === "Incassi" ? 'bg-gray-200' : ''}`}
+              onClick={() => setCurrentBtmBarComponentName("Incassi")}
+              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+                currentBtmBarComponentName() === "Incassi" ? 'bg-gray-200' : ''
+              }`}
             >
               <img src="/incassi.svg" alt="Incassi" class="h-6 mx-auto mb-1" />
               Incassi
             </button>
-
             <button
-              onClick={() => { setCurrentBtmBarComponent(() => Spese); setCurrentBtmBarComponentName("Spese"); }}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${currentBtmBarComponentName() === "Spese" ? 'bg-gray-200' : ''}`}
+              onClick={() => setCurrentBtmBarComponentName("Spese")}
+              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+                currentBtmBarComponentName() === "Spese" ? 'bg-gray-200' : ''
+              }`}
             >
               <img src="/spese.svg" alt="Spese" class="h-6 mx-auto mb-1" />
               Spese
             </button>
-
             <button
-              onClick={() => { setCurrentBtmBarComponent(() => Trasf); setCurrentBtmBarComponentName("Trasf"); }}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${currentBtmBarComponentName() === "Trasf" ? 'bg-gray-200' : ''}`}
+              onClick={() => setCurrentBtmBarComponentName("Trasf")}
+              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+                currentBtmBarComponentName() === "Trasf" ? 'bg-gray-200' : ''
+              }`}
             >
               <img src="/trasf.svg" alt="Trasf" class="h-6 mx-auto mb-1" />
               Trasf
             </button>
-
             <button
-              onClick={() => { setCurrentBtmBarComponent(() => Fornitori); setCurrentBtmBarComponentName("Fornitori"); }}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${currentBtmBarComponentName() === "Fornitori" ? 'bg-gray-200' : ''}`}
+              onClick={() => setCurrentBtmBarComponentName("Fornitori")}
+              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+                currentBtmBarComponentName() === "Fornitori" ? 'bg-gray-200' : ''
+              }`}
             >
               <img src="/fornitori.svg" alt="Fornitori" class="h-6 mx-auto mb-1" />
               Fornitori
             </button>
-
           </div>
-
         </>
-      ) : (
-        <Auth />
       )}
     </div>
   );

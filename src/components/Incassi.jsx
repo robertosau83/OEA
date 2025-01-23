@@ -1,8 +1,8 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Incassi = () => {
-  const [incassi, setIncassi] = createSignal([]); // Stato locale per gli incassi
+const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
+  const [aggrData, setAggrData] = createSignal([]); // Stato locale per gli incassi + spese serata
   const [view, setView] = createSignal('month'); // 'month' | 'day' | 'detail'
   const [selectedMonth, setSelectedMonth] = createSignal('');
   const [selectedDay, setSelectedDay] = createSignal('');
@@ -23,41 +23,23 @@ const Incassi = () => {
     contanti_cassa: 0,
   });
 
-  // Funzione per caricare gli incassi e calcolare le spese serata
-  const fetchIncassi = async () => {
+  // Funzione per comporre aggrData come stato locale di incassi + spese serata
+  const aggregateIncassiWithSpese = async () => {
     try {
-      // Fetch incassi dalla tabella "incassi"
-      const { data: incassiData, error: incassiError } = await supabase.from('incassi').select('*');
-
-      if (incassiError) {
-        console.error('Errore durante il caricamento degli incassi:', incassiError.message);
-        setIncassi([]); // In caso di errore, imposta un array vuoto
-        return;
-      }
-
-      // Fetch spese raggruppate per data_di_competenza
-      const { data: speseData, error: speseError } = await supabase
-        .from('spese')
-        .select('data_competenza, importo')
-        .eq('metodo_di_pagamento', 'Presi dalla cassa in serata');
-
-      if (speseError) {
-        console.error('Errore durante il caricamento delle spese:', speseError.message);
-        return;
-      }
-
-      // Raggruppa le spese per data_di_competenza e somma gli importi
-      const speseGrouped = speseData.reduce((acc, spesa) => {
-        const date = spesa.data_competenza;
-        if (!acc[date]) {
-          acc[date] = 0;
+      // Raggruppa le spese per data_di_competenza e somma gli importi con filtro
+      const speseGrouped = spese().reduce((acc, spesa) => {
+        if (spesa.metodo_di_pagamento === "Presi dalla cassa in serata") {
+          const date = spesa.data_competenza;
+          if (!acc[date]) {
+            acc[date] = 0;
+          }
+          acc[date] += spesa.importo || 0;
         }
-        acc[date] += spesa.importo || 0;
         return acc;
       }, {});
 
       // Aggiungi il campo "NB" e "spese_serata" agli incassi
-      const updatedIncassi = (incassiData || []).map((entry) => {
+      const updatedIncassi = (incassi() || []).map((entry) => {
         const speseSerata = speseGrouped[entry.data_competenza] || 0;
         return {
           ...entry,
@@ -73,25 +55,27 @@ const Incassi = () => {
       });
 
       // Aggiorna lo stato locale con i dati elaborati
-      setIncassi(updatedIncassi);
-      console.log(incassi());
+      setAggrData(updatedIncassi);
+      //console.log(aggrData());
     } catch (error) {
       console.error('Errore durante il caricamento dei dati:', error.message);
-      setIncassi([]); // In caso di errore, imposta un array vuoto
+      setAggrData([]); // In caso di errore, imposta un array vuoto
     }
   };
 
 
   // Esegui la fetch dei dati quando il componente viene montato
   onMount(() => {
-    fetchIncassi();
+    aggregateIncassiWithSpese();
+    //console.log(incassi());
+    //console.log(spese());
   });
 
   // Raggruppa gli incassi per mese e calcola la somma totale
   const groupByMonth = () => {
     const grouped = {}; // Ogni chiave è un mese e il valore è la somma totale
 
-    incassi().forEach((entry) => {
+    aggrData().forEach((entry) => {
       const date = new Date(entry.data_competenza);
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // Anno-Mese come chiave
 
@@ -116,10 +100,9 @@ const Incassi = () => {
       });
   };
 
-
   // Filtra gli incassi per giorno per il mese selezionato
   const filterByDay = () => {
-    return incassi()
+    return aggrData()
       .filter((entry) => {
         const month = new Date(entry.data_competenza).toLocaleString('default', {
           month: 'long',
@@ -136,13 +119,13 @@ const Incassi = () => {
 
   // Dettagli di un singolo giorno
   const getDailyDetails = () => {
-    return incassi().find((entry) => entry.data_competenza === selectedDay());
+    return aggrData().find((entry) => entry.data_competenza === selectedDay());
   };
 
   const addNewIncasso = async () => {
 
     // Controlla se esiste già un incasso con la stessa data di competenza
-    const existing = incassi().find(
+    const existing = aggrData().find(
       (entry) => entry.data_competenza === newIncasso().data_competenza
     );
 
@@ -165,8 +148,8 @@ const Incassi = () => {
       console.error("Errore durante l'inserimento:", error.message);
     } else {
       console.log('Incasso aggiunto con successo:', data);
-      fetchIncassi();
-      //setIncassi((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale
+      setIncassi((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale Incassi
+      await aggregateIncassiWithSpese();
       setShowPopup(false); // Chiudi il popup
     }
   };
@@ -195,6 +178,7 @@ const Incassi = () => {
       setIncassi((prev) =>
         prev.filter((entry) => entry.data_competenza !== selectedIncasso.data_competenza)
       );
+      await aggregateIncassiWithSpese();
       setShowDeletePopup(false); // Chiudi il popup di conferma
       setView('day'); // Torna alla view "day"
     }
@@ -226,15 +210,15 @@ const Incassi = () => {
       console.error("Errore durante l'aggiornamento dell'incasso:", error.message);
     } else {
       console.log('Incasso aggiornato con successo');
-      // Aggiorna lo stato locale
-      // setIncassi((prev) =>
-      //   prev.map((entry) =>
-      //     entry.data_competenza === selectedIncasso.data_competenza
-      //       ? { ...entry, ...editIncasso() }
-      //       : entry
-      //   )
-      // );
-      fetchIncassi();
+      //Aggiorna lo stato locale
+      setIncassi((prev) =>
+        prev.map((entry) =>
+          entry.data_competenza === selectedIncasso.data_competenza
+            ? { ...entry, ...editIncasso() }
+            : entry
+        )
+      );
+      await aggregateIncassiWithSpese();
       setShowEditPopup(false); // Chiudi il popup
     }
   };
@@ -417,7 +401,7 @@ const Incassi = () => {
                     }).format(Math.round(getDailyDetails()?.contanti_cassa_lordo_spese || 0))} €
                   </span>
                 </div>
-              
+
                 {/* Totale Incasso reale giornaliero */}
                 <div class="flex justify-between py-2 px-4">
                   <span class=""></span>
@@ -425,7 +409,7 @@ const Incassi = () => {
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
-                    }).format(Math.round((getDailyDetails()?.contanti_cassa_lordo_spese || 0)+(getDailyDetails()?.carte || 0)+(getDailyDetails()?.satispay || 0)))} €
+                    }).format(Math.round((getDailyDetails()?.contanti_cassa_lordo_spese || 0) + (getDailyDetails()?.carte || 0) + (getDailyDetails()?.satispay || 0)))} €
                   </span>
                 </div>
 
