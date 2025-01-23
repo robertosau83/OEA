@@ -22,6 +22,15 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     satispay: 0,
     contanti_cassa: 0,
   });
+  const [selectedTag, setSelectedTag] = createSignal(''); // Stato per il tag selezionato
+
+  const tagMap = {
+    contanti: 'contanti_cassa_lordo_spese',
+    carte: 'carte',
+    satispay: 'satispay',
+    battuti: 'battuti_cassa',
+    gap: 'NB',
+  };
 
   // Funzione per comporre aggrData come stato locale di incassi + spese serata
   const aggregateIncassiWithSpese = async () => {
@@ -70,23 +79,25 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
 
   // Raggruppa gli incassi per mese e calcola la somma totale
   const groupByMonth = () => {
-    const grouped = {}; // Ogni chiave è un mese e il valore è la somma totale
+    const grouped = {};
 
     aggrData().forEach((entry) => {
       const date = new Date(entry.data_competenza);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`; // Anno-Mese come chiave
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 
-      if (!grouped[monthKey]) {
-        grouped[monthKey] = 0; // Inizializza la somma per il mese
+      if (!grouped[monthKey]) grouped[monthKey] = 0;
+
+      const tag = selectedTag();
+      if (tag && tagMap[tag]) {
+        grouped[monthKey] += entry[tagMap[tag]] || 0;
+      } else {
+        grouped[monthKey] +=
+          (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
       }
-
-      // Somma i campi 'carte', 'satispay' e 'battuti_cassa' per il mese
-      grouped[monthKey] += entry.carte + entry.satispay + entry.contanti_cassa_lordo_spese;
     });
 
-    // Ordina i mesi dalla più recente alla meno recente
     return Object.entries(grouped)
-      .sort(([monthA], [monthB]) => new Date(monthB).getTime() - new Date(monthA).getTime())
+      .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
       .map(([key, total]) => {
         const [year, month] = key.split('-');
         const formattedMonth = new Date(year, month - 1).toLocaleString('default', {
@@ -107,11 +118,16 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
         });
         return month === selectedMonth();
       })
-      .sort((a, b) => {
-        const dateA = new Date(a.data_competenza);
-        const dateB = new Date(b.data_competenza);
-        return dateA.getTime() - dateB.getTime(); // Ordine dal meno recente al più recente
-      });
+      .map((entry) => {
+        const tag = selectedTag();
+        if (tag && tagMap[tag]) {
+          return { ...entry, total: entry[tagMap[tag]] || 0 };
+        }
+        const total =
+          (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+        return { ...entry, total };
+      })
+      .sort((a, b) => new Date(a.data_competenza) - new Date(b.data_competenza));
   };
 
   // Dettagli di un singolo giorno
@@ -152,9 +168,16 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
   };
 
   // Calcola il totale di tutti gli incassi nella view day
-  const calculateTotal = (entries) => {
+  const calculateTotalByTag = (entries) => {
+    const tag = selectedTag();
     return entries.reduce((sum, entry) => {
-      return sum + (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+      if (tag && tagMap[tag]) {
+        return sum + (entry[tagMap[tag]] || 0);
+      }
+      return sum +
+        (entry.carte || 0) +
+        (entry.satispay || 0) +
+        (entry.contanti_cassa_lordo_spese || 0);
     }, 0);
   };
 
@@ -230,7 +253,24 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
       {view() === 'month' && (
         <div>
           <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">Incassi mensili</h2>
-          <ul class="overflow-y-auto h-[calc(100vh-220px)]">
+
+          {/* tags */}
+          <div class="flex justify-center gap-1 mb-4 h-[32px]">
+            {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
+              <button
+                key={tag}
+                class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-200 text-gray-700'
+                  }`}
+                onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+
+          <ul class="overflow-y-auto h-[calc(100vh-268px)]">
             {groupByMonth().map(([month, total]) => (
               <li
                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -282,7 +322,24 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
             </div>
             <div class="w-[40px]"></div>
           </div>
-          <ul class="overflow-y-auto h-[calc(100vh-220px)] pb-40">
+
+          {/* tags */}
+          <div class="flex justify-center gap-1 mb-4 h-[32px]">
+            {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
+              <button
+                key={tag}
+                class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-200 text-gray-700'
+                  }`}
+                onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+
+          <ul class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
             {filterByDay().map((entry) => (
               <li
                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -297,7 +354,8 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
-                    }).format(Math.round(entry.carte + entry.satispay + entry.contanti_cassa_lordo_spese))} €
+                    }).format(Math.round(entry.total))}{' '}
+                    €
                   </span>
                 </div>
               </li>
@@ -311,7 +369,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   {new Intl.NumberFormat('it-IT', {
                     style: 'decimal',
                     maximumFractionDigits: 0,
-                  }).format(calculateTotal(filterByDay()))} €
+                  }).format(calculateTotalByTag(filterByDay()))} €
                 </span>
               </div>
             </li>
@@ -332,12 +390,12 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
             </div>
             <div class="w-[40px]"></div>
           </div>
-          <div class="overflow-y-auto h-[calc(100vh-220px)]">
+          <div class="overflow-y-auto h-[calc(100vh-220px)] pt-2">
             {getDailyDetails() && (
               <div>
                 {/* Battuti cassa */}
-                <div class="flex justify-between py-2 px-4 border-b bg-gray-100">
-                  <span class="">Battuti cassa:</span>
+                <div class="flex text-sm justify-between py-1 px-4 border-b bg-gray-100">
+                  <span class="">Battuti cassa</span>
                   <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
@@ -346,31 +404,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   </span>
                 </div>
 
-                {/* Carte */}
-                <div class="flex justify-between py-2 px-4 border-b">
-                  <span>Carte:</span>
-                  <span class="text-green-600 font-semibold">
-                    {new Intl.NumberFormat('it-IT', {
-                      style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.carte || 0))} €
-                  </span>
-                </div>
-
-                {/* Satispay */}
-                <div class="flex justify-between py-2 px-4 border-b">
-                  <span class="">Satispay:</span>
-                  <span class="text-green-600 font-semibold">
-                    {new Intl.NumberFormat('it-IT', {
-                      style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.satispay || 0))} €
-                  </span>
-                </div>
-
                 {/* Contanti in cassa (netto spese) */}
-                <div class="flex justify-between py-2 px-4 border-b">
-                  <span>Contanti in cassa (netto spese):</span>
+                <div class="flex text-sm justify-between py-1 px-4 border-b">
+                  <span>Contanti in cassa (netto spese)</span>
                   <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
@@ -380,8 +416,8 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                 </div>
 
                 {/* Spese serata */}
-                <div class="flex justify-between py-2 px-4 border-b bg-yellow-50">
-                  <span>Spese serata:</span>
+                <div class="flex text-sm text-red-500 justify-between py-1 px-4 border-b bg-yellow-50">
+                  <span>Spese serata</span>
                   <span class="text-red-500">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
@@ -391,13 +427,35 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                 </div>
 
                 {/* Contanti in cassa (lordo spese) */}
-                <div class="flex justify-between py-2 px-4 border-b">
-                  <span class="">Contanti in cassa (lordo spese):</span>
+                <div class="flex justify-between py-1 px-4 border-b">
+                  <span class="">Contanti in cassa (lordo spese)</span>
                   <span class="text-green-600 font-semibold">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
                     }).format(Math.round(getDailyDetails()?.contanti_cassa_lordo_spese || 0))} €
+                  </span>
+                </div>
+
+                {/* Carte */}
+                <div class="flex justify-between py-1 px-4 border-b">
+                  <span>Carte</span>
+                  <span class="text-green-600 font-semibold">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.carte || 0))} €
+                  </span>
+                </div>
+
+                {/* Satispay */}
+                <div class="flex justify-between py-1 px-4 border-b">
+                  <span class="">Satispay</span>
+                  <span class="text-green-600 font-semibold">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.satispay || 0))} €
                   </span>
                 </div>
 
@@ -412,21 +470,32 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   </span>
                 </div>
 
+                {/* NB */}
+                <div class="flex text-sm justify-between py-1 px-4 border-b">
+                  <span class="">Gap</span>
+                  <span class="text-green-600">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(getDailyDetails()?.NB || 0))} €
+                  </span>
+                </div>
+
               </div>
             )}
 
             <div class="flex justify-around mt-6">
               <button
                 onClick={() => setShowDeletePopup(true)}
-                class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                class="px-4 py-2 w-32 bg-red-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-red-600"
               >
-                Cancella Incasso
+                Cancella
               </button>
               <button
                 onClick={openEditPopup}
-                class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                class="px-4 py-2 w-32 bg-yellow-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-yellow-600"
               >
-                Modifica Incasso
+                Modifica
               </button>
             </div>
           </div>
@@ -434,15 +503,15 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
           {/* popup di conferma cancellazione incasso */}
           {showDeletePopup() && (
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div class="bg-red-100 rounded-lg p-6 w-96 relative">
+              <div class="bg-red-100 rounded-lg p-6 w-[90%] relative">
                 <button
                   onClick={() => setShowDeletePopup(false)}
                   class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
                 >
                   <img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
                 </button>
-                <h2 class="text-lg font-bold mt-4 mb-4 text-center">
-                  Verrà cancellato l'incasso della data{' '}
+                <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
+                  Verrà cancellato l'incasso registrato in data{' '}
                   {new Date(selectedDay()).toLocaleDateString('it-IT')}
                 </h2>
                 <div class="flex justify-center gap-4 mt-6">
@@ -461,7 +530,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
           {/* popup di modifica di un incasso */}
           {showEditPopup() && (
             <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div class="bg-yellow-100 rounded-lg p-6 w-96 relative">
+              <div class="bg-yellow-100 rounded-lg p-6 w-[90%] relative">
                 <button
                   onClick={() => setShowEditPopup(false)}
                   class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
@@ -528,7 +597,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
       {/* Bottone rotondo per aggiungere un nuovo incasso*/}
       <button
         onClick={() => setShowPopup(true)} // Mostra il popup
-        class="fixed bottom-[98px] right-4 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-green-600"
+        class="fixed bottom-[98px] right-4 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
       >
         <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
       </button>
@@ -536,7 +605,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
       {/* Popup per aggiungere un nuovo incasso */}
       {showPopup() && (
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div class="bg-white rounded-lg p-6 w-96 relative">
+          <div class="bg-white rounded-lg p-6 w-[90%] relative">
             <button
               onClick={() => setShowPopup(false)}
               class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
