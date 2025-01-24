@@ -595,12 +595,14 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
       )}
 
       {/* Bottone rotondo per aggiungere un nuovo incasso*/}
-      <button
-        onClick={() => setShowPopup(true)} // Mostra il popup
-        class="fixed bottom-[98px] right-4 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
-      >
-        <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
-      </button>
+      {view() !== 'detail' && (
+        <button
+          onClick={() => setShowPopup(true)} // Mostra il popup
+          class="fixed bottom-[98px] right-4 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
+        >
+          <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
+        </button>
+      )}
 
       {/* Popup per aggiungere un nuovo incasso */}
       {showPopup() && (
