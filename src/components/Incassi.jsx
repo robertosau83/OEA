@@ -9,10 +9,10 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
   const [showPopup, setShowPopup] = createSignal(false);
   const [newIncasso, setNewIncasso] = createSignal({
     data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
-    battuti_cassa: 0,
-    carte: 0,
-    satispay: 0,
-    contanti_cassa: 0,
+    battuti_cassa: '',
+    carte: '',
+    satispay: '',
+    contanti_cassa: '',
   });
   const [showDeletePopup, setShowDeletePopup] = createSignal(false);
   const [showEditPopup, setShowEditPopup] = createSignal(false);
@@ -136,7 +136,6 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
   };
 
   const addNewIncasso = async () => {
-
     // Controlla se esiste già un incasso con la stessa data di competenza
     const existing = aggrData().find(
       (entry) => entry.data_competenza === newIncasso().data_competenza
@@ -152,9 +151,43 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
       return;
     }
 
+    // Verifica e converte i campi numerici
+    const fieldsToCheck = ['battuti_cassa', 'carte', 'satispay', 'contanti_cassa'];
+    const convertedValues = {};
+
+    for (const field of fieldsToCheck) {
+      const value = newIncasso()[field];
+
+      // Se il campo è vuoto, imposta a 0
+      if (value === '') {
+        convertedValues[field] = 0;
+        continue;
+      }
+
+      // Sostituisci eventuale "," con "."
+      const sanitizedValue = value.replace(',', '.');
+
+      // Prova a convertire in numero
+      const numericValue = parseFloat(sanitizedValue);
+
+      if (isNaN(numericValue)) {
+        alert(`Il valore inserito per "${field}" non è valido. Inserisci un numero valido.`);
+        return; // Blocca l'inserimento
+      }
+
+      convertedValues[field] = numericValue; // Salva il valore convertito
+    }
+
+    // Crea un nuovo oggetto incasso con i campi convertiti
+    const incassoToInsert = {
+      ...newIncasso(),
+      ...convertedValues,
+    };
+
+    // Inserisci nel database
     const { data, error } = await supabase
       .from('incassi')
-      .insert([newIncasso()], { returning: 'representation' })
+      .insert([incassoToInsert], { returning: 'representation' })
       .select('*'); // Recupera i dati appena inseriti
 
     if (error) {
@@ -307,7 +340,6 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
           </ul>
         </div>
       )}
-
 
       {/* View degli incassi giornalieri */}
       {view() === 'day' && (
@@ -597,7 +629,18 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
       {/* Bottone rotondo per aggiungere un nuovo incasso*/}
       {view() !== 'detail' && (
         <button
-          onClick={() => setShowPopup(true)} // Mostra il popup
+          onClick={() => {
+            // Resetta i campi di newIncasso
+            setNewIncasso({
+              data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
+              battuti_cassa: '',
+              carte: '',
+              satispay: '',
+              contanti_cassa: '',
+            });
+            // Mostra il popup
+            setShowPopup(true);
+          }}
           class="fixed bottom-[98px] right-4 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
         >
           <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
@@ -623,25 +666,53 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                 await addNewIncasso();
               }}
             >
+              {/* Campo per la data di competenza */}
+              <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Data Competenza</label>
+                <input
+                  type="date"
+                  value={newIncasso().data_competenza || ''}
+                  onInput={(e) =>
+                    setNewIncasso({
+                      ...newIncasso(),
+                      data_competenza: e.currentTarget.value,
+                    })
+                  }
+                  class="w-full border rounded px-3 py-2"
+                />
+              </div>
+
+              {/* Campi numerici */}
               {[
-                { label: 'Data Competenza', type: 'date', key: 'data_competenza' },
-                { label: 'Battuti Cassa', type: 'number', key: 'battuti_cassa' },
-                { label: 'Carte', type: 'number', key: 'carte' },
-                { label: 'Satispay', type: 'number', key: 'satispay' },
-                { label: 'Contanti Cassa', type: 'number', key: 'contanti_cassa' },
-              ].map(({ label, type, key }) => (
+                { label: 'Battuti Cassa', key: 'battuti_cassa' },
+                { label: 'Carte', key: 'carte' },
+                { label: 'Satispay', key: 'satispay' },
+                { label: 'Contanti Cassa', key: 'contanti_cassa' },
+              ].map(({ label, key }) => (
                 <div class="mb-4" key={key}>
                   <label class="block text-sm font-medium mb-1">{label}</label>
                   <input
-                    type={type}
-                    value={newIncasso()[key] || ''}
-                    onInput={(e) =>
+                    type="text"
+                    value={newIncasso()[key] !== '' ? newIncasso()[key] : ''}
+                    onInput={(e) => {
+                      const input = e.currentTarget.value;
+
+                      // Sostituisci immediatamente "." con ","
+                      let sanitizedInput = input.replace('.', ',');
+
+                      // Rimuovi tutti i caratteri non validi (solo numeri e ",")
+                      sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+
+                      // Aggiorna lo stato con il valore sanitizzato
                       setNewIncasso({
                         ...newIncasso(),
-                        [key]: type === 'number' ? +e.currentTarget.value || 0 : e.currentTarget.value,
-                      })
-                    }
-                    class="w-full border rounded px-3 py-2"
+                        [key]: sanitizedInput,
+                      });
+                    }}
+                    class={`w-full border rounded px-3 py-2 ${
+                      // Validazione: campo è rosso se contiene più di una virgola
+                      /^[0-9]*,?[0-9]*$/.test(newIncasso()[key]) ? '' : 'text-red-500'
+                      }`}
                   />
                 </div>
               ))}
@@ -655,6 +726,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                 </button>
               </div>
             </form>
+
           </div>
         </div>
       )}
