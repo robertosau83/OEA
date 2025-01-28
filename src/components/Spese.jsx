@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 
 const Spese = ({ spese, setSpese }) => {
     //const [spese, setSpese] = createSignal([]); // Stato locale per le spese
-    const [view, setView] = createSignal('month'); // 'month' | 'day' | 'details'
+    const [view, setView] = createSignal('year'); // 'month' | 'day' | 'details'
+    const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
     const [selectedMonth, setSelectedMonth] = createSignal('');
     const [selectedDay, setSelectedDay] = createSignal('');
     const [selectedCashSpesa, setSelectedCashSpesa] = createSignal(null);
@@ -12,7 +13,7 @@ const Spese = ({ spese, setSpese }) => {
         data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
         tipo: '',
         metodo_di_pagamento: '',
-        importo: 0,
+        importo: '',
         descrizione: '',
     });
     const [showDeletePopup, setShowDeletePopup] = createSignal(false);
@@ -20,53 +21,55 @@ const Spese = ({ spese, setSpese }) => {
     const [editSpesa, setEditSpesa] = createSignal({
         tipo: '',
         metodo_di_pagamento: '',
-        importo: 0,
+        importo: '',
         descrizione: '',
     });
     const [selectedSpesaId, setSelectedSpesaId] = createSignal('');
 
-    // const fetchSpese = async () => {
-    //     const { data, error } = await supabase.from('spese').select('*');
-
-    //     if (error) {
-    //         console.error('Errore durante il caricamento delle spese:', error.message);
-    //         setSpese([]); // In caso di errore, imposta un array vuoto
-    //     } else {
-    //         setSpese(data || []); // Salva i dati ricevuti
-    //     }
-    // };
-
-    // onMount(() => {
-    //     fetchSpese();
-    // });
-
-    const groupByMonth = () => {
+    // Funzione per raggruppare le spese per anno
+    const groupByYear = () => {
         const grouped = {};
 
         spese().forEach((entry) => {
-            const monthKey = new Date(entry.data_competenza).toISOString().slice(0, 7); // YYYY-MM
-            if (!grouped[monthKey]) {
-                grouped[monthKey] = 0;
+            const year = new Date(entry.data_competenza).getFullYear();
+            if (!grouped[year]) {
+                grouped[year] = 0;
             }
-            grouped[monthKey] += entry.importo;
+            grouped[year] += entry.importo;
         });
 
-        // Ordiniamo usando la MonthKey
+        // Ordina gli anni in ordine decrescente
         return Object.entries(grouped)
-            .sort(([keyA], [keyB]) => {
-                const dateA = new Date(`${keyA}-01`); // Convertiamo la chiave in una data
-                const dateB = new Date(`${keyB}-01`);
-                return dateB - dateA; // Ordine decrescente (più recente prima)
-            })
+            .sort(([a], [b]) => b - a) // Ordine decrescente per anno
+            .map(([year, total]) => [year, total]);
+    };
+
+    // Funzione che raggruppa le spese per mese
+    const groupByMonth = () => {
+        const grouped = {};
+
+        spese()
+            .filter((entry) => new Date(entry.data_competenza).getFullYear() === parseInt(selectedYear()))
+            .forEach((entry) => {
+                const monthKey = new Date(entry.data_competenza).toISOString().slice(0, 7); // YYYY-MM
+                if (!grouped[monthKey]) {
+                    grouped[monthKey] = 0;
+                }
+                grouped[monthKey] += entry.importo;
+            });
+
+        return Object.entries(grouped)
+            .sort(([keyA], [keyB]) => new Date(`${keyA}-01`) - new Date(`${keyB}-01`))
             .map(([monthKey, total]) => {
                 const monthLabel = new Date(`${monthKey}-01`).toLocaleString('default', {
                     month: 'long',
                     year: 'numeric',
                 });
-                return [monthLabel, total]; // Restituiamo il label leggibile e il totale
+                return [monthLabel, total];
             });
     };
 
+    // Funzione per la view dei giorni del mese
     const groupByDate = () => {
         const grouped = spese()
             .filter((entry) => {
@@ -93,37 +96,59 @@ const Spese = ({ spese, setSpese }) => {
         });
     };
 
-    const getDailyExpenses = () => {
-        return spese().filter((entry) => entry.data_competenza === selectedDay());
-    };
-
+    //Funzione che carica i dettagli di un giorno
     const getDailyDetails = () => {
         console.log(selectedDay(), selectedSpesaId());
         return spese().find((entry) => entry.data_competenza === selectedDay() && entry.id === selectedSpesaId());
     };
 
+    //Funzione che carica solo la parte CASH delle spese
     const getCashExpenses = () => {
         return spese().filter(
             (entry) => entry.data_competenza === selectedDay() && entry.origin === "CASH"
         );
     };
 
+    //Funzione che carica solo la parte CC delle spese
     const getCCExpenses = () => {
         return spese().filter(
             (entry) => entry.data_competenza === selectedDay() && entry.origin === "CC"
         );
     };
 
+    //Funzione per l'inserimento di una nuova spesa
     const addNewSpesa = async () => {
         const { tipo, metodo_di_pagamento, importo } = newSpesa();
 
-        if (!tipo || !metodo_di_pagamento || !importo || importo <= 0) {
+        if (!tipo || !metodo_di_pagamento || !importo) {
             alert("Per favore, compila tutti i campi obbligatori: Tipo, Metodo di pagamento e Importo.");
             return;
         }
 
+        let convertedValue;
+        const value = newSpesa().importo;
+
+        // Se il campo è vuoto, imposta a 0
+        if (value === '') {
+            convertedValue = 0;
+        } else {
+            // Sostituisci eventuale "," con "."
+            const sanitizedValue = value.replace(',', '.');
+
+            // Prova a convertire in numero
+            const numericValue = parseFloat(sanitizedValue);
+
+            if (isNaN(numericValue) || numericValue === 0) {
+                alert(`Il valore di importo non è valido o è nullo. Inserisci un numero valido.`);
+                return; // Blocca l'inserimento
+            }
+
+            convertedValue = numericValue; // Salva il valore convertito
+        }
+
         const spesaConOrigin = {
             ...newSpesa(),
+            importo: convertedValue,
             origin: "CASH", // Imposta il campo origin
         };
 
@@ -141,10 +166,7 @@ const Spese = ({ spese, setSpese }) => {
         }
     };
 
-    const calculateTotal = (entries) => {
-        return entries.reduce((sum, entry) => sum + (entry.importo || 0), 0);
-    };
-
+    //Funzione per la cancellazione di una spesa esistente
     const deleteSpesa = async () => {
         const spesaId = selectedSpesaId();
         if (!spesaId) return;
@@ -175,37 +197,66 @@ const Spese = ({ spese, setSpese }) => {
         }
     };
 
+    //Funzione per l'apertura del popup per modificare una spesa
     const openEditPopup = () => {
         const selectedSpesa = selectedCashSpesa();
         if (!selectedSpesa) return;
-    
+
         setEditSpesa({
             tipo: selectedSpesa.tipo,
             metodo_di_pagamento: selectedSpesa.metodo_di_pagamento,
-            importo: selectedSpesa.importo,
+            importo: selectedSpesa.importo ? selectedSpesa.importo.toString().replace('.', ',') : '',
             descrizione: selectedSpesa.descrizione,
             data_competenza: selectedSpesa.data_competenza, // Include la data di competenza
         });
         setShowEditPopup(true);
     };
 
+    //Funzione per l'update di una spesa
     const updateSpesa = async () => {
         const { tipo, metodo_di_pagamento, importo } = editSpesa();
 
-        console.log(tipo, metodo_di_pagamento, importo);
+        //console.log(tipo, metodo_di_pagamento, importo);
 
-        if (!tipo || !metodo_di_pagamento || !importo || importo <= 0) {
+        if (!tipo || !metodo_di_pagamento || !importo) {
             alert("Per favore, compila tutti i campi obbligatori: Tipo, Metodo di pagamento e Importo.");
             return;
         }
 
         const selectedSpesa = getDailyDetails();
-        console.log(selectedSpesa);
         if (!selectedSpesa) return;
+
+        // Verifica e converte i campi numerici
+        let convertedValue;
+        const value = editSpesa().importo;
+        //console.log(value);
+        // Se il campo è vuoto, imposta a 0
+        if (value === '') {
+            convertedValue = 0;
+        } else {
+            // Sostituisci eventuale "," con "."
+            const sanitizedValue = value.replace(',', '.');
+
+            // Prova a convertire in numero
+            const numericValue = parseFloat(sanitizedValue);
+
+            if (isNaN(numericValue) || numericValue === 0) {
+                alert(`Il valore inserito per Importo non è valido o è nullo. Inserisci un numero valido.`);
+                return; // Blocca l'inserimento
+            }
+
+            convertedValue = numericValue; // Salva il valore convertito
+        }
+
+        // Crea un nuovo oggetto incasso con i campi convertiti
+        const spesaToUpdate = {
+            ...editSpesa(),
+            importo: convertedValue,
+        };
 
         const { error } = await supabase
             .from('spese')
-            .update(editSpesa())
+            .update(spesaToUpdate)
             .eq('id', selectedSpesa.id); // Utilizza l'id per identificare la riga
 
         if (error) {
@@ -214,33 +265,36 @@ const Spese = ({ spese, setSpese }) => {
             console.log('Spesa aggiornata con successo');
             setSpese((prev) =>
                 prev.map((entry) =>
-                    entry.id === selectedSpesa.id ? { ...entry, ...editSpesa() } : entry
+                    entry.id === selectedSpesa.id ? { ...entry, ...spesaToUpdate } : entry
                 )
             );
 
             // Aggiorna anche selectedCashSpesa
-            setSelectedCashSpesa({ ...selectedSpesa, ...editSpesa() });
+            setSelectedCashSpesa({ ...selectedSpesa, ...spesaToUpdate });
             setShowEditPopup(false);
         }
     };
 
     return (
         <div class="w-full h-full p-2">
-            {/* View delle spese per mese */}
-            {view() === 'month' && (
+
+            {/* View delle spese per anno */}
+            {view() === 'year' && (
                 <div>
-                    <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">Spese mensili</h2>
+                    <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">
+                        Spese annuali
+                    </h2>
                     <ul class="overflow-y-auto h-[calc(100vh-220px)]">
-                        {groupByMonth().map(([month, total]) => (
+                        {groupByYear().map(([year, total]) => (
                             <li
                                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
                                 onClick={() => {
-                                    setSelectedMonth(month);
-                                    setView('day');
+                                    setSelectedYear(year); // Imposta l'anno selezionato
+                                    setView('month'); // Passa alla view 'month'
                                 }}
                             >
                                 <div class="flex justify-between">
-                                    <span class="">{month}</span>
+                                    <span>{year}</span>
                                     <span class="text-red-600">
                                         {new Intl.NumberFormat('it-IT', {
                                             style: 'decimal',
@@ -251,7 +305,58 @@ const Spese = ({ spese, setSpese }) => {
                             </li>
                         ))}
 
-                        {/* Totale complessivo di tutti i mesi */}
+                        {/* Totale complessivo di tutti gli anni */}
+                        <li class="py-2 px-4 bg-gray-100 font-semibold">
+                            <div class="flex justify-end">
+                                <span class="text-red-800 font-bold">
+                                    {new Intl.NumberFormat('it-IT', {
+                                        style: 'decimal',
+                                        maximumFractionDigits: 0,
+                                    }).format(
+                                        groupByYear().reduce((sum, [, total]) => sum + total, 0)
+                                    )} €
+                                </span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            )}
+
+            {/* View delle spese per mese */}
+            {view() === 'month' && (
+                <div>
+                    <div class="flex justify-between h-[55px] mb-2">
+                        <button class="w-[40px] bg-gray-100 font-bold text-black rounded" onClick={() => setView('year')}>
+                            <img src="/back.svg" alt="back" class="w-full h-auto" />
+                        </button>
+                        <div>
+                            <div class="text-lg text-center font-semibold">Spese Mensili</div>
+                            <div class="text-center">{selectedYear()}</div>
+                        </div>
+                        <div class="w-[40px]"></div>
+                    </div>
+                    <ul class="overflow-y-auto h-[calc(100vh-220px)]">
+                        {groupByMonth().map(([month, total]) => (
+                            <li
+                                class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+                                onClick={() => {
+                                    setSelectedMonth(month); // Imposta il mese selezionato
+                                    setView('day'); // Passa alla view 'day'
+                                }}
+                            >
+                                <div class="flex justify-between">
+                                    <span>{month}</span>
+                                    <span class="text-red-600">
+                                        {new Intl.NumberFormat('it-IT', {
+                                            style: 'decimal',
+                                            maximumFractionDigits: 0,
+                                        }).format(Math.round(total))} €
+                                    </span>
+                                </div>
+                            </li>
+                        ))}
+
+                        {/* Totale complessivo del mese */}
                         <li class="py-2 px-4 bg-gray-100 font-semibold">
                             <div class="flex justify-end">
                                 <span class="text-red-800 font-bold">
@@ -342,13 +447,6 @@ const Spese = ({ spese, setSpese }) => {
                             <div>
                                 <h3 class="font-semibold text-red-800 mb-2">Spese CASH</h3>
                                 <table class="w-full text-sm text-gray-700">
-                                    {/* <thead>
-                                        <tr class="bg-gray-100">
-                                            <th class="px-2 py-1 text-left">Tipo</th>
-                                            <th class="px-2 py-1 text-left">Descrizione</th>
-                                            <th class="px-2 py-1 text-right">Importo (€)</th>
-                                        </tr>
-                                    </thead> */}
                                     <tbody>
                                         {getCashExpenses().map((entry) => (
                                             <tr class="border-b h-[40px]"
@@ -362,7 +460,8 @@ const Spese = ({ spese, setSpese }) => {
                                                 <td class="px-2 py-1 text-right text-red-600 whitespace-nowrap">
                                                     {new Intl.NumberFormat('it-IT', {
                                                         style: 'decimal',
-                                                        maximumFractionDigits: 0,
+                                                        minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                                                        maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
                                                     }).format(entry.importo)} €
                                                 </td>
                                             </tr>
@@ -377,12 +476,6 @@ const Spese = ({ spese, setSpese }) => {
                             <div class="mt-6">
                                 <h3 class="font-semibold text-red-800 mb-2">Spese CC</h3>
                                 <table class="w-full text-sm text-gray-700">
-                                    {/* <thead>
-                                        <tr class="bg-gray-100">
-                                            <th class="border border-gray-300 px-2 py-1 text-left">Descrizione</th>
-                                            <th class="border border-gray-300 px-2 py-1 text-right">Importo (€)</th>
-                                        </tr>
-                                    </thead> */}
                                     <tbody>
                                         {getCCExpenses().map((entry) => (
                                             <tr class="border-b">
@@ -390,7 +483,8 @@ const Spese = ({ spese, setSpese }) => {
                                                 <td class="px-2 py-1 text-right text-red-600 whitespace-nowrap">
                                                     {new Intl.NumberFormat('it-IT', {
                                                         style: 'decimal',
-                                                        maximumFractionDigits: 0,
+                                                        minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                                                        maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
                                                     }).format(entry.importo)} €
                                                 </td>
                                             </tr>
@@ -433,7 +527,8 @@ const Spese = ({ spese, setSpese }) => {
                             <div class="text-red-600">
                                 {new Intl.NumberFormat('it-IT', {
                                     style: 'decimal',
-                                    maximumFractionDigits: 0,
+                                    minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                                    maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
                                 }).format(selectedCashSpesa().importo)} €
                             </div>
                         </div>
@@ -561,7 +656,41 @@ const Spese = ({ spese, setSpese }) => {
                                         </div>
                                     ))}
 
-                                    {[{ label: 'Importo', type: 'number', key: 'importo' }, { label: 'Descrizione', type: 'text', key: 'descrizione' }].map(
+                                    {[{ label: 'Importo', key: 'importo' }
+                                    ].map(
+                                        ({ label, key }) => (
+                                            <div class="mb-4" key={key}>
+                                                <label class="block text-sm font-medium mb-1">{label}</label>
+                                                <input
+                                                    type="text"
+                                                    value={editSpesa()[key]}
+                                                    onInput={(e) => {
+                                                        const input = e.currentTarget.value;
+
+                                                        // Sostituisci immediatamente "." con ","
+                                                        let sanitizedInput = input.replace('.', ',');
+
+                                                        // Rimuovi tutti i caratteri non validi (solo numeri e ",")
+                                                        sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+
+                                                        // Aggiorna lo stato con il valore sanitizzato
+                                                        setEditSpesa({
+                                                            ...editSpesa(),
+                                                            [key]: sanitizedInput,
+                                                        });
+                                                    }}
+
+                                                    class={`w-full border rounded px-3 py-2 ${
+                                                        // Validazione: campo è rosso se contiene più di una virgola
+                                                        /^[0-9]*,?[0-9]*$/.test(editSpesa()[key]) ? '' : 'text-red-500'
+                                                        }`}
+                                                />
+                                            </div>
+                                        )
+                                    )}
+
+                                    {[{ label: 'Descrizione', type: 'text', key: 'descrizione' }
+                                    ].map(
                                         ({ label, type, key }) => (
                                             <div class="mb-4" key={key}>
                                                 <label class="block text-sm font-medium mb-1">{label}</label>
@@ -626,80 +755,87 @@ const Spese = ({ spese, setSpese }) => {
                                 await addNewSpesa();
                             }}
                         >
-                            {[
-                                { label: 'Data Competenza', type: 'date', key: 'data_competenza' },
-                            ].map(({ label, type, key }) => (
-                                <div class="mb-4" key={key}>
-                                    <label class="block text-sm font-medium mb-1">{label}</label>
-                                    <input
-                                        type={type}
-                                        value={newSpesa()[key] || ''}
-                                        onInput={(e) =>
-                                            setNewSpesa({
-                                                ...newSpesa(),
-                                                [key]: type === 'number' ? +e.currentTarget.value || 0 : e.currentTarget.value,
-                                            })
-                                        }
-                                        class="w-full border rounded px-3 py-2"
-                                    />
-                                </div>
-                            ))}
 
-                            {[
-                                {
-                                    label: 'Tipo',
-                                    key: 'tipo',
-                                    options: ["Paga dipendenti", "Cibo", "Manutenzione", "Fornitori", "Attrezzature", "Spese personali", "Altro"],
-                                },
-                                {
-                                    label: 'Metodo di pagamento',
-                                    key: 'metodo_di_pagamento',
-                                    options: ["Presi dalla cassa in serata", "Presi dai cash"],
-                                },
-                            ].map(({ label, key, options }) => (
-                                <div class="mb-4" key={key}>
-                                    <label class="block text-sm font-medium mb-1">{label}</label>
-                                    <select
-                                        value={newSpesa()[key]}
-                                        onInput={(e) =>
-                                            setNewSpesa({
-                                                ...newSpesa(),
-                                                [key]: e.currentTarget.value,
-                                            })
-                                        }
-                                        class="w-full border rounded px-3 py-2"
-                                    >
-                                        <option value="" disabled>
-                                            Seleziona {label.toLowerCase()}
+                            {/* Campo per la data di competenza */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Data Competenza</label>
+                                <input
+                                    type="date"
+                                    value={newSpesa().data_competenza || ''}
+                                    onInput={(e) => setNewSpesa({ ...newSpesa(), data_competenza: e.currentTarget.value, })}
+                                    class="w-full border rounded px-3 py-2"
+                                />
+                            </div>
+
+                            {/* campo Tipo */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Tipo</label>
+                                <select
+                                    value={newSpesa().tipo}
+                                    onInput={(e) => setNewSpesa({ ...newSpesa(), tipo: e.currentTarget.value, })}
+                                    class="w-full border rounded px-3 py-2"
+                                >
+                                    <option value="" disabled>Seleziona tipo di spesa</option>
+                                    {["Paga dipendenti", "Cibo", "Manutenzione", "Fornitori", "Attrezzature", "Spese personali", "Altro"].map((option) => (
+                                        <option value={option} key={option}>
+                                            {option}
                                         </option>
-                                        {options.map((option) => (
-                                            <option value={option} key={option}>
-                                                {option}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            ))}
+                                    ))}
+                                </select>
+                            </div>
 
-                            {[
-                                { label: 'Importo', type: 'number', key: 'importo' },
-                                { label: 'Descrizione', type: 'text', key: 'descrizione' },
-                            ].map(({ label, type, key }) => (
-                                <div class="mb-4" key={key}>
-                                    <label class="block text-sm font-medium mb-1">{label}</label>
-                                    <input
-                                        type={type}
-                                        value={newSpesa()[key] || ''}
-                                        onInput={(e) =>
-                                            setNewSpesa({
-                                                ...newSpesa(),
-                                                [key]: type === 'number' ? +e.currentTarget.value || 0 : e.currentTarget.value,
-                                            })
-                                        }
-                                        class="w-full border rounded px-3 py-2"
-                                    />
-                                </div>
-                            ))}
+                            {/* campo Metodo di pagamento */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Metodo di pagamento</label>
+                                <select
+                                    value={newSpesa().metodo_di_pagamento}
+                                    onInput={(e) => setNewSpesa({ ...newSpesa(), metodo_di_pagamento: e.currentTarget.value, })}
+                                    class="w-full border rounded px-3 py-2"
+                                >
+                                    <option value="" disabled>Seleziona metodo di pagamento</option>
+                                    {["Presi dalla cassa in serata", "Presi dai cash"].map((option) => (
+                                        <option value={option} key={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* importo */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Importo</label>
+                                <input
+                                    type="text"
+                                    value={newSpesa().importo !== '' ? newSpesa().importo : ''}
+                                    onInput={(e) => {
+                                        const input = e.currentTarget.value;
+
+                                        // Sostituisci immediatamente "." con ","
+                                        let sanitizedInput = input.replace('.', ',');
+
+                                        // Rimuovi tutti i caratteri non validi (solo numeri e ",")
+                                        sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+
+                                        // Aggiorna lo stato con il valore sanitizzato
+                                        setNewSpesa({ ...newSpesa(), importo: sanitizedInput, });
+                                    }}
+                                    class={`w-full border rounded px-3 py-2 ${
+                                        // Validazione: campo è rosso se contiene più di una virgola
+                                        /^[0-9]*,?[0-9]*$/.test(newSpesa().importo) ? '' : 'text-red-500'
+                                        }`}
+                                />
+                            </div>
+
+                            {/* descrizione */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Descrizione</label>
+                                <input
+                                    type="text"
+                                    value={newSpesa().descrizione || ''}
+                                    onInput={(e) => setNewSpesa({ ...newSpesa(), descrizione: e.currentTarget.value, })}
+                                    class="w-full border rounded px-3 py-2"
+                                />
+                            </div>
 
                             <div class="flex justify-center mt-8 w-full">
                                 <button

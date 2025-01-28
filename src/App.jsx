@@ -120,7 +120,7 @@ const App = ({ onLogout }) => {
               <img src="/trasf.svg" alt="Trasf" class="h-6 mx-auto mb-1" />
               Trasf
             </button>
-            <button
+            {/* <button
               onClick={() => setCurrentBtmBarComponentName("Fornitori")}
               class={`flex-1 py-4 text-center hover:bg-gray-200 ${
                 currentBtmBarComponentName() === "Fornitori" ? 'bg-gray-200' : ''
@@ -128,7 +128,7 @@ const App = ({ onLogout }) => {
             >
               <img src="/fornitori.svg" alt="Fornitori" class="h-6 mx-auto mb-1" />
               Fornitori
-            </button>
+            </button> */}
           </div>
         </>
       )}

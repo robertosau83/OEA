@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabaseClient';
 
 const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
   const [aggrData, setAggrData] = createSignal([]); // Stato locale per gli incassi + spese serata
-  const [view, setView] = createSignal('month'); // 'month' | 'day' | 'detail'
+  const [view, setView] = createSignal('year'); // 'month' | 'day' | 'detail'
+  const [selectedYear, setSelectedYear] = createSignal(''); // Anno selezionato
   const [selectedMonth, setSelectedMonth] = createSignal('');
   const [selectedDay, setSelectedDay] = createSignal('');
   const [showPopup, setShowPopup] = createSignal(false);
@@ -77,27 +78,52 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     aggregateIncassiWithSpese();
   });
 
-  // Raggruppa gli incassi per mese e calcola la somma totale
-  const groupByMonth = () => {
+  // Raggruppa gli incassi per anno e calcola la somma totale
+  const groupByYear = () => {
     const grouped = {};
 
     aggrData().forEach((entry) => {
-      const date = new Date(entry.data_competenza);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const yearKey = new Date(entry.data_competenza).getFullYear();
 
-      if (!grouped[monthKey]) grouped[monthKey] = 0;
+      if (!grouped[yearKey]) grouped[yearKey] = 0;
 
       const tag = selectedTag();
       if (tag && tagMap[tag]) {
-        grouped[monthKey] += entry[tagMap[tag]] || 0;
+        grouped[yearKey] += entry[tagMap[tag]] || 0;
       } else {
-        grouped[monthKey] +=
+        grouped[yearKey] +=
           (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
       }
     });
 
     return Object.entries(grouped)
-      .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
+      .sort(([a], [b]) => b - a) // Ordine decrescente per anno
+      .map(([year, total]) => [year, total]);
+  };
+
+  // Raggruppa gli incassi per mese e calcola la somma totale
+  const groupByMonth = () => {
+    const grouped = {};
+
+    aggrData()
+      .filter((entry) => new Date(entry.data_competenza).getFullYear() === parseInt(selectedYear()))
+      .forEach((entry) => {
+        const date = new Date(entry.data_competenza);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+
+        if (!grouped[monthKey]) grouped[monthKey] = 0;
+
+        const tag = selectedTag();
+        if (tag && tagMap[tag]) {
+          grouped[monthKey] += entry[tagMap[tag]] || 0;
+        } else {
+          grouped[monthKey] +=
+            (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+        }
+      });
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
       .map(([key, total]) => {
         const [year, month] = key.split('-');
         const formattedMonth = new Date(year, month - 1).toLocaleString('default', {
@@ -132,9 +158,11 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
 
   // Dettagli di un singolo giorno
   const getDailyDetails = () => {
+    //console.log(aggrData().find((entry) => entry.data_competenza === selectedDay()));
     return aggrData().find((entry) => entry.data_competenza === selectedDay());
   };
 
+  //Funzione per aggiungere un nuovo incasso
   const addNewIncasso = async () => {
     // Controlla se esiste già un incasso con la stessa data di competenza
     const existing = aggrData().find(
@@ -244,10 +272,18 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     if (!selectedIncasso) return;
 
     setEditIncasso({
-      battuti_cassa: selectedIncasso.battuti_cassa,
-      carte: selectedIncasso.carte,
-      satispay: selectedIncasso.satispay,
-      contanti_cassa: selectedIncasso.contanti_cassa,
+      battuti_cassa: selectedIncasso.battuti_cassa
+        ? selectedIncasso.battuti_cassa.toString().replace('.', ',')
+        : '',
+      carte: selectedIncasso.carte
+        ? selectedIncasso.carte.toString().replace('.', ',')
+        : '',
+      satispay: selectedIncasso.satispay
+        ? selectedIncasso.satispay.toString().replace('.', ',')
+        : '',
+      contanti_cassa: selectedIncasso.contanti_cassa
+        ? selectedIncasso.contanti_cassa.toString().replace('.', ',')
+        : '',
     });
     setShowEditPopup(true);
   };
@@ -257,9 +293,42 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
     const selectedIncasso = getDailyDetails();
     if (!selectedIncasso) return;
 
+    // Verifica e converte i campi numerici
+    const fieldsToCheck = ['battuti_cassa', 'carte', 'satispay', 'contanti_cassa'];
+    const convertedValues = {};
+
+    for (const field of fieldsToCheck) {
+      const value = editIncasso()[field];
+
+      // Se il campo è vuoto, imposta a 0
+      if (value === '') {
+        convertedValues[field] = 0;
+        continue;
+      }
+
+      // Sostituisci eventuale "," con "."
+      const sanitizedValue = value.replace(',', '.');
+
+      // Prova a convertire in numero
+      const numericValue = parseFloat(sanitizedValue);
+
+      if (isNaN(numericValue)) {
+        alert(`Il valore inserito per "${field}" non è valido. Inserisci un numero valido.`);
+        return; // Blocca l'inserimento
+      }
+
+      convertedValues[field] = numericValue; // Salva il valore convertito
+    }
+
+    // Crea un nuovo oggetto incasso con i campi convertiti
+    const incassoToInsert = {
+      ...editIncasso(),
+      ...convertedValues,
+    };
+
     const { error } = await supabase
       .from('incassi')
-      .update(editIncasso())
+      .update(incassoToInsert)
       .eq('data_competenza', selectedIncasso.data_competenza);
 
     if (error) {
@@ -270,7 +339,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
       setIncassi((prev) =>
         prev.map((entry) =>
           entry.data_competenza === selectedIncasso.data_competenza
-            ? { ...entry, ...editIncasso() }
+            ? { ...entry, ...incassoToInsert }
             : entry
         )
       );
@@ -282,10 +351,11 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
   return (
     <div class="w-full h-full p-2">
 
-      {/* View degli incassi per mese */}
-      {view() === 'month' && (
+      {view() === 'year' && (
         <div>
-          <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">Incassi mensili</h2>
+          <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">
+            Incassi annuali
+          </h2>
 
           {/* tags */}
           <div class="flex justify-center gap-1 mb-4 h-[32px]">
@@ -304,6 +374,77 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
           </div>
 
           <ul class="overflow-y-auto h-[calc(100vh-268px)]">
+            {groupByYear().map(([year, total]) => (
+              <li
+                class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+                onClick={() => {
+                  setSelectedYear(year);
+                  setView('month');
+                }}
+              >
+                <div class="flex justify-between">
+                  <span>{year}</span>
+                  <span class="text-green-600">
+                    {new Intl.NumberFormat('it-IT', {
+                      style: 'decimal',
+                      maximumFractionDigits: 0,
+                    }).format(Math.round(total))}{' '}
+                    €
+                  </span>
+                </div>
+              </li>
+            ))}
+
+            {/* Totale complessivo di tutti gli anni */}
+            <li class="py-2 px-4 bg-gray-100 font-semibold">
+              <div class="flex justify-end">
+                <span class="text-green-800 font-bold">
+                  {new Intl.NumberFormat('it-IT', {
+                    style: 'decimal',
+                    maximumFractionDigits: 0,
+                  }).format(groupByYear().reduce((sum, [, total]) => sum + total, 0))}{' '}
+                  €
+                </span>
+              </div>
+            </li>
+          </ul>
+        </div>
+      )}
+
+      {/* View degli incassi per mese */}
+      {view() === 'month' && (
+        <div>
+          <div class="flex justify-between h-[55px] mb-2">
+            <button
+              class="w-[40px] bg-gray-100 font-bold text-black rounded"
+              onClick={() => setView('year')}
+            >
+              <img src="/back.svg" alt="back" class="w-full h-auto" />
+            </button>
+            <div>
+              <div class="text-lg text-center font-semibold">Incassi mensili</div>
+              <div class="text-center">{selectedYear()}</div>
+            </div>
+            <div class="w-[40px]"></div>
+          </div>
+
+          {/* tags */}
+          <div class="flex justify-center gap-1 mb-4 h-[32px]">
+            {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
+              <button
+                key={tag}
+                class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
+                    ? 'bg-green-500 text-white'
+                    : 'bg-gray-200 text-gray-700'
+                  }`}
+                onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+
+          <ul class="overflow-y-auto h-[calc(100vh-268px)]">
             {groupByMonth().map(([month, total]) => (
               <li
                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -313,12 +454,13 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                 }}
               >
                 <div class="flex justify-between">
-                  <span class="">{month}</span>
+                  <span>{month}</span>
                   <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
-                    }).format(Math.round(total))} €
+                    }).format(Math.round(total))}{' '}
+                    €
                   </span>
                 </div>
               </li>
@@ -331,9 +473,8 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   {new Intl.NumberFormat('it-IT', {
                     style: 'decimal',
                     maximumFractionDigits: 0,
-                  }).format(
-                    groupByMonth().reduce((sum, [, total]) => sum + total, 0)
-                  )} €
+                  }).format(groupByMonth().reduce((sum, [, total]) => sum + total, 0))}{' '}
+                  €
                 </span>
               </div>
             </li>
@@ -431,8 +572,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.battuti_cassa || 0))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format(getDailyDetails()?.battuti_cassa || 0)} €
                   </span>
                 </div>
 
@@ -442,8 +584,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.contanti_cassa || 0))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format(getDailyDetails()?.contanti_cassa || 0)} €
                   </span>
                 </div>
 
@@ -453,8 +596,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-red-500">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.spese_serata || 0))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format(getDailyDetails()?.spese_serata || 0)} €
                   </span>
                 </div>
 
@@ -464,8 +608,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-green-600 font-semibold">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.contanti_cassa_lordo_spese || 0))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format(getDailyDetails()?.contanti_cassa_lordo_spese || 0)} €
                   </span>
                 </div>
 
@@ -475,8 +620,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-green-600 font-semibold">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.carte || 0))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format(getDailyDetails()?.carte || 0)} €
                   </span>
                 </div>
 
@@ -486,8 +632,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-green-600 font-semibold">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.satispay || 0))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format(getDailyDetails()?.satispay || 0)} €
                   </span>
                 </div>
 
@@ -497,8 +644,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-green-800 font-bold">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round((getDailyDetails()?.contanti_cassa_lordo_spese || 0) + (getDailyDetails()?.carte || 0) + (getDailyDetails()?.satispay || 0)))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format((getDailyDetails()?.contanti_cassa_lordo_spese || 0) + (getDailyDetails()?.carte || 0) + (getDailyDetails()?.satispay || 0))} €
                   </span>
                 </div>
 
@@ -508,8 +656,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                   <span class="text-green-600">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
-                      maximumFractionDigits: 0,
-                    }).format(Math.round(getDailyDetails()?.NB || 0))} €
+                      minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
+                      maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
+                    }).format(getDailyDetails()?.NB || 0)} €
                   </span>
                 </div>
 
@@ -597,15 +746,28 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
                     <div class="mb-4" key={key}>
                       <label class="block text-sm font-medium mb-1">{label}</label>
                       <input
-                        type="number"
+                        type="text"
                         value={editIncasso()[key]}
-                        onInput={(e) =>
+                        onInput={(e) => {
+                          const input = e.currentTarget.value;
+    
+                          // Sostituisci immediatamente "." con ","
+                          let sanitizedInput = input.replace('.', ',');
+    
+                          // Rimuovi tutti i caratteri non validi (solo numeri e ",")
+                          sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+    
+                          // Aggiorna lo stato con il valore sanitizzato
                           setEditIncasso({
                             ...editIncasso(),
-                            [key]: +e.currentTarget.value || 0,
-                          })
-                        }
-                        class="w-full border rounded px-3 py-2"
+                            [key]: sanitizedInput,
+                          });
+                        }}
+
+                        class={`w-full border rounded px-3 py-2 ${
+                          // Validazione: campo è rosso se contiene più di una virgola
+                          /^[0-9]*,?[0-9]*$/.test(editIncasso()[key]) ? '' : 'text-red-500'
+                          }`}
                       />
                     </div>
                   ))}
