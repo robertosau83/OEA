@@ -2,7 +2,7 @@ import { createSignal, onMount } from 'solid-js';
 import { supabase } from './lib/supabaseClient.js';
 import Incassi from './components/Incassi.jsx';
 import Spese from './components/Spese.jsx';
-import Trasf from './components/Trasf.jsx';
+import MovCC from './components/MovCC.jsx';
 import Fornitori from './components/Fornitori.jsx';
 
 const App = ({ onLogout }) => {
@@ -57,8 +57,8 @@ const App = ({ onLogout }) => {
     if (currentBtmBarComponentName() === "Spese") {
       return <Spese {...sharedProps} />;
     }
-    if (currentBtmBarComponentName() === "Trasf") {
-      return <Trasf {...sharedProps} />;
+    if (currentBtmBarComponentName() === "MovCC") {
+      return <MovCC {...sharedProps} />;
     }
     if (currentBtmBarComponentName() === "Fornitori") {
       return <Fornitori {...sharedProps} />;
@@ -112,13 +112,13 @@ const App = ({ onLogout }) => {
               Spese
             </button>
             <button
-              onClick={() => setCurrentBtmBarComponentName("Trasf")}
+              onClick={() => setCurrentBtmBarComponentName("MovCC")}
               class={`flex-1 py-4 text-center hover:bg-gray-200 ${
-                currentBtmBarComponentName() === "Trasf" ? 'bg-gray-200' : ''
+                currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
               }`}
             >
-              <img src="/trasf.svg" alt="Trasf" class="h-6 mx-auto mb-1" />
-              Trasf
+              <img src="/trasf.svg" alt="MovCC" class="h-6 mx-auto mb-1" />
+              MovCC
             </button>
             {/* <button
               onClick={() => setCurrentBtmBarComponentName("Fornitori")}
