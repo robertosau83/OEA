@@ -6,10 +6,11 @@ import MovCC from './components/MovCC.jsx';
 import Fornitori from './components/Fornitori.jsx';
 
 const App = ({ onLogout }) => {
-  const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Incassi");
+  const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("MovCC");
   const [isLoading, setIsLoading] = createSignal(true);
   const [incassi, setIncassi] = createSignal([]);
   const [spese, setSpese] = createSignal([]);
+  const [movCC, setMovCC] = createSignal([]);
 
   // Funzione per caricare i dati dal database
   const loadData = async () => {
@@ -22,15 +23,27 @@ const App = ({ onLogout }) => {
         .select('*');
       if (incassiError) throw incassiError;
 
+      setIncassi(incassiData || []);
+
       // Fetch spese
       const { data: speseData, error: speseError } = await supabase
         .from('spese')
         .select('*');
       if (speseError) throw speseError;
-
-      // Aggiorna gli stati locali con i dati
-      setIncassi(incassiData || []);
+      
       setSpese(speseData || []);
+
+      const { data: movCCData, error: movCCError } = await supabase
+        .from("CC")
+        .select("prg, data_operazione, data_valuta, descrizione, importo")
+        .order("prg", { ascending: false }); // Ordina per prg decrescente
+
+      if (movCCError) throw movCCError;
+
+      // Imposta i dati nello stato locale
+      setMovCC(movCCData);
+      //console.log(movCC());
+
     } catch (error) {
       console.error("Errore nel caricamento dei dati:", error.message);
     } finally {
@@ -48,6 +61,8 @@ const App = ({ onLogout }) => {
     setIncassi,
     spese,
     setSpese,
+    movCC,
+    setMovCC,
   };
 
   const renderMainContent = () => {
@@ -95,7 +110,7 @@ const App = ({ onLogout }) => {
           <div class="bg-white border-t flex">
             <button
               onClick={() => setCurrentBtmBarComponentName("Incassi")}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+              class={`flex-1 py-4 text-center ${
                 currentBtmBarComponentName() === "Incassi" ? 'bg-gray-200' : ''
               }`}
             >
@@ -104,7 +119,7 @@ const App = ({ onLogout }) => {
             </button>
             <button
               onClick={() => setCurrentBtmBarComponentName("Spese")}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+              class={`flex-1 py-4 text-center ${
                 currentBtmBarComponentName() === "Spese" ? 'bg-gray-200' : ''
               }`}
             >
@@ -113,7 +128,7 @@ const App = ({ onLogout }) => {
             </button>
             <button
               onClick={() => setCurrentBtmBarComponentName("MovCC")}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+              class={`flex-1 py-4 text-center ${
                 currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
               }`}
             >
