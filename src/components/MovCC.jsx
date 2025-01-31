@@ -10,16 +10,45 @@ const MovCC = ({ movCC, setMovCC }) => {
   //const [movCC, setMovCC] = createSignal([]);
   const [fileName, setFileName] = createSignal(null);
   const [importedMovCC, setImportedMovCC] = createSignal([]);
+  const [startDate, setStartDate] = createSignal("");
+  const [endDate, setEndDate] = createSignal("");
+  const [showWithoutType, setShowWithoutType] = createSignal(false);
+  const [filteredMovCC, setFilteredMovCC] = createSignal([]);
 
   // Esegui il caricamento automatico dei dati dal database all'avvio del componente
   onMount(() => {
-    //console.log(movCC());
+    setFilteredMovCC(movCC());
   });
 
+  const filterMovements = () => {
+    let filtered = movCC();
+
+    if (startDate()) {
+      console.log(startDate());
+      filtered = filtered.filter((row) => convertDateToISO(row.data_operazione) >= startDate());
+    }
+    if (endDate()) {
+      filtered = filtered.filter((row) => convertDateToISO(row.data_operazione) <= endDate());
+    }
+    if (showWithoutType()) {
+      filtered = filtered.filter((row) => row.tipo === "");
+    }
+
+    console.log(filtered);
+
+    setFilteredMovCC(filtered);
+  };
+  
   const convertDateToISO = (date) => {
     if (!date) return "";
     const [day, month, year] = date.split("/");
     return `${year}-${month}-${day}`;
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const [day, month, year] = date.split("/");
+    return `${day}/${month}/${year.slice(-2)}`; // Prende solo le ultime due cifre dell'anno
   };
 
   //Funzione per caricare il PDF dal disco
@@ -252,32 +281,65 @@ const MovCC = ({ movCC, setMovCC }) => {
         </div>
       </div>
 
-      <div class="mt-8 text-xs">
-        {movCC().length > 0 && (
-          <table class="table-auto border-collapse border border-gray-500 mx-auto">
-            <thead>
-              <tr>
-                <th class="border border-gray-400 px-4 py-2">Data Operazione</th>
-                <th class="border border-gray-400 px-4 py-2">Data Valuta</th>
-                <th class="border border-gray-400 px-4 py-2">Descrizione</th>
-                <th class="border border-gray-400 px-4 py-2 text-right">Importo</th>
-                <th class="border border-gray-400 px-4 py-2 text-right">Tipo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {movCC().map((row) => (
-                <tr class={`${row.importo > 0 ? "bg-green-100" : "bg-red-100"}`} key={row}>
-                  <td class="border border-gray-400 px-4 py-2">{row.data_operazione}</td>
-                  <td class="border border-gray-400 px-4 py-2">{row.data_valuta}</td>
-                  <td class="border border-gray-400 px-4 py-2">{row.descrizione}</td>
-                  <td class="border border-gray-400 px-4 py-2 text-right">
-                    {row.importo.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2, })}
-                  </td>
-                  <td class="border border-gray-400 px-4 py-2">{row.tipo}</td>
+      <div class="justify-center space-x-4 my-4">
+        <input
+          type="date"
+          value={startDate()}
+          onInput={(e) => setStartDate(e.target.value)}
+          class="border px-2 py-1 rounded"
+          placeholder="Data inizio"
+        />
+        <input
+          type="date"
+          value={endDate()}
+          onInput={(e) => setEndDate(e.target.value)}
+          class="border px-2 py-1 rounded"
+          placeholder="Data fine"
+        />
+        <label class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={showWithoutType()}
+            onChange={() => setShowWithoutType(!showWithoutType())}
+          />
+          <span>Visualizza movimenti senza tipo</span>
+        </label>
+        <button
+          onClick={filterMovements}
+          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
+          CERCA
+        </button>
+      </div>
+
+      <div class="mt-8 text-[10px] w-full overflow-x-auto">
+        {filteredMovCC().length > 0 && (
+          <div class="w-full overflow-hidden">
+            <table class="table-fixed border-collapse border border-gray-500 w-full">
+              <thead>
+                <tr class="">
+                  <th class="border border-gray-400 px-1 py-1 w-[15%]">Data Op</th>
+                  {/* <th class="border border-gray-400 px-1 py-1 w-[15%]">Data Valuta</th> */}
+                  <th class="border border-gray-400 px-1 py-1 w-[50%]">Descrizione</th>
+                  <th class="border border-gray-400 px-1 py-1 w-[15%]">Importo</th>
+                  <th class="border border-gray-400 px-1 py-1 w-[20%]">Tipo</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredMovCC().map((row) => (
+                  <tr class={`${row.importo > 0 ? "bg-green-100" : "bg-red-100"} h-8`} key={row}>
+                    <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
+                    {/* <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_valuta)}</td> */}
+                    <td class="border border-gray-400 px-1 py-1 break-words">{row.descrizione}</td>
+                    <td class="border border-gray-400 px-1 py-1 text-right">
+                      {row.importo.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </td>
+                    <td class="border border-gray-400 px-1 py-1 text-center">{row.tipo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
