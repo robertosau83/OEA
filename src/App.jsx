@@ -25,17 +25,39 @@ const App = ({ onLogout }) => {
 
       setIncassi(incassiData || []);
 
-      // Fetch spese
+      // Fetch spese dalla tabella spese
       const { data: speseData, error: speseError } = await supabase
         .from('spese')
         .select('*');
       if (speseError) throw speseError;
 
-      setSpese(speseData || []);
+      // Fetch movimenti con importo < 0 dalla tabella CC
+      const { data: ccData, error: ccError } = await supabase
+        .from('CC')
+        .select('*')
+        .lte('importo', 0); // Filtra solo importi negativi
+
+      if (ccError) throw ccError;
+
+      // Trasforma i dati di CC per adattarli alla struttura di spese
+      const transformedCCData = ccData.map(row => ({
+        id: row.id,
+        origin: "CC", // Imposta l'origine come "CC"
+        data_competenza: row.data_operazione, // Usa data_operazione come data_competenza
+        tipo: row.tipo, // Mantiene il tipo
+        importo: -row.importo, // Mantiene l'importo
+        descrizione: row.descrizione, // Mantiene la descrizione
+      }));
+
+      // Unisci i dati di spese e CC
+      const aggregatedSpeseData = [...speseData, ...transformedCCData];
+
+      // Aggiorna lo stato locale spese
+      setSpese(aggregatedSpeseData);
 
       const { data: movCCData, error: movCCError } = await supabase
         .from("CC")
-        .select("prg, codice_identificativo, data_operazione, data_valuta, descrizione, importo, tipo")
+        .select("id, prg, codice_identificativo, data_operazione, data_valuta, descrizione, importo, tipo")
         .order("prg", { ascending: false }); // Ordina per prg decrescente
 
       if (movCCError) throw movCCError;

@@ -7,7 +7,7 @@ const Spese = ({ spese, setSpese }) => {
     const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
     const [selectedMonth, setSelectedMonth] = createSignal('');
     const [selectedDay, setSelectedDay] = createSignal('');
-    const [selectedCashSpesa, setSelectedCashSpesa] = createSignal(null);
+    const [selectedSpesa, setSelectedSpesa] = createSignal(null);
     const [showPopup, setShowPopup] = createSignal(false);
     const [newSpesa, setNewSpesa] = createSignal({
         data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
@@ -199,7 +199,7 @@ const Spese = ({ spese, setSpese }) => {
 
     //Funzione per l'apertura del popup per modificare una spesa
     const openEditPopup = () => {
-        const selectedSpesa = selectedCashSpesa();
+        const selectedSpesa = selectedSpesa();
         if (!selectedSpesa) return;
 
         setEditSpesa({
@@ -269,8 +269,8 @@ const Spese = ({ spese, setSpese }) => {
                 )
             );
 
-            // Aggiorna anche selectedCashSpesa
-            setSelectedCashSpesa({ ...selectedSpesa, ...spesaToUpdate });
+            // Aggiorna anche selectedSpesa
+            setSelectedSpesa({ ...selectedSpesa, ...spesaToUpdate });
             setShowEditPopup(false);
         }
     };
@@ -449,15 +449,15 @@ const Spese = ({ spese, setSpese }) => {
                                 <table class="w-full text-sm text-gray-700">
                                     <tbody>
                                         {getCashExpenses().map((entry) => (
-                                            <tr class="border-b h-[40px]"
+                                            <tr class="flex items-center justify-center border-b h-[40px]"
                                                 onClick={() => {
-                                                    setSelectedCashSpesa(entry); // Salva la spesa selezionata
+                                                    setSelectedSpesa(entry); // Salva la spesa selezionata
                                                     setSelectedSpesaId(entry.id);
                                                     setView('singleDetail'); // Passa alla view "singleDetail"
                                                 }}>
-                                                <td class="px-2 py-1">{entry.tipo || '-'}</td>
-                                                <td class="px-2 py-1">{entry.descrizione || '-'}</td>
-                                                <td class="px-2 py-1 text-right text-red-600 whitespace-nowrap">
+                                                <td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
+                                                <td class="w-full text-[10px] px-2 py-1">{entry.descrizione || '-'}</td>
+                                                <td class="px-2 py-1 w-[25%] min-w-[80px] text-right text-red-600 whitespace-nowrap">
                                                     {new Intl.NumberFormat('it-IT', {
                                                         style: 'decimal',
                                                         minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
@@ -478,9 +478,15 @@ const Spese = ({ spese, setSpese }) => {
                                 <table class="w-full text-sm text-gray-700">
                                     <tbody>
                                         {getCCExpenses().map((entry) => (
-                                            <tr class="border-b">
-                                                <td class="px-2 py-1">{entry.descrizione || '-'}</td>
-                                                <td class="px-2 py-1 text-right text-red-600 whitespace-nowrap">
+                                            <tr class="flex items-center justify-center border-b h-[40px]"
+                                                onClick={() => {
+                                                    setSelectedSpesa(entry); // Salva la spesa selezionata
+                                                    setSelectedSpesaId(entry.id);
+                                                    setView('singleDetail'); // Passa alla view "singleDetail"
+                                                }}>
+                                                <td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
+                                                <td class="w-full text-[10px] px-2 py-1 line-clamp-1">{entry.descrizione || '-'}</td>
+                                                <td class="px-2 py-1 w-[25%] min-w-[80px] text-right text-red-600 whitespace-nowrap">
                                                     {new Intl.NumberFormat('it-IT', {
                                                         style: 'decimal',
                                                         minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
@@ -497,7 +503,7 @@ const Spese = ({ spese, setSpese }) => {
                 </div>
             )}
 
-            {view() === 'singleDetail' && selectedCashSpesa() && (
+            {view() === 'singleDetail' && selectedSpesa() && (
                 <div>
                     <div class="flex justify-between h-[55px] mb-2">
                         <button
@@ -507,7 +513,7 @@ const Spese = ({ spese, setSpese }) => {
                             <img src="/back.svg" alt="back" class="w-full h-auto" />
                         </button>
                         <div>
-                            <div class="text-lg text-center font-semibold">Dettaglio Spesa CASH</div>
+                            <div class="text-lg text-center font-semibold">Dettaglio Spesa {selectedSpesa().origin}</div>
                             <div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
                         </div>
                         <div class="w-[40px]"></div>
@@ -516,11 +522,11 @@ const Spese = ({ spese, setSpese }) => {
                     <div class="p-4">
                         <div class="mb-4">
                             <div class="font-semibold">Tipo</div>
-                            <div class="text-gray-700">{selectedCashSpesa().tipo || '-'}</div>
+                            <div class="text-gray-700">{selectedSpesa().tipo || '-'}</div>
                         </div>
                         <div class="mb-4">
                             <div class="font-semibold">Metodo di pagamento</div>
-                            <div class="text-gray-700">{selectedCashSpesa().metodo_di_pagamento || '-'}</div>
+                            <div class="text-gray-700">{selectedSpesa().metodo_di_pagamento || '-'}</div>
                         </div>
                         <div class="mb-4">
                             <div class="font-semibold">Importo</div>{' '}
@@ -529,33 +535,35 @@ const Spese = ({ spese, setSpese }) => {
                                     style: 'decimal',
                                     minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
                                     maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-                                }).format(selectedCashSpesa().importo)} €
+                                }).format(selectedSpesa().importo)} €
                             </div>
                         </div>
                         <div class="mb-4">
                             <div class="font-semibold">Descrizione</div>
-                            <div class="text-gray-700">{selectedCashSpesa().descrizione || '-'}</div>
+                            <div class="text-gray-700">{selectedSpesa().descrizione || '-'}</div>
                         </div>
                     </div>
 
                     {/* Pulsanti di azione */}
-                    <div class="flex justify-around mt-8">
-                        {/* Bottone Cancella */}
-                        <button
-                            onClick={() => setShowDeletePopup(true)} // Mostra il popup di conferma
-                            class="px-4 py-2 w-32 bg-red-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-red-600"
-                        >
-                            Cancella
-                        </button>
+                    {selectedSpesa().origin === "CASH" && (
+                        <div class="flex justify-around mt-8">
+                            {/* Bottone Cancella */}
+                            <button
+                                onClick={() => setShowDeletePopup(true)} // Mostra il popup di conferma
+                                class="px-4 py-2 w-32 bg-red-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-red-600"
+                            >
+                                Cancella
+                            </button>
 
-                        {/* Bottone Modifica */}
-                        <button
-                            onClick={openEditPopup}
-                            class="px-4 py-2 w-32 bg-yellow-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-yellow-600"
-                        >
-                            Modifica
-                        </button>
-                    </div>
+                            {/* Bottone Modifica */}
+                            <button
+                                onClick={openEditPopup}
+                                class="px-4 py-2 w-32 bg-yellow-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-yellow-600"
+                            >
+                                Modifica
+                            </button>
+                        </div>
+                    )}
 
                     {/* Popup di conferma cancellazione */}
                     {showDeletePopup() && (
@@ -569,12 +577,12 @@ const Spese = ({ spese, setSpese }) => {
                                 </button>
                                 <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
                                     Verrà cancellata la spesa registrata in data{' '}
-                                    {new Date(selectedCashSpesa().data_competenza).toLocaleDateString('it-IT')}
+                                    {new Date(selectedSpesa().data_competenza).toLocaleDateString('it-IT')}
                                 </h2>
                                 <div class="flex justify-center gap-4 mt-6">
                                     <button
                                         onClick={() => {
-                                            setSelectedSpesaId(selectedCashSpesa().id); // Imposta l'ID della spesa
+                                            setSelectedSpesaId(selectedSpesa().id); // Imposta l'ID della spesa
                                             deleteSpesa(); // Chiama la funzione di cancellazione
                                             setShowDeletePopup(false); // Nascondi il popup
                                             setView('details'); // Torna alla view precedente

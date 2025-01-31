@@ -14,10 +14,13 @@ const MovCC = ({ movCC, setMovCC }) => {
   const [endDate, setEndDate] = createSignal("");
   const [showWithoutType, setShowWithoutType] = createSignal(false);
   const [filteredMovCC, setFilteredMovCC] = createSignal([]);
+  const [showPopup, setShowPopup] = createSignal(false);
+  const [selectedRow, setSelectedRow] = createSignal(null);
 
   // Esegui il caricamento automatico dei dati dal database all'avvio del componente
   onMount(() => {
-    setFilteredMovCC(movCC());
+    //console.log(movCC());
+    //setFilteredMovCC(movCC());
   });
 
   const filterMovements = () => {
@@ -49,6 +52,36 @@ const MovCC = ({ movCC, setMovCC }) => {
     if (!date) return "";
     const [day, month, year] = date.split("/");
     return `${day}/${month}/${year.slice(-2)}`; // Prende solo le ultime due cifre dell'anno
+  };
+
+  const getOptions = (importo) => {
+    return importo > 0
+      ? ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro"]
+      : ["Comm. POS", "Prelievo", "Trasf CC -> CASH", "Fornitori", "Commercialista", "Acquisti online", "Bancarie", "Utenze", "Dipendenti", "Spese Personali", "Manutenzione", "Attrezzature", "Altro"];
+  };
+
+  const updateTipo = async (id, tipo) => {
+    try {
+      const { error } = await supabase
+        .from("CC")
+        .update({ tipo })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      // Aggiorna lo stato locale
+      setMovCC(movCC().map((item) => 
+        item.id === id ? { ...item, tipo } : item
+      ));
+
+      setFilteredMovCC(filteredMovCC().map((item) => 
+        item.id === id ? { ...item, tipo } : item
+      ));
+
+      setShowPopup(false);
+    } catch (err) {
+      console.error("Errore aggiornando il tipo:", err.message);
+    }
   };
 
   //Funzione per caricare il PDF dal disco
@@ -327,14 +360,16 @@ const MovCC = ({ movCC, setMovCC }) => {
               </thead>
               <tbody>
                 {filteredMovCC().map((row) => (
-                  <tr class={`${row.importo > 0 ? "bg-green-100" : "bg-red-100"} h-8`} key={row}>
+                  <tr class={`${row.importo > 0 ? "bg-green-100" : "bg-red-100"} h-10`} key={row}>
                     <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
                     {/* <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_valuta)}</td> */}
                     <td class="border border-gray-400 px-1 py-1 break-words">{row.descrizione}</td>
                     <td class="border border-gray-400 px-1 py-1 text-right">
                       {row.importo.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
                     </td>
-                    <td class="border border-gray-400 px-1 py-1 text-center">{row.tipo}</td>
+                    <td class="border border-gray-400 px-1 py-1 text-center cursor-pointer underline text-blue-600" onClick={() => { setSelectedRow(row); setShowPopup(true); }}>
+                      {row.tipo}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -342,6 +377,21 @@ const MovCC = ({ movCC, setMovCC }) => {
           </div>
         )}
       </div>
+
+      {showPopup() && (
+        <div class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+          <div class="bg-white p-4 rounded-lg shadow-lg w-64">
+            <h3 class="text-lg font-semibold mb-2">Seleziona Tipo</h3>
+            {getOptions(selectedRow().importo).map((option) => (
+              <div key={option} class="p-2 cursor-pointer hover:bg-gray-200" onClick={() => updateTipo(selectedRow().id, option)}>
+                {option}
+              </div>
+            ))}
+            <button class="mt-4 w-full bg-red-500 text-white py-2 rounded-lg" onClick={() => setShowPopup(false)}>Annulla</button>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
