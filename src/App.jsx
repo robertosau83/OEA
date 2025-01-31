@@ -30,18 +30,25 @@ const App = ({ onLogout }) => {
         .from('spese')
         .select('*');
       if (speseError) throw speseError;
-      
+
       setSpese(speseData || []);
 
       const { data: movCCData, error: movCCError } = await supabase
         .from("CC")
-        .select("prg, data_operazione, data_valuta, descrizione, importo")
+        .select("prg, codice_identificativo, data_operazione, data_valuta, descrizione, importo, tipo")
         .order("prg", { ascending: false }); // Ordina per prg decrescente
 
       if (movCCError) throw movCCError;
 
+      // Formatta le date nel formato "gg/mm/aaaa"
+      const formattedMovCCData = movCCData.map((row) => ({
+        ...row,
+        data_operazione: formatDate(row.data_operazione),
+        data_valuta: formatDate(row.data_valuta),
+      }));
+
       // Imposta i dati nello stato locale
-      setMovCC(movCCData);
+      setMovCC(formattedMovCCData);
       //console.log(movCC());
 
     } catch (error) {
@@ -55,6 +62,13 @@ const App = ({ onLogout }) => {
   onMount(async () => {
     await loadData();
   });
+
+  // Funzione per formattare le date
+  const formatDate = (date) => {
+    if (!date) return "";
+    const [year, month, day] = date.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
   const sharedProps = {
     incassi,
@@ -110,27 +124,24 @@ const App = ({ onLogout }) => {
           <div class="bg-white border-t flex">
             <button
               onClick={() => setCurrentBtmBarComponentName("Incassi")}
-              class={`flex-1 py-4 text-center ${
-                currentBtmBarComponentName() === "Incassi" ? 'bg-gray-200' : ''
-              }`}
+              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "Incassi" ? 'bg-gray-200' : ''
+                }`}
             >
               <img src="/incassi.svg" alt="Incassi" class="h-6 mx-auto mb-1" />
               Incassi
             </button>
             <button
               onClick={() => setCurrentBtmBarComponentName("Spese")}
-              class={`flex-1 py-4 text-center ${
-                currentBtmBarComponentName() === "Spese" ? 'bg-gray-200' : ''
-              }`}
+              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "Spese" ? 'bg-gray-200' : ''
+                }`}
             >
               <img src="/spese.svg" alt="Spese" class="h-6 mx-auto mb-1" />
               Spese
             </button>
             <button
               onClick={() => setCurrentBtmBarComponentName("MovCC")}
-              class={`flex-1 py-4 text-center ${
-                currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
-              }`}
+              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
+                }`}
             >
               <img src="/trasf.svg" alt="MovCC" class="h-6 mx-auto mb-1" />
               MovCC
