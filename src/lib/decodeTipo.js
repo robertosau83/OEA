@@ -8,17 +8,13 @@ const decodeTipo = (importo, descrizione) => {
         return "Incassi POS";
     }
 
-    if (importo < 0 && (descrizione.includes("COMM 326251807168") || descrizione.includes("COM6251807/00001"))) {
-        return "Comm. POS";
-    }
-
     if (importo < 0 && (
         descrizione.includes("AMAZON") || 
         descrizione.includes("AMZN") ||
         descrizione.includes("Amazon") ||
         descrizione.includes("TEMU.COM")
     )) {
-        return "Spese acquisti online";
+        return "Acquisti attività";
     }
 
     if (importo < 0 && (
@@ -27,7 +23,9 @@ const decodeTipo = (importo, descrizione) => {
         descrizione.includes("CANONE DEL CONTO") ||
         descrizione.includes("SPESE PER CONTEGGIO INTERESSI E COMPETENZE") ||
         descrizione.includes("Addebito commissione estinzione assegno") ||
-        descrizione.includes("Comm.Bon.Altra Banca")
+        descrizione.includes("Comm.Bon.Altra Banca") ||
+        descrizione.includes("COMM 326251807168") ||
+        descrizione.includes("COM6251807/00001")
     )) {
         return "Spese bancarie";
     }

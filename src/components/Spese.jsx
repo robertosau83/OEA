@@ -199,15 +199,15 @@ const Spese = ({ spese, setSpese }) => {
 
     //Funzione per l'apertura del popup per modificare una spesa
     const openEditPopup = () => {
-        const selectedSpesa = selectedSpesa();
-        if (!selectedSpesa) return;
+        const spesa = selectedSpesa(); // Usa un nome diverso
+        if (!spesa) return;
 
         setEditSpesa({
-            tipo: selectedSpesa.tipo,
-            metodo_di_pagamento: selectedSpesa.metodo_di_pagamento,
-            importo: selectedSpesa.importo ? selectedSpesa.importo.toString().replace('.', ',') : '',
-            descrizione: selectedSpesa.descrizione,
-            data_competenza: selectedSpesa.data_competenza, // Include la data di competenza
+            tipo: spesa.tipo,
+            metodo_di_pagamento: spesa.metodo_di_pagamento,
+            importo: spesa.importo ? spesa.importo.toString().replace('.', ',') : '',
+            descrizione: spesa.descrizione,
+            data_competenza: spesa.data_competenza,
         });
         setShowEditPopup(true);
     };
@@ -452,6 +452,7 @@ const Spese = ({ spese, setSpese }) => {
                                             <tr class="flex items-center justify-center border-b h-[40px]"
                                                 onClick={() => {
                                                     setSelectedSpesa(entry); // Salva la spesa selezionata
+                                                    //console.log(selectedSpesa());
                                                     setSelectedSpesaId(entry.id);
                                                     setView('singleDetail'); // Passa alla view "singleDetail"
                                                 }}>
@@ -632,7 +633,8 @@ const Spese = ({ spese, setSpese }) => {
                                         {
                                             label: 'Tipo',
                                             key: 'tipo',
-                                            options: ["Paga dipendenti", "Cibo", "Manutenzione", "Fornitori", "Attrezzature", "Spese personali", "Altro"],
+                                            options: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
+                                                "Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."],
                                         },
                                         {
                                             label: 'Metodo di pagamento',
@@ -784,7 +786,8 @@ const Spese = ({ spese, setSpese }) => {
                                     class="w-full border rounded px-3 py-2"
                                 >
                                     <option value="" disabled>Seleziona tipo di spesa</option>
-                                    {["Paga dipendenti", "Cibo", "Manutenzione", "Fornitori", "Attrezzature", "Spese personali", "Altro"].map((option) => (
+                                    {["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
+                                        "Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."].map((option) => (
                                         <option value={option} key={option}>
                                             {option}
                                         </option>

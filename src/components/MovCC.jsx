@@ -37,11 +37,11 @@ const MovCC = ({ movCC, setMovCC }) => {
       filtered = filtered.filter((row) => row.tipo === "");
     }
 
-    console.log(filtered);
+    //console.log(filtered);
 
     setFilteredMovCC(filtered);
   };
-  
+
   const convertDateToISO = (date) => {
     if (!date) return "";
     const [day, month, year] = date.split("/");
@@ -57,7 +57,8 @@ const MovCC = ({ movCC, setMovCC }) => {
   const getOptions = (importo) => {
     return importo > 0
       ? ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro"]
-      : ["Comm. POS", "Prelievo", "Trasf CC -> CASH", "Fornitori", "Commercialista", "Acquisti online", "Bancarie", "Utenze", "Dipendenti", "Spese Personali", "Manutenzione", "Attrezzature", "Altro"];
+      : ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
+         "Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."];
   };
 
   const updateTipo = async (id, tipo) => {
@@ -70,11 +71,11 @@ const MovCC = ({ movCC, setMovCC }) => {
       if (error) throw error;
 
       // Aggiorna lo stato locale
-      setMovCC(movCC().map((item) => 
+      setMovCC(movCC().map((item) =>
         item.id === id ? { ...item, tipo } : item
       ));
 
-      setFilteredMovCC(filteredMovCC().map((item) => 
+      setFilteredMovCC(filteredMovCC().map((item) =>
         item.id === id ? { ...item, tipo } : item
       ));
 
@@ -344,8 +345,19 @@ const MovCC = ({ movCC, setMovCC }) => {
           CERCA
         </button>
       </div>
+      
+      {filteredMovCC().length > 0 && (
+        <div class="text-sm text-right text-gray-500 mr-2">
+          Somma dei movimenti filtrati:
+          <span class="text-green-600"> {filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })} €
+          </span>
+        </div>
+      )}
 
-      <div class="mt-8 text-[10px] w-full overflow-x-auto">
+      <div class="mt-1 text-[10px] w-full overflow-x-auto">
         {filteredMovCC().length > 0 && (
           <div class="w-full overflow-hidden">
             <table class="table-fixed border-collapse border border-gray-500 w-full">
@@ -360,7 +372,7 @@ const MovCC = ({ movCC, setMovCC }) => {
               </thead>
               <tbody>
                 {filteredMovCC().map((row) => (
-                  <tr class={`${row.importo > 0 ? "bg-green-100" : "bg-red-100"} h-10`} key={row}>
+                  <tr class={`${row.importo > 0 ? "bg-green-50" : "bg-red-50"} h-10`} key={row}>
                     <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
                     {/* <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_valuta)}</td> */}
                     <td class="border border-gray-400 px-1 py-1 break-words">{row.descrizione}</td>
