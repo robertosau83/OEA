@@ -1,12 +1,13 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from './lib/supabaseClient.js';
-import Incassi from './components/Incassi.jsx';
-import Spese from './components/Spese.jsx';
+import Chiusure from './components/Chiusure.jsx';
+import Cashflow from './components/Cashflow.jsx';
 import MovCC from './components/MovCC.jsx';
-import Fornitori from './components/Fornitori.jsx';
+import Stats from './components/Stats.jsx';
+import { cashflow, setCashflow, composeCashflow } from './lib/composeCashflow.js'; // Importa cashflow
 
 const App = ({ onLogout }) => {
-  const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("MovCC");
+  const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
   const [isLoading, setIsLoading] = createSignal(true);
   const [incassi, setIncassi] = createSignal([]);
   const [spese, setSpese] = createSignal([]);
@@ -25,35 +26,35 @@ const App = ({ onLogout }) => {
 
       setIncassi(incassiData || []);
 
-      // Fetch spese dalla tabella spese
-      const { data: speseData, error: speseError } = await supabase
-        .from('spese')
-        .select('*');
-      if (speseError) throw speseError;
+      // // Fetch spese dalla tabella spese
+      // const { data: speseData, error: speseError } = await supabase
+      //   .from('spese')
+      //   .select('*');
+      // if (speseError) throw speseError;
 
-      // Fetch movimenti con importo < 0 dalla tabella CC
-      const { data: ccData, error: ccError } = await supabase
-        .from('CC')
-        .select('*')
-        .lte('importo', 0); // Filtra solo importi negativi
+      // // Fetch movimenti con importo < 0 dalla tabella CC
+      // const { data: ccData, error: ccError } = await supabase
+      //   .from('CC')
+      //   .select('*')
+      //   .lte('importo', 0); // Filtra solo importi negativi
 
-      if (ccError) throw ccError;
+      // if (ccError) throw ccError;
 
-      // Trasforma i dati di CC per adattarli alla struttura di spese
-      const transformedCCData = ccData.map(row => ({
-        id: row.id,
-        origin: "CC", // Imposta l'origine come "CC"
-        data_competenza: row.data_operazione, // Usa data_operazione come data_competenza
-        tipo: row.tipo, // Mantiene il tipo
-        importo: -row.importo, // Mantiene l'importo
-        descrizione: row.descrizione, // Mantiene la descrizione
-      }));
+      // // Trasforma i dati di CC per adattarli alla struttura di spese
+      // const transformedCCData = ccData.map(row => ({
+      //   id: row.id,
+      //   origin: "CC", // Imposta l'origine come "CC"
+      //   data_competenza: row.data_operazione, // Usa data_operazione come data_competenza
+      //   tipo: row.tipo, // Mantiene il tipo
+      //   importo: -row.importo, // Mantiene l'importo
+      //   descrizione: row.descrizione, // Mantiene la descrizione
+      // }));
 
-      // Unisci i dati di spese e CC
-      const aggregatedSpeseData = [...speseData, ...transformedCCData];
+      // // Unisci i dati di spese e CC
+      // const aggregatedSpeseData = [...speseData, ...transformedCCData];
 
-      // Aggiorna lo stato locale spese
-      setSpese(aggregatedSpeseData);
+      // // Aggiorna lo stato locale spese
+      // setSpese(aggregatedSpeseData);
 
       const { data: movCCData, error: movCCError } = await supabase
         .from("CC")
@@ -72,6 +73,11 @@ const App = ({ onLogout }) => {
       // Imposta i dati nello stato locale
       setMovCC(formattedMovCCData);
       //console.log(movCC());
+
+      // Carica cashflow
+      await composeCashflow();
+
+      console.log(cashflow());
 
     } catch (error) {
       console.error("Errore nel caricamento dei dati:", error.message);
@@ -95,24 +101,24 @@ const App = ({ onLogout }) => {
   const sharedProps = {
     incassi,
     setIncassi,
-    spese,
-    setSpese,
     movCC,
     setMovCC,
+    cashflow, 
+    setCashflow,
   };
 
   const renderMainContent = () => {
-    if (currentBtmBarComponentName() === "Incassi") {
-      return <Incassi {...sharedProps} />;
+    if (currentBtmBarComponentName() === "Chiusure") {
+      return <Chiusure {...sharedProps} />;
     }
-    if (currentBtmBarComponentName() === "Spese") {
-      return <Spese {...sharedProps} />;
+    if (currentBtmBarComponentName() === "Stats") {
+      return <Stats {...sharedProps} />;
+    }
+    if (currentBtmBarComponentName() === "Cashflow") {
+      return <Cashflow {...sharedProps} />;
     }
     if (currentBtmBarComponentName() === "MovCC") {
       return <MovCC {...sharedProps} />;
-    }
-    if (currentBtmBarComponentName() === "Fornitori") {
-      return <Fornitori {...sharedProps} />;
     }
     return null; // In caso di valore non gestito
   };
@@ -145,38 +151,39 @@ const App = ({ onLogout }) => {
           {/* Bottom Bar */}
           <div class="bg-white border-t flex">
             <button
-              onClick={() => setCurrentBtmBarComponentName("Incassi")}
-              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "Incassi" ? 'bg-gray-200' : ''
+              onClick={() => setCurrentBtmBarComponentName("Chiusure")}
+              class={`flex-1 py-0 text-center ${currentBtmBarComponentName() === "Chiusure" ? 'bg-gray-200' : ''
                 }`}
             >
-              <img src="/incassi.svg" alt="Incassi" class="h-6 mx-auto mb-1" />
-              Incassi
+              <img src="/cash-register.svg" alt="Chiusure" class="h-8 mx-auto mb-1" />
+              Chiusure
             </button>
             <button
-              onClick={() => setCurrentBtmBarComponentName("Spese")}
-              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "Spese" ? 'bg-gray-200' : ''
+              onClick={() => setCurrentBtmBarComponentName("Stats")}
+              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
+                currentBtmBarComponentName() === "Stats" ? 'bg-gray-200' : ''
+              }`}
+            >
+              <img src="/stats.svg" alt="Fornitori" class="h-8 mx-auto mb-1" />
+              Stats
+            </button>
+            <button
+              onClick={() => setCurrentBtmBarComponentName("Cashflow")}
+              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "Cashflow" ? 'bg-gray-200' : ''
                 }`}
             >
-              <img src="/spese.svg" alt="Spese" class="h-6 mx-auto mb-1" />
-              Spese
+              <img src="/cashflow.png" alt="Spese" class="h-8 mx-auto mb-1" />
+              Cashflow
             </button>
             <button
               onClick={() => setCurrentBtmBarComponentName("MovCC")}
               class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
                 }`}
             >
-              <img src="/trasf.svg" alt="MovCC" class="h-6 mx-auto mb-1" />
-              MovCC
+              <img src="/bank-account.svg" alt="MovCC" class="h-8 mx-auto mb-1" />
+              CC
             </button>
-            <button
-              onClick={() => setCurrentBtmBarComponentName("Fornitori")}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
-                currentBtmBarComponentName() === "Fornitori" ? 'bg-gray-200' : ''
-              }`}
-            >
-              <img src="/fornitori.svg" alt="Fornitori" class="h-6 mx-auto mb-1" />
-              Fornitori
-            </button>
+            
           </div>
         </>
       )}

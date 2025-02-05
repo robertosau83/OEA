@@ -1,16 +1,17 @@
-import { createSignal, onMount } from 'solid-js';
+import { createSignal, createEffect, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Spese = ({ spese, setSpese }) => {
+const Cashflow = ({ cashflow, setCashflow }) => {
     //const [spese, setSpese] = createSignal([]); // Stato locale per le spese
     const [view, setView] = createSignal('year'); // 'month' | 'day' | 'details'
     const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
     const [selectedMonth, setSelectedMonth] = createSignal('');
     const [selectedDay, setSelectedDay] = createSignal('');
-    const [selectedSpesa, setSelectedSpesa] = createSignal(null);
+    const [selectedMovement, setSelectedMovement] = createSignal(null);
+    const [selectedMovementId, setSelectedMovementId] = createSignal('');
     const [showPopup, setShowPopup] = createSignal(false);
-    const [newSpesa, setNewSpesa] = createSignal({
-        data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
+    const [newCashMovement, setNewCashMovement] = createSignal({
+        data_operazione: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
         tipo: '',
         metodo_di_pagamento: '',
         importo: '',
@@ -18,20 +19,27 @@ const Spese = ({ spese, setSpese }) => {
     });
     const [showDeletePopup, setShowDeletePopup] = createSignal(false);
     const [showEditPopup, setShowEditPopup] = createSignal(false);
-    const [editSpesa, setEditSpesa] = createSignal({
-        tipo: '',
-        metodo_di_pagamento: '',
-        importo: '',
-        descrizione: '',
+    const [editCashMovement, setEditCashMovement] = createSignal({ tipo: '', metodo_di_pagamento: '', importo: '', descrizione: '', });
+    const [selectedTag, setSelectedTag] = createSignal(''); // Stato per il filtro CC/CASH
+    const [filteredCashflow, setFilteredCashflow] = createSignal([]);
+
+    // Aggiorna filteredCashflow ogni volta che cambia cashflow() o selectedTag()
+    createEffect(() => {
+        if (selectedTag() === "CC") {
+            setFilteredCashflow(cashflow().filter(entry => entry.origin === "CC"));
+        } else if (selectedTag() === "CASH") {
+            setFilteredCashflow(cashflow().filter(entry => entry.origin === "CASH" || entry.origin === "CONTANTI CASSA"));
+        } else {
+            setFilteredCashflow(cashflow()); // Nessun filtro, mostra tutto
+        }
     });
-    const [selectedSpesaId, setSelectedSpesaId] = createSignal('');
 
     // Funzione per raggruppare le spese per anno
     const groupByYear = () => {
         const grouped = {};
 
-        spese().forEach((entry) => {
-            const year = new Date(entry.data_competenza).getFullYear();
+        filteredCashflow().forEach((entry) => {
+            const year = new Date(entry.data_operazione).getFullYear();
             if (!grouped[year]) {
                 grouped[year] = 0;
             }
@@ -48,10 +56,10 @@ const Spese = ({ spese, setSpese }) => {
     const groupByMonth = () => {
         const grouped = {};
 
-        spese()
-            .filter((entry) => new Date(entry.data_competenza).getFullYear() === parseInt(selectedYear()))
+        filteredCashflow()
+            .filter((entry) => new Date(entry.data_operazione).getFullYear() === parseInt(selectedYear()))
             .forEach((entry) => {
-                const monthKey = new Date(entry.data_competenza).toISOString().slice(0, 7); // YYYY-MM
+                const monthKey = new Date(entry.data_operazione).toISOString().slice(0, 7); // YYYY-MM
                 if (!grouped[monthKey]) {
                     grouped[monthKey] = 0;
                 }
@@ -71,16 +79,16 @@ const Spese = ({ spese, setSpese }) => {
 
     // Funzione per la view dei giorni del mese
     const groupByDate = () => {
-        const grouped = spese()
+        const grouped = filteredCashflow()
             .filter((entry) => {
-                const month = new Date(entry.data_competenza).toLocaleString('default', {
+                const month = new Date(entry.data_operazione).toLocaleString('default', {
                     month: 'long',
                     year: 'numeric',
                 });
                 return month === selectedMonth();
             })
             .reduce((acc, entry) => {
-                const date = entry.data_competenza;
+                const date = entry.data_operazione;
                 if (!acc[date]) {
                     acc[date] = { total: 0, spese: [] };
                 }
@@ -98,27 +106,27 @@ const Spese = ({ spese, setSpese }) => {
 
     //Funzione che carica i dettagli di un giorno
     const getDailyDetails = () => {
-        console.log(selectedDay(), selectedSpesaId());
-        return spese().find((entry) => entry.data_competenza === selectedDay() && entry.id === selectedSpesaId());
+        //console.log(selectedDay(), selectedMovementId());
+        return cashflow().find((entry) => entry.data_operazione === selectedDay() && entry.id === selectedMovementId());
     };
 
     //Funzione che carica solo la parte CASH delle spese
-    const getCashExpenses = () => {
-        return spese().filter(
-            (entry) => entry.data_competenza === selectedDay() && entry.origin === "CASH"
+    const getCashMovements = () => {
+        return filteredCashflow().filter(
+            (entry) => entry.data_operazione === selectedDay() && (entry.origin === "CASH" || entry.origin === "CONTANTI CASSA")
         );
     };
 
     //Funzione che carica solo la parte CC delle spese
-    const getCCExpenses = () => {
-        return spese().filter(
-            (entry) => entry.data_competenza === selectedDay() && entry.origin === "CC"
+    const getCCMovements = () => {
+        return filteredCashflow().filter(
+            (entry) => entry.data_operazione === selectedDay() && entry.origin === "CC"
         );
     };
 
     //Funzione per l'inserimento di una nuova spesa
     const addNewSpesa = async () => {
-        const { tipo, metodo_di_pagamento, importo } = newSpesa();
+        const { tipo, metodo_di_pagamento, importo } = newCashMovement();
 
         if (!tipo || !metodo_di_pagamento || !importo) {
             alert("Per favore, compila tutti i campi obbligatori: Tipo, Metodo di pagamento e Importo.");
@@ -126,7 +134,7 @@ const Spese = ({ spese, setSpese }) => {
         }
 
         let convertedValue;
-        const value = newSpesa().importo;
+        const value = newCashMovement().importo;
 
         // Se il campo è vuoto, imposta a 0
         if (value === '') {
@@ -147,7 +155,7 @@ const Spese = ({ spese, setSpese }) => {
         }
 
         const spesaConOrigin = {
-            ...newSpesa(),
+            ...newCashMovement(),
             importo: convertedValue,
             origin: "CASH", // Imposta il campo origin
         };
@@ -161,18 +169,18 @@ const Spese = ({ spese, setSpese }) => {
             console.error("Errore durante l'inserimento:", error.message);
         } else {
             console.log('Spesa aggiunta con successo:', data);
-            setSpese((prev) => [...prev, ...(data || [])]);
+            setCashflow((prev) => [...prev, ...(data || [])]);
             setShowPopup(false);
         }
     };
 
     //Funzione per la cancellazione di una spesa esistente
     const deleteSpesa = async () => {
-        const spesaId = selectedSpesaId();
+        const spesaId = selectedMovementId();
         if (!spesaId) return;
 
         const { error } = await supabase
-            .from('spese')
+            .from('CASH')
             .delete()
             .eq('id', spesaId); // Utilizza l'ID per identificare la riga
 
@@ -180,13 +188,13 @@ const Spese = ({ spese, setSpese }) => {
             console.error("Errore durante la cancellazione della spesa:", error.message);
         } else {
             console.log('Spesa cancellata con successo');
-            setSpese((prev) =>
+            setCashflow((prev) =>
                 prev.filter((entry) => entry.id !== spesaId) // Rimuovi la riga dallo stato locale
             );
             setShowDeletePopup(false);
             // Verifica se ci sono ancora spese per il giorno selezionato
-            const remainingExpenses = spese().filter(
-                (entry) => entry.data_competenza === selectedDay()
+            const remainingExpenses = cashflow().filter(
+                (entry) => entry.data_operazione === selectedDay()
             );
 
             if (remainingExpenses.length > 0) {
@@ -199,22 +207,22 @@ const Spese = ({ spese, setSpese }) => {
 
     //Funzione per l'apertura del popup per modificare una spesa
     const openEditPopup = () => {
-        const spesa = selectedSpesa(); // Usa un nome diverso
+        const spesa = selectedMovement(); // Usa un nome diverso
         if (!spesa) return;
 
-        setEditSpesa({
+        setEditCashMovement({
             tipo: spesa.tipo,
             metodo_di_pagamento: spesa.metodo_di_pagamento,
             importo: spesa.importo ? spesa.importo.toString().replace('.', ',') : '',
             descrizione: spesa.descrizione,
-            data_competenza: spesa.data_competenza,
+            data_operazione: spesa.data_operazione,
         });
         setShowEditPopup(true);
     };
 
     //Funzione per l'update di una spesa
     const updateSpesa = async () => {
-        const { tipo, metodo_di_pagamento, importo } = editSpesa();
+        const { tipo, metodo_di_pagamento, importo } = editCashMovement();
 
         //console.log(tipo, metodo_di_pagamento, importo);
 
@@ -223,12 +231,12 @@ const Spese = ({ spese, setSpese }) => {
             return;
         }
 
-        const selectedSpesa = getDailyDetails();
-        if (!selectedSpesa) return;
+        const selectedMovement = getDailyDetails();
+        if (!selectedMovement) return;
 
         // Verifica e converte i campi numerici
         let convertedValue;
-        const value = editSpesa().importo;
+        const value = editCashMovement().importo;
         //console.log(value);
         // Se il campo è vuoto, imposta a 0
         if (value === '') {
@@ -250,27 +258,27 @@ const Spese = ({ spese, setSpese }) => {
 
         // Crea un nuovo oggetto incasso con i campi convertiti
         const spesaToUpdate = {
-            ...editSpesa(),
+            ...editCashMovement(),
             importo: convertedValue,
         };
 
         const { error } = await supabase
-            .from('spese')
+            .from('CASH')
             .update(spesaToUpdate)
-            .eq('id', selectedSpesa.id); // Utilizza l'id per identificare la riga
+            .eq('id', selectedMovement.id); // Utilizza l'id per identificare la riga
 
         if (error) {
             console.error("Errore durante l'aggiornamento della spesa:", error.message);
         } else {
             console.log('Spesa aggiornata con successo');
-            setSpese((prev) =>
+            setCashflow((prev) =>
                 prev.map((entry) =>
-                    entry.id === selectedSpesa.id ? { ...entry, ...spesaToUpdate } : entry
+                    entry.id === selectedMovement.id ? { ...entry, ...spesaToUpdate } : entry
                 )
             );
 
-            // Aggiorna anche selectedSpesa
-            setSelectedSpesa({ ...selectedSpesa, ...spesaToUpdate });
+            // Aggiorna anche selectedMovement
+            setSelectedMovement({ ...selectedMovement, ...spesaToUpdate });
             setShowEditPopup(false);
         }
     };
@@ -278,11 +286,27 @@ const Spese = ({ spese, setSpese }) => {
     return (
         <div class="w-full h-full p-2">
 
+            {/* Tag selezionabili */}
+            <div class="flex justify-center gap-4 mb-4">
+                <button
+                    class={`px-4 py-2 rounded-lg ${selectedTag() === "CC" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+                    onClick={() => setSelectedTag(selectedTag() === "CC" ? "" : "CC")}
+                >
+                    CC
+                </button>
+                <button
+                    class={`px-4 py-2 rounded-lg ${selectedTag() === "CASH" ? "bg-green-500 text-white" : "bg-gray-200"}`}
+                    onClick={() => setSelectedTag(selectedTag() === "CASH" ? "" : "CASH")}
+                >
+                    CASH
+                </button>
+            </div>
+
             {/* View delle spese per anno */}
             {view() === 'year' && (
                 <div>
                     <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">
-                        Spese annuali
+                        Cashflow annuale
                     </h2>
                     <ul class="overflow-y-auto h-[calc(100vh-220px)]">
                         {groupByYear().map(([year, total]) => (
@@ -295,7 +319,7 @@ const Spese = ({ spese, setSpese }) => {
                             >
                                 <div class="flex justify-between">
                                     <span>{year}</span>
-                                    <span class="text-red-600">
+                                    <span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
                                         {new Intl.NumberFormat('it-IT', {
                                             style: 'decimal',
                                             maximumFractionDigits: 0,
@@ -308,7 +332,7 @@ const Spese = ({ spese, setSpese }) => {
                         {/* Totale complessivo di tutti gli anni */}
                         <li class="py-2 px-4 bg-gray-100 font-semibold">
                             <div class="flex justify-end">
-                                <span class="text-red-800 font-bold">
+                                <span class={`${groupByYear().reduce((sum, [, total]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
                                     {new Intl.NumberFormat('it-IT', {
                                         style: 'decimal',
                                         maximumFractionDigits: 0,
@@ -330,7 +354,7 @@ const Spese = ({ spese, setSpese }) => {
                             <img src="/back.svg" alt="back" class="w-full h-auto" />
                         </button>
                         <div>
-                            <div class="text-lg text-center font-semibold">Spese Mensili</div>
+                            <div class="text-lg text-center font-semibold">CashFlow Mensile</div>
                             <div class="text-center">{selectedYear()}</div>
                         </div>
                         <div class="w-[40px]"></div>
@@ -346,7 +370,7 @@ const Spese = ({ spese, setSpese }) => {
                             >
                                 <div class="flex justify-between">
                                     <span>{month}</span>
-                                    <span class="text-red-600">
+                                    <span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
                                         {new Intl.NumberFormat('it-IT', {
                                             style: 'decimal',
                                             maximumFractionDigits: 0,
@@ -359,7 +383,7 @@ const Spese = ({ spese, setSpese }) => {
                         {/* Totale complessivo del mese */}
                         <li class="py-2 px-4 bg-gray-100 font-semibold">
                             <div class="flex justify-end">
-                                <span class="text-red-800 font-bold">
+                                <span class={`${groupByMonth().reduce((sum, [, total]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
                                     {new Intl.NumberFormat('it-IT', {
                                         style: 'decimal',
                                         maximumFractionDigits: 0,
@@ -381,7 +405,7 @@ const Spese = ({ spese, setSpese }) => {
                             <img src="/back.svg" alt="back" class="w-full h-auto" />
                         </button>
                         <div>
-                            <div class="text-lg text-center font-semibold">Spese giornaliere</div>
+                            <div class="text-lg text-center font-semibold">Cashflow giornaliero</div>
                             <div class="text-center">{selectedMonth()}</div>
                         </div>
                         <div class="w-[40px]"></div>
@@ -397,7 +421,7 @@ const Spese = ({ spese, setSpese }) => {
                             >
                                 <div class="flex justify-between">
                                     <span>{new Date(date).toLocaleDateString()}</span>
-                                    <span class="text-red-600">
+                                    <span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
                                         {new Intl.NumberFormat('it-IT', {
                                             style: 'decimal',
                                             maximumFractionDigits: 0,
@@ -410,7 +434,7 @@ const Spese = ({ spese, setSpese }) => {
                         {/* Totale complessivo del mese selezionato */}
                         <li class="py-2 px-4 bg-gray-100 font-semibold">
                             <div class="flex justify-end">
-                                <span class="text-red-800 font-bold">
+                                <span class={`${groupByDate().reduce((sum, [, total]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
                                     {new Intl.NumberFormat('it-IT', {
                                         style: 'decimal',
                                         maximumFractionDigits: 0,
@@ -435,7 +459,7 @@ const Spese = ({ spese, setSpese }) => {
                             <img src="/back.svg" alt="back" class="w-full h-auto" />
                         </button>
                         <div>
-                            <div class="text-lg text-center font-semibold">Dettaglio Spese</div>
+                            <div class="text-lg text-center font-semibold">Dettaglio Cashflow</div>
                             <div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
                         </div>
                         <div class="w-[40px]"></div>
@@ -443,22 +467,37 @@ const Spese = ({ spese, setSpese }) => {
 
                     <div class="overflow-y-auto h-[calc(100vh-232px)] pb-40 mt-4">
                         {/* Sezione "CASH" */}
-                        {getCashExpenses().length > 0 && (
+                        {getCashMovements().length > 0 && (
                             <div>
-                                <h3 class="font-semibold text-red-800 mb-2">Spese CASH</h3>
+                                <div class="flex items-center mb-2">
+                                    <h3 class="flex font-semibold text-blue-800">
+                                        Movimenti CASH
+                                        <span class="text-blue-800 ml-2">(</span>
+                                        <span class={`${getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
+                                            {new Intl.NumberFormat('it-IT', {
+                                                style: 'decimal',
+                                                maximumFractionDigits: 0,
+                                            }).format(
+                                                getCashMovements().reduce((sum, entry) => sum + entry.importo, 0)
+                                            )} €
+                                        </span>
+                                        <span class="text-blue-800">)</span>
+                                    </h3>
+                                </div>
+
                                 <table class="w-full text-sm text-gray-700">
                                     <tbody>
-                                        {getCashExpenses().map((entry) => (
+                                        {getCashMovements().map((entry) => (
                                             <tr class="flex items-center justify-center border-b h-[40px]"
                                                 onClick={() => {
-                                                    setSelectedSpesa(entry); // Salva la spesa selezionata
-                                                    //console.log(selectedSpesa());
-                                                    setSelectedSpesaId(entry.id);
+                                                    setSelectedMovement(entry); // Salva la spesa selezionata
+                                                    //console.log(selectedMovement());
+                                                    setSelectedMovementId(entry.id);
                                                     setView('singleDetail'); // Passa alla view "singleDetail"
                                                 }}>
                                                 <td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
                                                 <td class="w-full text-[10px] px-2 py-1">{entry.descrizione || '-'}</td>
-                                                <td class="px-2 py-1 w-[25%] min-w-[80px] text-right text-red-600 whitespace-nowrap">
+                                                <td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
                                                     {new Intl.NumberFormat('it-IT', {
                                                         style: 'decimal',
                                                         minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
@@ -473,21 +512,35 @@ const Spese = ({ spese, setSpese }) => {
                         )}
 
                         {/* Sezione "CC" */}
-                        {getCCExpenses().length > 0 && (
+                        {getCCMovements().length > 0 && (
                             <div class="mt-6">
-                                <h3 class="font-semibold text-red-800 mb-2">Spese CC</h3>
+                                <div class="flex items-center mb-2">
+                                    <h3 class="flex font-semibold text-blue-800">
+                                        Movimenti CC
+                                        <span class="text-blue-800 ml-2">(</span>
+                                        <span class={`${getCCMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
+                                            {new Intl.NumberFormat('it-IT', {
+                                                style: 'decimal',
+                                                maximumFractionDigits: 0,
+                                            }).format(
+                                                getCCMovements().reduce((sum, entry) => sum + entry.importo, 0)
+                                            )} €
+                                        </span>
+                                        <span class="text-blue-800">)</span>
+                                    </h3>
+                                </div>
                                 <table class="w-full text-sm text-gray-700">
                                     <tbody>
-                                        {getCCExpenses().map((entry) => (
+                                        {getCCMovements().map((entry) => (
                                             <tr class="flex items-center justify-center border-b h-[40px]"
                                                 onClick={() => {
-                                                    setSelectedSpesa(entry); // Salva la spesa selezionata
-                                                    setSelectedSpesaId(entry.id);
+                                                    setSelectedMovement(entry); // Salva la spesa selezionata
+                                                    setSelectedMovementId(entry.id);
                                                     setView('singleDetail'); // Passa alla view "singleDetail"
                                                 }}>
                                                 <td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
                                                 <td class="w-full text-[10px] px-2 py-1 line-clamp-1">{entry.descrizione || '-'}</td>
-                                                <td class="px-2 py-1 w-[25%] min-w-[80px] text-right text-red-600 whitespace-nowrap">
+                                                <td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
                                                     {new Intl.NumberFormat('it-IT', {
                                                         style: 'decimal',
                                                         minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
@@ -500,11 +553,27 @@ const Spese = ({ spese, setSpese }) => {
                                 </table>
                             </div>
                         )}
+                        
+                        {getCashMovements().length > 0 && getCCMovements().length > 0 && (
+                            <div class="flex justify-end text-lg mr-2 mt-8">
+                                <span class={
+                                    `${getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) +
+                                        getCCMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
+                                    {new Intl.NumberFormat('it-IT', {
+                                        style: 'decimal',
+                                        maximumFractionDigits: 0,
+                                    }).format(
+                                        getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) + getCCMovements().reduce((sum, entry) => sum + entry.importo, 0)
+                                    )} €
+                                </span>
+                            </div>
+                        )}
+
                     </div>
                 </div>
             )}
 
-            {view() === 'singleDetail' && selectedSpesa() && (
+            {view() === 'singleDetail' && selectedMovement() && (
                 <div>
                     <div class="flex justify-between h-[55px] mb-2">
                         <button
@@ -514,7 +583,7 @@ const Spese = ({ spese, setSpese }) => {
                             <img src="/back.svg" alt="back" class="w-full h-auto" />
                         </button>
                         <div>
-                            <div class="text-lg text-center font-semibold">Dettaglio Spesa {selectedSpesa().origin}</div>
+                            <div class="text-lg text-center font-semibold">Dettaglio Movimento {selectedMovement().origin}</div>
                             <div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
                         </div>
                         <div class="w-[40px]"></div>
@@ -523,12 +592,14 @@ const Spese = ({ spese, setSpese }) => {
                     <div class="p-4">
                         <div class="mb-4">
                             <div class="font-semibold">Tipo</div>
-                            <div class="text-gray-700">{selectedSpesa().tipo || '-'}</div>
+                            <div class="text-gray-700">{selectedMovement().tipo || '-'}</div>
                         </div>
-                        <div class="mb-4">
-                            <div class="font-semibold">Metodo di pagamento</div>
-                            <div class="text-gray-700">{selectedSpesa().metodo_di_pagamento || '-'}</div>
-                        </div>
+                        {selectedMovement().origin === "CASH" && (
+                            <div class="mb-4">
+                                <div class="font-semibold">Metodo di pagamento</div>
+                                <div class="text-gray-700">{selectedMovement().metodo_di_pagamento || '-'}</div>
+                            </div>
+                        )}
                         <div class="mb-4">
                             <div class="font-semibold">Importo</div>{' '}
                             <div class="text-red-600">
@@ -536,17 +607,17 @@ const Spese = ({ spese, setSpese }) => {
                                     style: 'decimal',
                                     minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
                                     maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-                                }).format(selectedSpesa().importo)} €
+                                }).format(selectedMovement().importo)} €
                             </div>
                         </div>
                         <div class="mb-4">
                             <div class="font-semibold">Descrizione</div>
-                            <div class="text-gray-700">{selectedSpesa().descrizione || '-'}</div>
+                            <div class="text-gray-700">{selectedMovement().descrizione || '-'}</div>
                         </div>
                     </div>
 
                     {/* Pulsanti di azione */}
-                    {selectedSpesa().origin === "CASH" && (
+                    {selectedMovement().origin === "CASH" && (
                         <div class="flex justify-around mt-8">
                             {/* Bottone Cancella */}
                             <button
@@ -578,12 +649,12 @@ const Spese = ({ spese, setSpese }) => {
                                 </button>
                                 <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
                                     Verrà cancellata la spesa registrata in data{' '}
-                                    {new Date(selectedSpesa().data_competenza).toLocaleDateString('it-IT')}
+                                    {new Date(selectedMovement().data_operazione).toLocaleDateString('it-IT')}
                                 </h2>
                                 <div class="flex justify-center gap-4 mt-6">
                                     <button
                                         onClick={() => {
-                                            setSelectedSpesaId(selectedSpesa().id); // Imposta l'ID della spesa
+                                            setSelectedMovementId(selectedMovement().id); // Imposta l'ID della spesa
                                             deleteSpesa(); // Chiama la funzione di cancellazione
                                             setShowDeletePopup(false); // Nascondi il popup
                                             setView('details'); // Torna alla view precedente
@@ -622,7 +693,7 @@ const Spese = ({ spese, setSpese }) => {
                                         <label class="block text-sm font-medium mb-1">Data Competenza</label>
                                         <input
                                             type="date"
-                                            value={editSpesa().data_competenza || ''}
+                                            value={editCashMovement().data_operazione || ''}
                                             class="w-full border rounded px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
                                             disabled
                                         />
@@ -645,10 +716,10 @@ const Spese = ({ spese, setSpese }) => {
                                         <div class="mb-4" key={key}>
                                             <label class="block text-sm font-medium mb-1">{label}</label>
                                             <select
-                                                value={editSpesa()[key] || ''}
+                                                value={editCashMovement()[key] || ''}
                                                 onInput={(e) =>
-                                                    setEditSpesa({
-                                                        ...editSpesa(),
+                                                    setEditCashMovement({
+                                                        ...editCashMovement(),
                                                         [key]: e.currentTarget.value,
                                                     })
                                                 }
@@ -673,7 +744,7 @@ const Spese = ({ spese, setSpese }) => {
                                                 <label class="block text-sm font-medium mb-1">{label}</label>
                                                 <input
                                                     type="text"
-                                                    value={editSpesa()[key]}
+                                                    value={editCashMovement()[key]}
                                                     onInput={(e) => {
                                                         const input = e.currentTarget.value;
 
@@ -684,15 +755,15 @@ const Spese = ({ spese, setSpese }) => {
                                                         sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
 
                                                         // Aggiorna lo stato con il valore sanitizzato
-                                                        setEditSpesa({
-                                                            ...editSpesa(),
+                                                        setEditCashMovement({
+                                                            ...editCashMovement(),
                                                             [key]: sanitizedInput,
                                                         });
                                                     }}
 
                                                     class={`w-full border rounded px-3 py-2 ${
                                                         // Validazione: campo è rosso se contiene più di una virgola
-                                                        /^[0-9]*,?[0-9]*$/.test(editSpesa()[key]) ? '' : 'text-red-500'
+                                                        /^[0-9]*,?[0-9]*$/.test(editCashMovement()[key]) ? '' : 'text-red-500'
                                                         }`}
                                                 />
                                             </div>
@@ -706,10 +777,10 @@ const Spese = ({ spese, setSpese }) => {
                                                 <label class="block text-sm font-medium mb-1">{label}</label>
                                                 <input
                                                     type={type}
-                                                    value={editSpesa()[key] || ''}
+                                                    value={editCashMovement()[key] || ''}
                                                     onInput={(e) =>
-                                                        setEditSpesa({
-                                                            ...editSpesa(),
+                                                        setEditCashMovement({
+                                                            ...editCashMovement(),
                                                             [key]: type === 'number' ? +e.currentTarget.value || 0 : e.currentTarget.value,
                                                         })
                                                     }
@@ -771,8 +842,8 @@ const Spese = ({ spese, setSpese }) => {
                                 <label class="block text-sm font-medium mb-1">Data Competenza</label>
                                 <input
                                     type="date"
-                                    value={newSpesa().data_competenza || ''}
-                                    onInput={(e) => setNewSpesa({ ...newSpesa(), data_competenza: e.currentTarget.value, })}
+                                    value={newCashMovement().data_operazione || ''}
+                                    onInput={(e) => setNewCashMovement({ ...newCashMovement(), data_operazione: e.currentTarget.value, })}
                                     class="w-full border rounded px-3 py-2"
                                 />
                             </div>
@@ -781,17 +852,17 @@ const Spese = ({ spese, setSpese }) => {
                             <div class="mb-4">
                                 <label class="block text-sm font-medium mb-1">Tipo</label>
                                 <select
-                                    value={newSpesa().tipo}
-                                    onInput={(e) => setNewSpesa({ ...newSpesa(), tipo: e.currentTarget.value, })}
+                                    value={newCashMovement().tipo}
+                                    onInput={(e) => setNewCashMovement({ ...newCashMovement(), tipo: e.currentTarget.value, })}
                                     class="w-full border rounded px-3 py-2"
                                 >
                                     <option value="" disabled>Seleziona tipo di spesa</option>
                                     {["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
                                         "Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."].map((option) => (
-                                        <option value={option} key={option}>
-                                            {option}
-                                        </option>
-                                    ))}
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))}
                                 </select>
                             </div>
 
@@ -799,8 +870,8 @@ const Spese = ({ spese, setSpese }) => {
                             <div class="mb-4">
                                 <label class="block text-sm font-medium mb-1">Metodo di pagamento</label>
                                 <select
-                                    value={newSpesa().metodo_di_pagamento}
-                                    onInput={(e) => setNewSpesa({ ...newSpesa(), metodo_di_pagamento: e.currentTarget.value, })}
+                                    value={newCashMovement().metodo_di_pagamento}
+                                    onInput={(e) => setNewCashMovement({ ...newCashMovement(), metodo_di_pagamento: e.currentTarget.value, })}
                                     class="w-full border rounded px-3 py-2"
                                 >
                                     <option value="" disabled>Seleziona metodo di pagamento</option>
@@ -817,7 +888,7 @@ const Spese = ({ spese, setSpese }) => {
                                 <label class="block text-sm font-medium mb-1">Importo</label>
                                 <input
                                     type="text"
-                                    value={newSpesa().importo !== '' ? newSpesa().importo : ''}
+                                    value={newCashMovement().importo !== '' ? newCashMovement().importo : ''}
                                     onInput={(e) => {
                                         const input = e.currentTarget.value;
 
@@ -828,11 +899,11 @@ const Spese = ({ spese, setSpese }) => {
                                         sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
 
                                         // Aggiorna lo stato con il valore sanitizzato
-                                        setNewSpesa({ ...newSpesa(), importo: sanitizedInput, });
+                                        setNewCashMovement({ ...newCashMovement(), importo: sanitizedInput, });
                                     }}
                                     class={`w-full border rounded px-3 py-2 ${
                                         // Validazione: campo è rosso se contiene più di una virgola
-                                        /^[0-9]*,?[0-9]*$/.test(newSpesa().importo) ? '' : 'text-red-500'
+                                        /^[0-9]*,?[0-9]*$/.test(newCashMovement().importo) ? '' : 'text-red-500'
                                         }`}
                                 />
                             </div>
@@ -842,8 +913,8 @@ const Spese = ({ spese, setSpese }) => {
                                 <label class="block text-sm font-medium mb-1">Descrizione</label>
                                 <input
                                     type="text"
-                                    value={newSpesa().descrizione || ''}
-                                    onInput={(e) => setNewSpesa({ ...newSpesa(), descrizione: e.currentTarget.value, })}
+                                    value={newCashMovement().descrizione || ''}
+                                    onInput={(e) => setNewCashMovement({ ...newCashMovement(), descrizione: e.currentTarget.value, })}
                                     class="w-full border rounded px-3 py-2"
                                 />
                             </div>
@@ -865,5 +936,5 @@ const Spese = ({ spese, setSpese }) => {
     );
 };
 
-export default Spese;
+export default Cashflow;
 

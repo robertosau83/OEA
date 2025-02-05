@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
+const Chiusure = ({ incassi, setIncassi, cashflow }) => {
   const [aggrData, setAggrData] = createSignal([]); // Stato locale per gli incassi + spese serata
   const [view, setView] = createSignal('year'); // 'month' | 'day' | 'detail'
   const [selectedYear, setSelectedYear] = createSignal(''); // Anno selezionato
@@ -37,9 +37,9 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
   const aggregateIncassiWithSpese = async () => {
     try {
       // Raggruppa le spese per data_di_competenza e somma gli importi con filtro
-      const speseGrouped = spese().reduce((acc, spesa) => {
+      const speseGrouped = cashflow().reduce((acc, spesa) => {
         if (spesa.metodo_di_pagamento === "Presi dalla cassa in serata") {
-          const date = spesa.data_competenza;
+          const date = spesa.data_operazione;
           if (!acc[date]) {
             acc[date] = 0;
           }
@@ -54,12 +54,12 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
         return {
           ...entry,
           spese_serata: speseSerata,
-          contanti_cassa_lordo_spese: (entry.contanti_cassa || 0) + speseSerata, // Calcolo opzionale
+          contanti_cassa_lordo_spese: (entry.contanti_cassa || 0) - speseSerata, // Calcolo opzionale
           NB:
             (entry.carte || 0) +
             (entry.satispay || 0) +
             (entry.contanti_cassa || 0) +
-            (speseSerata || 0) -
+            (-speseSerata || 0) -
             (entry.battuti_cassa || 0),
         };
       });
@@ -75,6 +75,7 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
 
   // Esegui la fetch dei dati quando il componente viene montato
   onMount(() => {
+    console.log(cashflow());
     aggregateIncassiWithSpese();
   });
 
@@ -896,4 +897,4 @@ const Incassi = ({ incassi, setIncassi, spese, setSpese }) => {
   );
 };
 
-export default Incassi;
+export default Chiusure;
