@@ -17,7 +17,7 @@ const Auth = ({ setSession }) => {
       setSession(data.session); // Aggiorna la sessione autenticata
     }
   };
- 
+
   return (
     <div class="flex w-full h-[100vh] flex-col items-center justify-center">
       <img
