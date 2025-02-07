@@ -5,7 +5,7 @@ import Cashflow from './components/Cashflow.jsx';
 import MovCC from './components/MovCC.jsx';
 import Stats from './components/Stats.jsx';
 import { cashflow, setCashflow, composeCashflow } from './lib/composeCashflow.js'; // Importa cashflow
-
+ 
 const App = ({ onLogout }) => {
   const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
   const [isLoading, setIsLoading] = createSignal(true);
