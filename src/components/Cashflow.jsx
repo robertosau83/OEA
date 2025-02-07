@@ -285,7 +285,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
 
     return (
         <div class="px-2 pt-2">
-            <h1>provaaaa</h1>
+            {/* <h1>provaaaa</h1> */}
             {/* Tag selezionabili */}
             {view() !== 'singleDetail' && (
                 <div class="flex justify-center gap-1 mb-4 h-[32px]">
