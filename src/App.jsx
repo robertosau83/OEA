@@ -10,8 +10,8 @@ const App = ({ onLogout }) => {
   const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
   const [isLoading, setIsLoading] = createSignal(true);
   const [incassi, setIncassi] = createSignal([]);
-  const [spese, setSpese] = createSignal([]);
   const [movCC, setMovCC] = createSignal([]);
+  const [isMenuOpen, setIsMenuOpen] = createSignal(false);
 
   // Funzione per caricare i dati dal database
   const loadData = async () => {
@@ -25,36 +25,6 @@ const App = ({ onLogout }) => {
       if (incassiError) throw incassiError;
 
       setIncassi(incassiData || []);
-
-      // // Fetch spese dalla tabella spese
-      // const { data: speseData, error: speseError } = await supabase
-      //   .from('spese')
-      //   .select('*');
-      // if (speseError) throw speseError;
-
-      // // Fetch movimenti con importo < 0 dalla tabella CC
-      // const { data: ccData, error: ccError } = await supabase
-      //   .from('CC')
-      //   .select('*')
-      //   .lte('importo', 0); // Filtra solo importi negativi
-
-      // if (ccError) throw ccError;
-
-      // // Trasforma i dati di CC per adattarli alla struttura di spese
-      // const transformedCCData = ccData.map(row => ({
-      //   id: row.id,
-      //   origin: "CC", // Imposta l'origine come "CC"
-      //   data_competenza: row.data_operazione, // Usa data_operazione come data_competenza
-      //   tipo: row.tipo, // Mantiene il tipo
-      //   importo: -row.importo, // Mantiene l'importo
-      //   descrizione: row.descrizione, // Mantiene la descrizione
-      // }));
-
-      // // Unisci i dati di spese e CC
-      // const aggregatedSpeseData = [...speseData, ...transformedCCData];
-
-      // // Aggiorna lo stato locale spese
-      // setSpese(aggregatedSpeseData);
 
       const { data: movCCData, error: movCCError } = await supabase
         .from("CC")
@@ -103,7 +73,7 @@ const App = ({ onLogout }) => {
     setIncassi,
     movCC,
     setMovCC,
-    cashflow, 
+    cashflow,
     setCashflow,
   };
 
@@ -132,14 +102,43 @@ const App = ({ onLogout }) => {
         </div>
       ) : (
         <>
+          {/* Overlay per chiudere il menù cliccando fuori */}
+          {isMenuOpen() && (
+            <div
+              class="fixed inset-0 bg-black bg-opacity-50 z-40"
+              onClick={() => setIsMenuOpen(false)}
+            ></div>
+          )}
+
+          {/* Sidebar Menù */}
+          <div
+            class={`fixed top-0 left-0 w-64 h-full bg-white shadow-md z-50 transform ${isMenuOpen() ? "translate-x-0" : "-translate-x-full"
+              } transition-transform duration-300 ease-in-out`}
+          >
+            <div class="p-4">
+              <h2 class="text-lg font-semibold mb-4">Menù</h2>
+              <button
+                class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                onClick={() => {
+                  setCurrentBtmBarComponentName("MovCC");
+                  setIsMenuOpen(false);
+                }}
+              >
+                CC
+              </button>
+              <button
+                class="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+                onClick={onLogout}
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+
           {/* Top Bar */}
-          <div class="bg-blue-500 text-white flex justify-between items-center px-4 py-2">
-            <h1 class="text-xl">{currentBtmBarComponentName()}</h1>
-            <button
-              onClick={onLogout}
-              class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-            >
-              Logout
+          <div class="bg-blue-500 text-white flex justify-between items-center min-h-[56px]">
+            <button onClick={() => setIsMenuOpen(true)} class="pl-3">
+              <img src="/menu.svg" alt="Menu" class="h-10 mx-auto" />
             </button>
           </div>
 
@@ -149,27 +148,26 @@ const App = ({ onLogout }) => {
           </div>
 
           {/* Bottom Bar */}
-          <div class="bg-white border-t flex">
+          <div class="flex bg-white border-t h-[92px] min-h-[92px] max-h-[92px]">
             <button
               onClick={() => setCurrentBtmBarComponentName("Chiusure")}
-              class={`flex-1 py-0 text-center ${currentBtmBarComponentName() === "Chiusure" ? 'bg-gray-200' : ''
+              class={`flex-1 text-center ${currentBtmBarComponentName() === "Chiusure" ? 'bg-gray-200' : ''
                 }`}
             >
               <img src="/cash-register.svg" alt="Chiusure" class="h-8 mx-auto mb-1" />
               Chiusure
             </button>
-            <button
+            {/* <button
               onClick={() => setCurrentBtmBarComponentName("Stats")}
-              class={`flex-1 py-4 text-center hover:bg-gray-200 ${
-                currentBtmBarComponentName() === "Stats" ? 'bg-gray-200' : ''
-              }`}
+              class={`flex-1 text-center hover:bg-gray-200 ${currentBtmBarComponentName() === "Stats" ? 'bg-gray-200' : ''
+                }`}
             >
               <img src="/stats.svg" alt="Fornitori" class="h-8 mx-auto mb-1" />
               Stats
-            </button>
+            </button> */}
             <button
               onClick={() => setCurrentBtmBarComponentName("Cashflow")}
-              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "Cashflow" ? 'bg-gray-200' : ''
+              class={`flex-1 text-center ${currentBtmBarComponentName() === "Cashflow" ? 'bg-gray-200' : ''
                 }`}
             >
               <img src="/cashflow.png" alt="Spese" class="h-8 mx-auto mb-1" />
@@ -177,13 +175,13 @@ const App = ({ onLogout }) => {
             </button>
             <button
               onClick={() => setCurrentBtmBarComponentName("MovCC")}
-              class={`flex-1 py-4 text-center ${currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
+              class={`flex-1 text-center ${currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
                 }`}
             >
               <img src="/bank-account.svg" alt="MovCC" class="h-8 mx-auto mb-1" />
               CC
             </button>
-            
+
           </div>
         </>
       )}

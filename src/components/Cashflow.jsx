@@ -284,23 +284,25 @@ const Cashflow = ({ cashflow, setCashflow }) => {
     };
 
     return (
-        <div class="w-full h-full p-2">
+        <div class="px-2 pt-2">
 
             {/* Tag selezionabili */}
-            <div class="flex justify-center gap-4 mb-4">
-                <button
-                    class={`px-4 py-2 rounded-lg ${selectedTag() === "CC" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
-                    onClick={() => setSelectedTag(selectedTag() === "CC" ? "" : "CC")}
-                >
-                    CC
-                </button>
-                <button
-                    class={`px-4 py-2 rounded-lg ${selectedTag() === "CASH" ? "bg-green-500 text-white" : "bg-gray-200"}`}
-                    onClick={() => setSelectedTag(selectedTag() === "CASH" ? "" : "CASH")}
-                >
-                    CASH
-                </button>
-            </div>
+            {view() !== 'singleDetail' && (
+                <div class="flex justify-center gap-1 mb-4 h-[32px]">
+                    <button
+                        class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === "CC" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                        onClick={() => setSelectedTag(selectedTag() === "CC" ? "" : "CC")}
+                    >
+                        CC
+                    </button>
+                    <button
+                        class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === "CASH" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                        onClick={() => setSelectedTag(selectedTag() === "CASH" ? "" : "CASH")}
+                    >
+                        CASH
+                    </button>
+                </div>
+            )}
 
             {/* View delle spese per anno */}
             {view() === 'year' && (
@@ -308,7 +310,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                     <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">
                         Cashflow annuale
                     </h2>
-                    <ul class="overflow-y-auto h-[calc(100vh-220px)]">
+                    <ul class="overflow-y-auto h-[calc(100vh-268px)]">
                         {groupByYear().map(([year, total]) => (
                             <li
                                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -359,7 +361,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         </div>
                         <div class="w-[40px]"></div>
                     </div>
-                    <ul class="overflow-y-auto h-[calc(100vh-220px)]">
+                    <ul class="overflow-y-auto h-[calc(100vh-268px)]">
                         {groupByMonth().map(([month, total]) => (
                             <li
                                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -410,7 +412,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         </div>
                         <div class="w-[40px]"></div>
                     </div>
-                    <ul class="overflow-y-auto h-[calc(100vh-220px)] pb-40">
+                    <ul class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
                         {groupByDate().map(([date, { total, spese }]) => (
                             <li
                                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -434,7 +436,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         {/* Totale complessivo del mese selezionato */}
                         <li class="py-2 px-4 bg-gray-100 font-semibold">
                             <div class="flex justify-end">
-                                <span class={`${groupByDate().reduce((sum, [, total]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
+                                <span class={`${groupByDate().reduce((sum, [, { total }]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
                                     {new Intl.NumberFormat('it-IT', {
                                         style: 'decimal',
                                         maximumFractionDigits: 0,
@@ -465,7 +467,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         <div class="w-[40px]"></div>
                     </div>
 
-                    <div class="overflow-y-auto h-[calc(100vh-232px)] pb-40 mt-4">
+                    <div class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
                         {/* Sezione "CASH" */}
                         {getCashMovements().length > 0 && (
                             <div>
@@ -574,7 +576,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             )}
 
             {view() === 'singleDetail' && selectedMovement() && (
-                <div>
+                <div class="flex flex-col h-[calc(100vh-205px)]">
                     <div class="flex justify-between h-[55px] mb-2">
                         <button
                             class="w-[40px] bg-gray-100 font-bold text-black rounded"
@@ -589,7 +591,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         <div class="w-[40px]"></div>
                     </div>
 
-                    <div class="p-4">
+                    <div class="px-2 overflow-y-auto h-[calc(100vh-340px)]">
                         <div class="mb-4">
                             <div class="font-semibold">Tipo</div>
                             <div class="text-gray-700">{selectedMovement().tipo || '-'}</div>
@@ -618,7 +620,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
 
                     {/* Pulsanti di azione */}
                     {selectedMovement().origin === "CASH" && (
-                        <div class="flex justify-around mt-8">
+                        <div class="flex justify-around py-4 h-[56]">
                             {/* Bottone Cancella */}
                             <button
                                 onClick={() => setShowDeletePopup(true)} // Mostra il popup di conferma

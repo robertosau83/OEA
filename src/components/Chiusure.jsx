@@ -350,29 +350,31 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
   };
 
   return (
-    <div class="w-full h-full p-2">
+    <div class="px-2 pt-2">
+
+      {/* tags */}
+      {view() !== 'detail' && (
+        <div class="flex justify-center gap-1 mb-4 h-[32px]">
+          {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
+            <button
+              key={tag}
+              class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
+                ? 'bg-green-500 text-white'
+                : 'bg-gray-200 text-gray-700'
+                }`}
+              onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {view() === 'year' && (
         <div>
           <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">
             Incassi annuali
           </h2>
-
-          {/* tags */}
-          <div class="flex justify-center gap-1 mb-4 h-[32px]">
-            {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
-              <button
-                key={tag}
-                class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-200 text-gray-700'
-                  }`}
-                onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
 
           <ul class="overflow-y-auto h-[calc(100vh-268px)]">
             {groupByYear().map(([year, total]) => (
@@ -430,20 +432,20 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
           </div>
 
           {/* tags */}
-          <div class="flex justify-center gap-1 mb-4 h-[32px]">
+          {/* <div class="flex justify-center gap-1 mb-4 h-[32px]">
             {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
               <button
                 key={tag}
                 class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
-                    ? 'bg-green-500 text-white'
-                    : 'bg-gray-200 text-gray-700'
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-200 text-gray-700'
                   }`}
                 onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
               >
                 {tag}
               </button>
             ))}
-          </div>
+          </div> */}
 
           <ul class="overflow-y-auto h-[calc(100vh-268px)]">
             {groupByMonth().map(([month, total]) => (
@@ -497,7 +499,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
             <div class="w-[40px]"></div>
           </div>
 
-          {/* tags */}
+          {/* tags
           <div class="flex justify-center gap-1 mb-4 h-[32px]">
             {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
               <button
@@ -511,7 +513,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                 {tag}
               </button>
             ))}
-          </div>
+          </div> */}
 
           <ul class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
             {filterByDay().map((entry) => (
@@ -751,13 +753,13 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                         value={editIncasso()[key]}
                         onInput={(e) => {
                           const input = e.currentTarget.value;
-    
+
                           // Sostituisci immediatamente "." con ","
                           let sanitizedInput = input.replace('.', ',');
-    
+
                           // Rimuovi tutti i caratteri non validi (solo numeri e ",")
                           sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
-    
+
                           // Aggiorna lo stato con il valore sanitizzato
                           setEditIncasso({
                             ...editIncasso(),

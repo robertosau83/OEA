@@ -287,7 +287,7 @@ const MovCC = ({ movCC, setMovCC }) => {
   };
 
   return (
-    <div class="text-center overflow-y-auto h-[calc(100vh-140px)]">
+    <div class="">
 
       <div class="flex items-center justify-between h-[50px]">
         <div class="pl-2 text-lg font-semibold">
