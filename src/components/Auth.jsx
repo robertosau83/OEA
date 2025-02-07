@@ -40,7 +40,7 @@ const Auth = ({ setSession }) => {
       <button onClick={signIn} class="bg-orange-400 text-white px-4 py-2 mt-4">
         Sign In
       </button>
-      {/* <div class="text-4xl">iiiiiiiiiii</div> */}
+      <div class="text-4xl">PROVA CACHE RISOLTA</div>
       {error() && <p class="text-red-500 mt-2">{error()}</p>}
     </div>
   );
