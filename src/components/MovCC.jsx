@@ -315,7 +315,7 @@ const MovCC = ({ movCC, setMovCC }) => {
         </div>
       </div>
 
-      <div class="justify-center space-x-4 my-4">
+      <div class="justify-center space-x-4 my-4 h-[100px]">
         <input
           type="date"
           value={startDate()}
@@ -357,7 +357,7 @@ const MovCC = ({ movCC, setMovCC }) => {
         </div>
       )}
 
-      <div class="mt-1 text-[10px] w-full overflow-x-auto">
+      <div class="mt-1 text-[10px] w-full overflow-y-auto h-[calc(100vh-360px)]">
         {filteredMovCC().length > 0 && (
           <div class="w-full overflow-hidden">
             <table class="table-fixed border-collapse border border-gray-500 w-full">

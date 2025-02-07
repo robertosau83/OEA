@@ -124,7 +124,7 @@ const App = ({ onLogout }) => {
                   setIsMenuOpen(false);
                 }}
               >
-                CC
+                Estratto CC
               </button>
               <button
                 class="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
@@ -173,14 +173,14 @@ const App = ({ onLogout }) => {
               <img src="/cashflow.png" alt="Spese" class="h-8 mx-auto mb-1" />
               Cashflow
             </button>
-            <button
+            {/* <button
               onClick={() => setCurrentBtmBarComponentName("MovCC")}
               class={`flex-1 text-center ${currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
                 }`}
             >
               <img src="/bank-account.svg" alt="MovCC" class="h-8 mx-auto mb-1" />
               CC
-            </button>
+            </button> */}
 
           </div>
         </>

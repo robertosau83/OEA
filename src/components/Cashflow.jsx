@@ -813,7 +813,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             {view() !== 'singleDetail' && (
                 <button
                     onClick={() => setShowPopup(true)} // Mostra il popup
-                    class="fixed bottom-[98px] right-4 w-16 h-16 bg-red-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-red-600"
+                    class="fixed bottom-[106px] right-4 w-16 h-16 bg-blue-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-red-600"
                 >
                     <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
                 </button>
@@ -830,7 +830,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                             <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
                         </button>
 
-                        <h2 class="text-lg font-bold mb-4 text-center">Nuova spesa CASH</h2>
+                        <h2 class="text-lg font-semibold mb-4 text-center text-blue-800">Nuovo movimento CASH</h2>
 
                         <form
                             onSubmit={async (e) => {

@@ -806,7 +806,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
             // Mostra il popup
             setShowPopup(true);
           }}
-          class="fixed bottom-[98px] right-4 w-16 h-16 bg-green-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
+          class="fixed bottom-[106px] right-4 w-16 h-16 bg-blue-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
         >
           <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
         </button>
