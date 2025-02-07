@@ -151,25 +151,25 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                 return; // Blocca l'inserimento
             }
 
-            convertedValue = numericValue; // Salva il valore convertito
+            convertedValue = -numericValue; // Salva il valore convertito
         }
 
         const spesaConOrigin = {
             ...newCashMovement(),
             importo: convertedValue,
-            origin: "CASH", // Imposta il campo origin
+            //origin: "CASH", // Imposta il campo origin
         };
 
         const { data, error } = await supabase
-            .from('spese')
+            .from('CASH')
             .insert([spesaConOrigin], { returning: 'representation' })
             .select('*');
 
         if (error) {
             console.error("Errore durante l'inserimento:", error.message);
         } else {
-            console.log('Spesa aggiunta con successo:', data);
-            setCashflow((prev) => [...prev, ...(data || [])]);
+            console.log('Movimento aggiunto con successo:', data);
+            setCashflow((prev) => [...prev, ...(data?.map(item => ({ ...item, origin: "CASH" })) || [])]);
             setShowPopup(false);
         }
     };
@@ -185,9 +185,9 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             .eq('id', spesaId); // Utilizza l'ID per identificare la riga
 
         if (error) {
-            console.error("Errore durante la cancellazione della spesa:", error.message);
+            console.error("Errore durante la cancellazione del movimento:", error.message);
         } else {
-            console.log('Spesa cancellata con successo');
+            console.log('Movimento cancellato con successo');
             setCashflow((prev) =>
                 prev.filter((entry) => entry.id !== spesaId) // Rimuovi la riga dallo stato locale
             );
@@ -650,7 +650,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                                     <img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
                                 </button>
                                 <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
-                                    Verrà cancellata la spesa registrata in data{' '}
+                                    Verrà cancellato l'attuale movimento registrato in data{' '}
                                     {new Date(selectedMovement().data_operazione).toLocaleDateString('it-IT')}
                                 </h2>
                                 <div class="flex justify-center gap-4 mt-6">
