@@ -1,16 +1,20 @@
-import { createSignal, onMount } from 'solid-js';
+import { createSignal, onMount, createEffect } from 'solid-js';
 import { supabase } from './lib/supabaseClient.js';
 import Chiusure from './components/Chiusure.jsx';
 import Cashflow from './components/Cashflow.jsx';
 import MovCC from './components/MovCC.jsx';
 import Stats from './components/Stats.jsx';
 import { cashflow, setCashflow, composeCashflow } from './lib/composeCashflow.js'; // Importa cashflow
+import loadDataFromDB from "./lib/loadDataFromDB.js";
+import composeLocalStates from "./lib/composeLocalStates.js";
  
 const App = ({ onLogout }) => {
   const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
   const [isLoading, setIsLoading] = createSignal(true);
-  const [incassi, setIncassi] = createSignal([]);
-  const [movCC, setMovCC] = createSignal([]);
+  const [chiusure, setChiusure] = createSignal([]);
+  const [cash, setCash] = createSignal([]);
+  const [cc, setCC] = createSignal([]);
+  const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
   const [isMenuOpen, setIsMenuOpen] = createSignal(false);
 
   // Funzione per caricare i dati dal database
@@ -58,7 +62,18 @@ const App = ({ onLogout }) => {
 
   // Esegui il caricamento dei dati quando il componente viene montato
   onMount(async () => {
-    await loadData();
+    //await loadData();
+    await loadDataFromDB(setChiusure, setCash, setCC);
+    //composeLocalStates(chiusure(), cash(), setChiusureConSpese);
+    //console.log("Chiusure con spese:", chiusureConSpese());
+    setIsLoading(false);
+  });
+
+   // Effetto reattivo: ogni volta che chiusure() o cash() cambiano, compone le chiusure con spese
+   createEffect(() => {
+    // Vengono richiamati chiusure() e cash() per stabilire la dipendenza
+    composeLocalStates(chiusure(), cash(), cc(), setChiusureConSpese, setCashflow);
+    //console.log(chiusureConSpese());
   });
 
   // Funzione per formattare le date
@@ -69,10 +84,10 @@ const App = ({ onLogout }) => {
   };
 
   const sharedProps = {
-    incassi,
-    setIncassi,
-    movCC,
-    setMovCC,
+    chiusure, setChiusure,
+    cash, setCash, 
+    cc, setCC,
+    chiusureConSpese, setChiusureConSpese,
     cashflow,
     setCashflow,
   };

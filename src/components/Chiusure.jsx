@@ -1,14 +1,13 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Chiusure = ({ incassi, setIncassi, cashflow }) => {
-  const [aggrData, setAggrData] = createSignal([]); // Stato locale per gli incassi + spese serata
+const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
   const [view, setView] = createSignal('year'); // 'month' | 'day' | 'detail'
   const [selectedYear, setSelectedYear] = createSignal(''); // Anno selezionato
   const [selectedMonth, setSelectedMonth] = createSignal('');
   const [selectedDay, setSelectedDay] = createSignal('');
-  const [showPopup, setShowPopup] = createSignal(false);
-  const [newIncasso, setNewIncasso] = createSignal({
+  const [showAddPopup, setShowAddPopup] = createSignal(false);
+  const [newChiusura, setNewChiusura] = createSignal({
     data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
     battuti_cassa: '',
     carte: '',
@@ -17,73 +16,31 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
   });
   const [showDeletePopup, setShowDeletePopup] = createSignal(false);
   const [showEditPopup, setShowEditPopup] = createSignal(false);
-  const [editIncasso, setEditIncasso] = createSignal({
+  const [editChiusura, setEditChiusura] = createSignal({
     battuti_cassa: 0,
     carte: 0,
     satispay: 0,
-    contanti_cassa: 0,
+    contanti_cassa_netto_spese_serata: 0,
   });
   const [selectedTag, setSelectedTag] = createSignal(''); // Stato per il tag selezionato
 
   const tagMap = {
-    contanti: 'contanti_cassa_lordo_spese',
+    contanti: 'contanti_cassa_lordo_spese_serata',
     carte: 'carte',
     satispay: 'satispay',
     battuti: 'battuti_cassa',
-    gap: 'NB',
+    gap: 'gap',
   };
 
-  // Funzione per comporre aggrData come stato locale di incassi + spese serata
-  const aggregateIncassiWithSpese = async () => {
-    try {
-      // Raggruppa le spese per data_di_competenza e somma gli importi con filtro
-      const speseGrouped = cashflow().reduce((acc, spesa) => {
-        if (spesa.metodo_di_pagamento === "Presi dalla cassa in serata") {
-          const date = spesa.data_operazione;
-          if (!acc[date]) {
-            acc[date] = 0;
-          }
-          acc[date] += spesa.importo || 0;
-        }
-        return acc;
-      }, {});
-
-      // Aggiungi il campo "NB" e "spese_serata" agli incassi
-      const updatedIncassi = (incassi() || []).map((entry) => {
-        const speseSerata = speseGrouped[entry.data_competenza] || 0;
-        return {
-          ...entry,
-          spese_serata: speseSerata,
-          contanti_cassa_lordo_spese: (entry.contanti_cassa || 0) - speseSerata, // Calcolo opzionale
-          NB:
-            (entry.carte || 0) +
-            (entry.satispay || 0) +
-            (entry.contanti_cassa || 0) +
-            (-speseSerata || 0) -
-            (entry.battuti_cassa || 0),
-        };
-      });
-
-      // Aggiorna lo stato locale con i dati elaborati
-      setAggrData(updatedIncassi);
-      //console.log(aggrData());
-    } catch (error) {
-      console.error('Errore durante il caricamento dei dati:', error.message);
-      setAggrData([]); // In caso di errore, imposta un array vuoto
-    }
-  };
-
-  // Esegui la fetch dei dati quando il componente viene montato
   onMount(() => {
-    console.log(cashflow());
-    aggregateIncassiWithSpese();
+    //console.log(chiusureConSpese());
   });
 
   // Raggruppa gli incassi per anno e calcola la somma totale
   const groupByYear = () => {
     const grouped = {};
 
-    aggrData().forEach((entry) => {
+    chiusureConSpese().forEach((entry) => {
       const yearKey = new Date(entry.data_competenza).getFullYear();
 
       if (!grouped[yearKey]) grouped[yearKey] = 0;
@@ -92,8 +49,8 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
       if (tag && tagMap[tag]) {
         grouped[yearKey] += entry[tagMap[tag]] || 0;
       } else {
-        grouped[yearKey] +=
-          (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+        grouped[yearKey] += (entry.chiusura_lorda_reale || 0);
+        //(entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
       }
     });
 
@@ -106,7 +63,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
   const groupByMonth = () => {
     const grouped = {};
 
-    aggrData()
+    chiusureConSpese()
       .filter((entry) => new Date(entry.data_competenza).getFullYear() === parseInt(selectedYear()))
       .forEach((entry) => {
         const date = new Date(entry.data_competenza);
@@ -118,8 +75,8 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
         if (tag && tagMap[tag]) {
           grouped[monthKey] += entry[tagMap[tag]] || 0;
         } else {
-          grouped[monthKey] +=
-            (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+          grouped[monthKey] += (entry.chiusura_lorda_reale || 0);
+          //(entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
         }
       });
 
@@ -137,7 +94,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
 
   // Filtra gli incassi per giorno per il mese selezionato
   const filterByDay = () => {
-    return aggrData()
+    return chiusureConSpese()
       .filter((entry) => {
         const month = new Date(entry.data_competenza).toLocaleString('default', {
           month: 'long',
@@ -150,8 +107,8 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
         if (tag && tagMap[tag]) {
           return { ...entry, total: entry[tagMap[tag]] || 0 };
         }
-        const total =
-          (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+        const total = (entry.chiusura_lorda_reale || 0);
+        // (entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
         return { ...entry, total };
       })
       .sort((a, b) => new Date(a.data_competenza) - new Date(b.data_competenza));
@@ -160,21 +117,21 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
   // Dettagli di un singolo giorno
   const getDailyDetails = () => {
     //console.log(aggrData().find((entry) => entry.data_competenza === selectedDay()));
-    return aggrData().find((entry) => entry.data_competenza === selectedDay());
+    return chiusureConSpese().find((entry) => entry.data_competenza === selectedDay());
   };
 
   //Funzione per aggiungere un nuovo incasso
-  const addNewIncasso = async () => {
+  const addNewChiusura = async () => {
     // Controlla se esiste già un incasso con la stessa data di competenza
-    const existing = aggrData().find(
-      (entry) => entry.data_competenza === newIncasso().data_competenza
+    const existing = chiusure().find(
+      (entry) => entry.data_competenza === newChiusura().data_competenza
     );
 
     if (existing) {
       // Mostra un messaggio di errore
       alert(
         `Non è possibile inserire un incasso per la data di competenza ${new Date(
-          newIncasso().data_competenza
+          newChiusura().data_competenza
         ).toLocaleDateString('it-IT')}. Esiste già un incasso per questa data.`
       );
       return;
@@ -185,7 +142,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
     const convertedValues = {};
 
     for (const field of fieldsToCheck) {
-      const value = newIncasso()[field];
+      const value = newChiusura()[field];
 
       // Se il campo è vuoto, imposta a 0
       if (value === '') {
@@ -209,13 +166,13 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
 
     // Crea un nuovo oggetto incasso con i campi convertiti
     const incassoToInsert = {
-      ...newIncasso(),
+      ...newChiusura(),
       ...convertedValues,
     };
 
     // Inserisci nel database
     const { data, error } = await supabase
-      .from('incassi')
+      .from('chiusure')
       .insert([incassoToInsert], { returning: 'representation' })
       .select('*'); // Recupera i dati appena inseriti
 
@@ -223,9 +180,9 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
       console.error("Errore durante l'inserimento:", error.message);
     } else {
       console.log('Incasso aggiunto con successo:', data);
-      setIncassi((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale Incassi
-      await aggregateIncassiWithSpese();
-      setShowPopup(false); // Chiudi il popup
+      setChiusure((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale Incassi
+      //await aggregateIncassiWithSpese();
+      setShowAddPopup(false); // Chiudi il popup
     }
   };
 
@@ -236,20 +193,20 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
       if (tag && tagMap[tag]) {
         return sum + (entry[tagMap[tag]] || 0);
       }
-      return sum +
-        (entry.carte || 0) +
-        (entry.satispay || 0) +
-        (entry.contanti_cassa_lordo_spese || 0);
+      return sum + (entry.chiusura_lorda_reale || 0);
+      // (entry.carte || 0) +
+      // (entry.satispay || 0) +
+      // (entry.contanti_cassa_lordo_spese || 0);
     }, 0);
   };
 
   //Elimina un incasso giornaliero dal db
-  const deleteIncasso = async () => {
+  const deleteChiusura = async () => {
     const selectedIncasso = getDailyDetails(); // Ottieni l'incasso selezionato
     if (!selectedIncasso) return;
 
     const { error } = await supabase
-      .from('incassi')
+      .from('chiusure')
       .delete()
       .eq('data_competenza', selectedIncasso.data_competenza); // Elimina l'incasso dal database
 
@@ -258,10 +215,10 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
     } else {
       console.log('Incasso cancellato con successo');
       // Aggiorna lo stato locale rimuovendo l'incasso cancellato
-      setIncassi((prev) =>
+      setChiusure((prev) =>
         prev.filter((entry) => entry.data_competenza !== selectedIncasso.data_competenza)
       );
-      await aggregateIncassiWithSpese();
+      //await aggregateIncassiWithSpese();
       setShowDeletePopup(false); // Chiudi il popup di conferma
       setView('day'); // Torna alla view "day"
     }
@@ -272,7 +229,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
     const selectedIncasso = getDailyDetails();
     if (!selectedIncasso) return;
 
-    setEditIncasso({
+    setEditChiusura({
       battuti_cassa: selectedIncasso.battuti_cassa
         ? selectedIncasso.battuti_cassa.toString().replace('.', ',')
         : '',
@@ -282,15 +239,15 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
       satispay: selectedIncasso.satispay
         ? selectedIncasso.satispay.toString().replace('.', ',')
         : '',
-      contanti_cassa: selectedIncasso.contanti_cassa
-        ? selectedIncasso.contanti_cassa.toString().replace('.', ',')
+      contanti_cassa: selectedIncasso.contanti_cassa_netto_spese_serata
+        ? selectedIncasso.contanti_cassa_netto_spese_serata.toString().replace('.', ',')
         : '',
     });
     setShowEditPopup(true);
   };
 
   //Gestisce il vero e proprio update di un Incasso esistente
-  const updateIncasso = async () => {
+  const updateChiusura = async () => {
     const selectedIncasso = getDailyDetails();
     if (!selectedIncasso) return;
 
@@ -299,7 +256,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
     const convertedValues = {};
 
     for (const field of fieldsToCheck) {
-      const value = editIncasso()[field];
+      const value = editChiusura()[field];
 
       // Se il campo è vuoto, imposta a 0
       if (value === '') {
@@ -323,12 +280,12 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
 
     // Crea un nuovo oggetto incasso con i campi convertiti
     const incassoToInsert = {
-      ...editIncasso(),
+      ...editChiusura(),
       ...convertedValues,
     };
 
     const { error } = await supabase
-      .from('incassi')
+      .from('chiusure')
       .update(incassoToInsert)
       .eq('data_competenza', selectedIncasso.data_competenza);
 
@@ -337,14 +294,14 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
     } else {
       console.log('Incasso aggiornato con successo');
       //Aggiorna lo stato locale
-      setIncassi((prev) =>
+      setChiusure((prev) =>
         prev.map((entry) =>
           entry.data_competenza === selectedIncasso.data_competenza
             ? { ...entry, ...incassoToInsert }
             : entry
         )
       );
-      await aggregateIncassiWithSpese();
+      //await aggregateIncassiWithSpese();
       setShowEditPopup(false); // Chiudi il popup
     }
   };
@@ -373,7 +330,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
       {view() === 'year' && (
         <div>
           <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">
-            Incassi annuali
+            Chiusure annuali
           </h2>
 
           <ul class="overflow-y-auto h-[calc(100vh-268px)]">
@@ -425,7 +382,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
               <img src="/back.svg" alt="back" class="w-full h-auto" />
             </button>
             <div>
-              <div class="text-lg text-center font-semibold">Incassi mensili</div>
+              <div class="text-lg text-center font-semibold">Chiusure mensili</div>
               <div class="text-center">{selectedYear()}</div>
             </div>
             <div class="w-[40px]"></div>
@@ -493,27 +450,11 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
               <img src="/back.svg" alt="back" class="w-full h-auto" />
             </button>
             <div>
-              <div class="text-lg text-center font-semibold">Incassi giornalieri</div>
+              <div class="text-lg text-center font-semibold">Chiusure giornaliere</div>
               <div class="text-center">{selectedMonth()}</div>
             </div>
             <div class="w-[40px]"></div>
           </div>
-
-          {/* tags
-          <div class="flex justify-center gap-1 mb-4 h-[32px]">
-            {['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
-              <button
-                key={tag}
-                class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-200 text-gray-700'
-                  }`}
-                onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
-              >
-                {tag}
-              </button>
-            ))}
-          </div> */}
 
           <ul class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
             {filterByDay().map((entry) => (
@@ -561,7 +502,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
               <img src="/back.svg" alt="back" class="w-full h-auto" />
             </button>
             <div>
-              <div class="text-lg text-center font-semibold">Dettaglio incassi</div>
+              <div class="text-lg text-center font-semibold">Dettaglio Chiusura</div>
               <div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
             </div>
             <div class="w-[40px]"></div>
@@ -589,7 +530,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                       style: 'decimal',
                       minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
                       maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-                    }).format(getDailyDetails()?.contanti_cassa || 0)} €
+                    }).format(getDailyDetails()?.contanti_cassa_netto_spese_serata || 0)} €
                   </span>
                 </div>
 
@@ -613,7 +554,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                       style: 'decimal',
                       minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
                       maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-                    }).format(getDailyDetails()?.contanti_cassa_lordo_spese || 0)} €
+                    }).format(getDailyDetails()?.contanti_cassa_lordo_spese_serata || 0)} €
                   </span>
                 </div>
 
@@ -649,7 +590,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                       style: 'decimal',
                       minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
                       maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-                    }).format((getDailyDetails()?.contanti_cassa_lordo_spese || 0) + (getDailyDetails()?.carte || 0) + (getDailyDetails()?.satispay || 0))} €
+                    }).format((getDailyDetails()?.chiusura_lorda_reale || 0))} €
                   </span>
                 </div>
 
@@ -661,7 +602,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                       style: 'decimal',
                       minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
                       maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-                    }).format(getDailyDetails()?.NB || 0)} €
+                    }).format(getDailyDetails()?.gap || 0)} €
                   </span>
                 </div>
 
@@ -684,109 +625,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
             </div>
           </div>
 
-          {/* popup di conferma cancellazione incasso */}
-          {showDeletePopup() && (
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div class="bg-red-100 rounded-lg p-6 w-[90%] relative">
-                <button
-                  onClick={() => setShowDeletePopup(false)}
-                  class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-                >
-                  <img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
-                </button>
-                <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
-                  Verrà cancellato l'incasso registrato in data{' '}
-                  {new Date(selectedDay()).toLocaleDateString('it-IT')}
-                </h2>
-                <div class="flex justify-center gap-4 mt-6">
 
-                  <button
-                    onClick={deleteIncasso}
-                    class="px-4 py-2 w-full bg-red-500 text-white font-bold rounded hover:bg-red-600"
-                  >
-                    CONFERMA
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* popup di modifica di un incasso */}
-          {showEditPopup() && (
-            <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div class="bg-yellow-100 rounded-lg p-6 w-[90%] relative">
-                <button
-                  onClick={() => setShowEditPopup(false)}
-                  class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-                >
-                  <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
-                </button>
-
-                <h2 class="text-lg font-bold mb-4 text-center">Modifica Incasso</h2>
-
-                <form
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    await updateIncasso();
-                  }}
-                >
-                  <div class="mb-4">
-                    <label class="block text-sm font-medium mb-1">Data Competenza</label>
-                    <input
-                      type="date"
-                      value={selectedDay()}
-                      disabled
-                      class="w-full border rounded px-3 py-2 bg-gray-200 cursor-not-allowed"
-                    />
-                  </div>
-
-                  {[
-                    { label: 'Battuti Cassa', key: 'battuti_cassa' },
-                    { label: 'Carte', key: 'carte' },
-                    { label: 'Satispay', key: 'satispay' },
-                    { label: 'Contanti Cassa', key: 'contanti_cassa' },
-                  ].map(({ label, key }) => (
-                    <div class="mb-4" key={key}>
-                      <label class="block text-sm font-medium mb-1">{label}</label>
-                      <input
-                        type="text"
-                        value={editIncasso()[key]}
-                        onInput={(e) => {
-                          const input = e.currentTarget.value;
-
-                          // Sostituisci immediatamente "." con ","
-                          let sanitizedInput = input.replace('.', ',');
-
-                          // Rimuovi tutti i caratteri non validi (solo numeri e ",")
-                          sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
-
-                          // Aggiorna lo stato con il valore sanitizzato
-                          setEditIncasso({
-                            ...editIncasso(),
-                            [key]: sanitizedInput,
-                          });
-                        }}
-
-                        class={`w-full border rounded px-3 py-2 ${
-                          // Validazione: campo è rosso se contiene più di una virgola
-                          /^[0-9]*,?[0-9]*$/.test(editIncasso()[key]) ? '' : 'text-red-500'
-                          }`}
-                      />
-                    </div>
-                  ))}
-
-                  <div class="flex justify-center">
-                    <button
-                      type="submit"
-                      class="w-full px-4 text-xl py-2 mt-4 bg-blue-500 text-white rounded hover:bg-blue-600"
-                    >
-                      SALVA
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
 
         </div>
       )}
@@ -795,8 +634,8 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
       {view() !== 'detail' && (
         <button
           onClick={() => {
-            // Resetta i campi di newIncasso
-            setNewIncasso({
+            // Resetta i campi di newChiusura
+            setNewChiusura({
               data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
               battuti_cassa: '',
               carte: '',
@@ -804,7 +643,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
               contanti_cassa: '',
             });
             // Mostra il popup
-            setShowPopup(true);
+            setShowAddPopup(true);
           }}
           class="fixed bottom-[106px] right-4 w-16 h-16 bg-blue-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
         >
@@ -813,22 +652,22 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
       )}
 
       {/* Popup per aggiungere un nuovo incasso */}
-      {showPopup() && (
+      {showAddPopup() && (
         <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div class="bg-white rounded-lg p-6 w-[90%] relative">
             <button
-              onClick={() => setShowPopup(false)}
+              onClick={() => setShowAddPopup(false)}
               class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
             >
               <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
             </button>
 
-            <h2 class="text-lg font-bold mb-4 text-center">Nuovo Incasso Serale</h2>
+            <h2 class="text-lg font-bold mb-4 text-center">Nuova chiusura</h2>
 
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
-                await addNewIncasso();
+                await addNewChiusura();
               }}
             >
               {/* Campo per la data di competenza */}
@@ -836,10 +675,10 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                 <label class="block text-sm font-medium mb-1">Data Competenza</label>
                 <input
                   type="date"
-                  value={newIncasso().data_competenza || ''}
+                  value={newChiusura().data_competenza || ''}
                   onInput={(e) =>
-                    setNewIncasso({
-                      ...newIncasso(),
+                    setNewChiusura({
+                      ...newChiusura(),
                       data_competenza: e.currentTarget.value,
                     })
                   }
@@ -858,7 +697,7 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                   <label class="block text-sm font-medium mb-1">{label}</label>
                   <input
                     type="text"
-                    value={newIncasso()[key] !== '' ? newIncasso()[key] : ''}
+                    value={newChiusura()[key] !== '' ? newChiusura()[key] : ''}
                     onInput={(e) => {
                       const input = e.currentTarget.value;
 
@@ -869,14 +708,14 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
                       sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
 
                       // Aggiorna lo stato con il valore sanitizzato
-                      setNewIncasso({
-                        ...newIncasso(),
+                      setNewChiusura({
+                        ...newChiusura(),
                         [key]: sanitizedInput,
                       });
                     }}
                     class={`w-full border rounded px-3 py-2 ${
                       // Validazione: campo è rosso se contiene più di una virgola
-                      /^[0-9]*,?[0-9]*$/.test(newIncasso()[key]) ? '' : 'text-red-500'
+                      /^[0-9]*,?[0-9]*$/.test(newChiusura()[key]) ? '' : 'text-red-500'
                       }`}
                   />
                 </div>
@@ -895,6 +734,111 @@ const Chiusure = ({ incassi, setIncassi, cashflow }) => {
           </div>
         </div>
       )}
+
+      {/* popup di conferma cancellazione incasso */}
+      {showDeletePopup() && (
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-red-100 rounded-lg p-6 w-[90%] relative">
+            <button
+              onClick={() => setShowDeletePopup(false)}
+              class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+            >
+              <img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
+            </button>
+            <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
+              Verrà cancellato l'incasso registrato in data{' '}
+              {new Date(selectedDay()).toLocaleDateString('it-IT')}
+            </h2>
+            <div class="flex justify-center gap-4 mt-6">
+
+              <button
+                onClick={deleteChiusura}
+                class="px-4 py-2 w-full bg-red-500 text-white font-bold rounded hover:bg-red-600"
+              >
+                CONFERMA
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* popup di modifica di un incasso */}
+      {showEditPopup() && (
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-yellow-100 rounded-lg p-6 w-[90%] relative">
+            <button
+              onClick={() => setShowEditPopup(false)}
+              class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+            >
+              <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
+            </button>
+
+            <h2 class="text-lg font-bold mb-4 text-center">Modifica Incasso</h2>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                await updateChiusura();
+              }}
+            >
+              <div class="mb-4">
+                <label class="block text-sm font-medium mb-1">Data Competenza</label>
+                <input
+                  type="date"
+                  value={selectedDay()}
+                  disabled
+                  class="w-full border rounded px-3 py-2 bg-gray-200 cursor-not-allowed"
+                />
+              </div>
+
+              {[
+                { label: 'Battuti Cassa', key: 'battuti_cassa' },
+                { label: 'Carte', key: 'carte' },
+                { label: 'Satispay', key: 'satispay' },
+                { label: 'Contanti Cassa', key: 'contanti_cassa' },
+              ].map(({ label, key }) => (
+                <div class="mb-4" key={key}>
+                  <label class="block text-sm font-medium mb-1">{label}</label>
+                  <input
+                    type="text"
+                    value={editChiusura()[key]}
+                    onInput={(e) => {
+                      const input = e.currentTarget.value;
+
+                      // Sostituisci immediatamente "." con ","
+                      let sanitizedInput = input.replace('.', ',');
+
+                      // Rimuovi tutti i caratteri non validi (solo numeri e ",")
+                      sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+
+                      // Aggiorna lo stato con il valore sanitizzato
+                      setEditChiusura({
+                        ...editChiusura(),
+                        [key]: sanitizedInput,
+                      });
+                    }}
+
+                    class={`w-full border rounded px-3 py-2 ${
+                      // Validazione: campo è rosso se contiene più di una virgola
+                      /^[0-9]*,?[0-9]*$/.test(editChiusura()[key]) ? '' : 'text-red-500'
+                      }`}
+                  />
+                </div>
+              ))}
+
+              <div class="flex justify-center">
+                <button
+                  type="submit"
+                  class="w-full px-4 text-xl py-2 mt-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  SALVA
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

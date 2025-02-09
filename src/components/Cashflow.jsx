@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Cashflow = ({ cashflow, setCashflow }) => {
+const Cashflow = ({ setCash, cashflow, setCashflow }) => {
     //const [spese, setSpese] = createSignal([]); // Stato locale per le spese
     const [view, setView] = createSignal('year'); // 'month' | 'day' | 'details'
     const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
@@ -9,7 +9,8 @@ const Cashflow = ({ cashflow, setCashflow }) => {
     const [selectedDay, setSelectedDay] = createSignal('');
     const [selectedMovement, setSelectedMovement] = createSignal(null);
     const [selectedMovementId, setSelectedMovementId] = createSignal('');
-    const [showPopup, setShowPopup] = createSignal(false);
+    const [showAddPopup, setShowAddPopup] = createSignal(false);
+    const [newMovementDirection, setNewMovementDirection] = createSignal('');
     const [newCashMovement, setNewCashMovement] = createSignal({
         data_operazione: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
         tipo: '',
@@ -19,19 +20,37 @@ const Cashflow = ({ cashflow, setCashflow }) => {
     });
     const [showDeletePopup, setShowDeletePopup] = createSignal(false);
     const [showEditPopup, setShowEditPopup] = createSignal(false);
-    const [editCashMovement, setEditCashMovement] = createSignal({ tipo: '', metodo_di_pagamento: '', importo: '', descrizione: '', });
-    const [selectedTag, setSelectedTag] = createSignal(''); // Stato per il filtro CC/CASH
+    const [editMovementDirection, setEditMovementDirection] = createSignal('');
+    const [editCashMovement, setEditCashMovement] = createSignal({
+        tipo: '',
+        metodo_di_pagamento: '',
+        importo: '',
+        descrizione: '',
+        data_operazione: '', // Aggiunto per permettere la modifica della data
+    });
+    const [selectedGr1Tag, setSelectedGr1Tag] = createSignal(''); // Stato per il filtro CC/CASH
+    const [selectedGr2Tag, setSelectedGr2Tag] = createSignal(''); // Stato per il filtro Entrate/Uscite
     const [filteredCashflow, setFilteredCashflow] = createSignal([]);
 
-    // Aggiorna filteredCashflow ogni volta che cambia cashflow() o selectedTag()
+    // Aggiorna filteredCashflow ogni volta che cambia cashflow() o selectedGr1Tag()
     createEffect(() => {
-        if (selectedTag() === "CC") {
-            setFilteredCashflow(cashflow().filter(entry => entry.origin === "CC"));
-        } else if (selectedTag() === "CASH") {
-            setFilteredCashflow(cashflow().filter(entry => entry.origin === "CASH" || entry.origin === "CONTANTI CASSA"));
-        } else {
-            setFilteredCashflow(cashflow()); // Nessun filtro, mostra tutto
+        let filtered = cashflow();
+
+        // Filtra per tipo di movimento (CC / CASH)
+        if (selectedGr1Tag() === "CC") {
+            filtered = filtered.filter(entry => entry.origin === "CC");
+        } else if (selectedGr1Tag() === "CASH") {
+            filtered = filtered.filter(entry => entry.origin === "CASH" || entry.origin === "CONTANTI CASSA");
         }
+
+        // Filtra per importo (Entrate/Uscite)
+        if (selectedGr2Tag() === "entrate") {
+            filtered = filtered.filter(entry => entry.importo > 0);
+        } else if (selectedGr2Tag() === "uscite") {
+            filtered = filtered.filter(entry => entry.importo < 0);
+        }
+
+        setFilteredCashflow(filtered);
     });
 
     // Funzione per raggruppare le spese per anno
@@ -124,8 +143,14 @@ const Cashflow = ({ cashflow, setCashflow }) => {
         );
     };
 
-    //Funzione per l'inserimento di una nuova spesa
-    const addNewSpesa = async () => {
+    //Funzione per l'inserimento di una nuovo movimento cash
+    const addNewCashMovement = async () => {
+
+        if (!newMovementDirection()) {
+            alert("Seleziona se il movimento è IN ENTRATA o IN USCITA.");
+            return;
+        }
+
         const { tipo, metodo_di_pagamento, importo } = newCashMovement();
 
         if (!tipo || !metodo_di_pagamento || !importo) {
@@ -151,10 +176,12 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                 return; // Blocca l'inserimento
             }
 
-            convertedValue = -numericValue; // Salva il valore convertito
+            // Se il movimento è in uscita, salviamo l'importo negativo,
+            // mentre se è in entrata, lo salviamo positivo.
+            convertedValue = newMovementDirection() === 'uscita' ? -numericValue : numericValue;
         }
 
-        const spesaConOrigin = {
+        const sanitizedSpesa = {
             ...newCashMovement(),
             importo: convertedValue,
             //origin: "CASH", // Imposta il campo origin
@@ -162,20 +189,20 @@ const Cashflow = ({ cashflow, setCashflow }) => {
 
         const { data, error } = await supabase
             .from('CASH')
-            .insert([spesaConOrigin], { returning: 'representation' })
+            .insert([sanitizedSpesa], { returning: 'representation' })
             .select('*');
 
         if (error) {
             console.error("Errore durante l'inserimento:", error.message);
         } else {
             console.log('Movimento aggiunto con successo:', data);
-            setCashflow((prev) => [...prev, ...(data?.map(item => ({ ...item, origin: "CASH" })) || [])]);
-            setShowPopup(false);
+            setCash((prev) => [...prev, ...(data || [])]);
+            setShowAddPopup(false);
         }
     };
 
     //Funzione per la cancellazione di una spesa esistente
-    const deleteSpesa = async () => {
+    const deleteCashMovement = async () => {
         const spesaId = selectedMovementId();
         if (!spesaId) return;
 
@@ -188,7 +215,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             console.error("Errore durante la cancellazione del movimento:", error.message);
         } else {
             console.log('Movimento cancellato con successo');
-            setCashflow((prev) =>
+            setCash((prev) =>
                 prev.filter((entry) => entry.id !== spesaId) // Rimuovi la riga dallo stato locale
             );
             setShowDeletePopup(false);
@@ -217,11 +244,15 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             descrizione: spesa.descrizione,
             data_operazione: spesa.data_operazione,
         });
+
+        // Imposta la direzione in base al segno dell'importo
+        setEditMovementDirection(spesa.importo < 0 ? 'uscita' : 'entrata');
+
         setShowEditPopup(true);
     };
 
     //Funzione per l'update di una spesa
-    const updateSpesa = async () => {
+    const updateCashMovement = async () => {
         const { tipo, metodo_di_pagamento, importo } = editCashMovement();
 
         //console.log(tipo, metodo_di_pagamento, importo);
@@ -253,7 +284,8 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                 return; // Blocca l'inserimento
             }
 
-            convertedValue = numericValue; // Salva il valore convertito
+            // Se la direzione è "uscita", l'importo deve essere negativo; altrimenti, positivo
+            convertedValue = editMovementDirection() === 'uscita' ? -Math.abs(numericValue) : Math.abs(numericValue);
         }
 
         // Crea un nuovo oggetto incasso con i campi convertiti
@@ -271,7 +303,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             console.error("Errore durante l'aggiornamento della spesa:", error.message);
         } else {
             console.log('Spesa aggiornata con successo');
-            setCashflow((prev) =>
+            setCash((prev) =>
                 prev.map((entry) =>
                     entry.id === selectedMovement.id ? { ...entry, ...spesaToUpdate } : entry
                 )
@@ -279,6 +311,13 @@ const Cashflow = ({ cashflow, setCashflow }) => {
 
             // Aggiorna anche selectedMovement
             setSelectedMovement({ ...selectedMovement, ...spesaToUpdate });
+
+            // Aggiorna selectedDay, selectedYear e selectedMonth
+            const newDate = new Date(spesaToUpdate.data_operazione);
+            setSelectedDay(spesaToUpdate.data_operazione);
+            setSelectedYear(newDate.getFullYear().toString());
+            setSelectedMonth(newDate.toLocaleString('default', { month: 'long', year: 'numeric' }));
+
             setShowEditPopup(false);
         }
     };
@@ -288,20 +327,39 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             {/* <h1>provaaaa</h1> */}
             {/* Tag selezionabili */}
             {view() !== 'singleDetail' && (
-                <div class="flex justify-center gap-1 mb-4 h-[32px]">
-                    <button
-                        class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === "CC" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
-                        onClick={() => setSelectedTag(selectedTag() === "CC" ? "" : "CC")}
-                    >
-                        CC
-                    </button>
-                    <button
-                        class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === "CASH" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-700"}`}
-                        onClick={() => setSelectedTag(selectedTag() === "CASH" ? "" : "CASH")}
-                    >
-                        CASH
-                    </button>
-                </div>
+                <>
+                    {/* Primo gruppo di tag (CC / CASH) */}
+                    <div class="flex justify-center gap-1 mb-2 h-[32px]">
+                        <button
+                            class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedGr1Tag() === "CC" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                            onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CC" ? "" : "CC")}
+                        >
+                            CC
+                        </button>
+                        <button
+                            class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedGr1Tag() === "CASH" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                            onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CASH" ? "" : "CASH")}
+                        >
+                            CASH
+                        </button>
+                    </div>
+
+                    {/* Secondo gruppo di tag (Entrate / Uscite) */}
+                    <div class="flex justify-center gap-1 mb-4 h-[32px]">
+                        <button
+                            class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedGr2Tag() === "entrate" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                            onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "entrate" ? "" : "entrate")}
+                        >
+                            Entrate
+                        </button>
+                        <button
+                            class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedGr2Tag() === "uscite" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                            onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "uscite" ? "" : "uscite")}
+                        >
+                            Uscite
+                        </button>
+                    </div>
+                </>
             )}
 
             {/* View delle spese per anno */}
@@ -310,7 +368,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                     <h2 class="flex items-center justify-center h-[55px] text-lg font-semibold mb-2">
                         Cashflow annuale
                     </h2>
-                    <ul class="overflow-y-auto h-[calc(100vh-268px)]">
+                    <ul class="overflow-y-auto h-[calc(100vh-300px)]">
                         {groupByYear().map(([year, total]) => (
                             <li
                                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -361,7 +419,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         </div>
                         <div class="w-[40px]"></div>
                     </div>
-                    <ul class="overflow-y-auto h-[calc(100vh-268px)]">
+                    <ul class="overflow-y-auto h-[calc(100vh-300px)]">
                         {groupByMonth().map(([month, total]) => (
                             <li
                                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -412,7 +470,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         </div>
                         <div class="w-[40px]"></div>
                     </div>
-                    <ul class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
+                    <ul class="overflow-y-auto h-[calc(100vh-300px)] pb-40">
                         {groupByDate().map(([date, { total, spese }]) => (
                             <li
                                 class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -467,7 +525,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         <div class="w-[40px]"></div>
                     </div>
 
-                    <div class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
+                    <div class="overflow-y-auto h-[calc(100vh-300px)] pb-40">
                         {/* Sezione "CASH" */}
                         {getCashMovements().length > 0 && (
                             <div>
@@ -555,7 +613,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                                 </table>
                             </div>
                         )}
-                        
+
                         {getCashMovements().length > 0 && getCCMovements().length > 0 && (
                             <div class="flex justify-end text-lg mr-2 mt-8">
                                 <span class={
@@ -576,7 +634,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             )}
 
             {view() === 'singleDetail' && selectedMovement() && (
-                <div class="flex flex-col h-[calc(100vh-205px)]">
+                <div class="flex flex-col h-[calc(100vh-237px)]">
                     <div class="flex justify-between h-[55px] mb-2">
                         <button
                             class="w-[40px] bg-gray-100 font-bold text-black rounded"
@@ -585,13 +643,13 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                             <img src="/back.svg" alt="back" class="w-full h-auto" />
                         </button>
                         <div>
-                            <div class="text-lg text-center font-semibold">Dettaglio Movimento {selectedMovement().origin}</div>
+                            <div class="text-lg text-center font-semibold">Dettaglio Movimento {selectedMovement().origin === "CC" ? "CC" : "CASH"}</div>
                             <div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
                         </div>
                         <div class="w-[40px]"></div>
                     </div>
 
-                    <div class="px-2 overflow-y-auto h-[calc(100vh-340px)]">
+                    <div class="px-2 pt-4 overflow-y-auto h-[calc(100vh-372px)]">
                         <div class="mb-4">
                             <div class="font-semibold">Tipo</div>
                             <div class="text-gray-700">{selectedMovement().tipo || '-'}</div>
@@ -604,7 +662,7 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         )}
                         <div class="mb-4">
                             <div class="font-semibold">Importo</div>{' '}
-                            <div class="text-red-600">
+                            <div class={`${selectedMovement().importo > 0 ? "text-green-600" : "text-red-600"}`}>
                                 {new Intl.NumberFormat('it-IT', {
                                     style: 'decimal',
                                     minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
@@ -639,180 +697,25 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                         </div>
                     )}
 
-                    {/* Popup di conferma cancellazione */}
-                    {showDeletePopup() && (
-                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div class="bg-red-100 rounded-lg p-6 w-[90%] relative">
-                                <button
-                                    onClick={() => setShowDeletePopup(false)}
-                                    class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-                                >
-                                    <img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
-                                </button>
-                                <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
-                                    Verrà cancellato l'attuale movimento registrato in data{' '}
-                                    {new Date(selectedMovement().data_operazione).toLocaleDateString('it-IT')}
-                                </h2>
-                                <div class="flex justify-center gap-4 mt-6">
-                                    <button
-                                        onClick={() => {
-                                            setSelectedMovementId(selectedMovement().id); // Imposta l'ID della spesa
-                                            deleteSpesa(); // Chiama la funzione di cancellazione
-                                            setShowDeletePopup(false); // Nascondi il popup
-                                            setView('details'); // Torna alla view precedente
-                                        }}
-                                        class="px-4 py-2 w-full bg-red-500 text-white font-bold rounded hover:bg-red-600"
-                                    >
-                                        CONFERMA
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Popup per modificare una spesa */}
-                    {showEditPopup() && (
-                        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div class="bg-white rounded-lg p-6 w-[90%] relative">
-                                <button
-                                    onClick={() => setShowEditPopup(false)} // Chiudi il popup
-                                    class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-                                >
-                                    <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
-                                </button>
-
-                                <h2 class="text-lg font-bold mb-4 text-center">Modifica Spesa</h2>
-
-                                <form
-                                    onSubmit={async (e) => {
-                                        e.preventDefault();
-                                        await updateSpesa(); // Chiama la funzione per aggiornare la spesa
-                                        setShowEditPopup(false); // Chiudi il popup
-                                    }}
-                                >
-                                    {/* Campo data di competenza (non modificabile) */}
-                                    <div class="mb-4">
-                                        <label class="block text-sm font-medium mb-1">Data Competenza</label>
-                                        <input
-                                            type="date"
-                                            value={editCashMovement().data_operazione || ''}
-                                            class="w-full border rounded px-3 py-2 bg-gray-100 text-gray-500 cursor-not-allowed"
-                                            disabled
-                                        />
-                                    </div>
-
-                                    {/* Campi modificabili */}
-                                    {[
-                                        {
-                                            label: 'Tipo',
-                                            key: 'tipo',
-                                            options: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
-                                                "Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."],
-                                        },
-                                        {
-                                            label: 'Metodo di pagamento',
-                                            key: 'metodo_di_pagamento',
-                                            options: ["Presi dalla cassa in serata", "Presi dai cash"],
-                                        },
-                                    ].map(({ label, key, options }) => (
-                                        <div class="mb-4" key={key}>
-                                            <label class="block text-sm font-medium mb-1">{label}</label>
-                                            <select
-                                                value={editCashMovement()[key] || ''}
-                                                onInput={(e) =>
-                                                    setEditCashMovement({
-                                                        ...editCashMovement(),
-                                                        [key]: e.currentTarget.value,
-                                                    })
-                                                }
-                                                class="w-full border rounded px-3 py-2"
-                                            >
-                                                <option value="" disabled>
-                                                    Seleziona {label.toLowerCase()}
-                                                </option>
-                                                {options.map((option) => (
-                                                    <option value={option} key={option}>
-                                                        {option}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    ))}
-
-                                    {[{ label: 'Importo', key: 'importo' }
-                                    ].map(
-                                        ({ label, key }) => (
-                                            <div class="mb-4" key={key}>
-                                                <label class="block text-sm font-medium mb-1">{label}</label>
-                                                <input
-                                                    type="text"
-                                                    value={editCashMovement()[key]}
-                                                    onInput={(e) => {
-                                                        const input = e.currentTarget.value;
-
-                                                        // Sostituisci immediatamente "." con ","
-                                                        let sanitizedInput = input.replace('.', ',');
-
-                                                        // Rimuovi tutti i caratteri non validi (solo numeri e ",")
-                                                        sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
-
-                                                        // Aggiorna lo stato con il valore sanitizzato
-                                                        setEditCashMovement({
-                                                            ...editCashMovement(),
-                                                            [key]: sanitizedInput,
-                                                        });
-                                                    }}
-
-                                                    class={`w-full border rounded px-3 py-2 ${
-                                                        // Validazione: campo è rosso se contiene più di una virgola
-                                                        /^[0-9]*,?[0-9]*$/.test(editCashMovement()[key]) ? '' : 'text-red-500'
-                                                        }`}
-                                                />
-                                            </div>
-                                        )
-                                    )}
-
-                                    {[{ label: 'Descrizione', type: 'text', key: 'descrizione' }
-                                    ].map(
-                                        ({ label, type, key }) => (
-                                            <div class="mb-4" key={key}>
-                                                <label class="block text-sm font-medium mb-1">{label}</label>
-                                                <input
-                                                    type={type}
-                                                    value={editCashMovement()[key] || ''}
-                                                    onInput={(e) =>
-                                                        setEditCashMovement({
-                                                            ...editCashMovement(),
-                                                            [key]: type === 'number' ? +e.currentTarget.value || 0 : e.currentTarget.value,
-                                                        })
-                                                    }
-                                                    class="w-full border rounded px-3 py-2"
-                                                />
-                                            </div>
-                                        )
-                                    )}
-
-                                    {/* Pulsante di salvataggio */}
-                                    <div class="flex justify-center mt-8 w-full">
-                                        <button
-                                            type="submit"
-                                            class="px-4 py-2 w-full text-xl bg-blue-500 text-white rounded hover:bg-blue-600"
-                                        >
-                                            SALVA
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
                 </div>
             )}
 
             {/* Bottone rotondo */}
             {view() !== 'singleDetail' && (
                 <button
-                    onClick={() => setShowPopup(true)} // Mostra il popup
+                    onClick={() => {
+                        // Resetta i campi di newChiusura
+                        setNewCashMovement({
+                            data_operazione: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
+                            tipo: '',
+                            metodo_di_pagamento: '',
+                            importo: '',
+                            descrizione: '',
+                        });
+                        setNewMovementDirection(''); // reset della direzione
+                        // Mostra il popup
+                        setShowAddPopup(true);
+                    }}
                     class="fixed bottom-[106px] right-4 w-16 h-16 bg-blue-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-red-600"
                 >
                     <img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
@@ -820,11 +723,11 @@ const Cashflow = ({ cashflow, setCashflow }) => {
             )}
 
             {/* Popup per aggiungere una nuova spesa */}
-            {showPopup() && (
+            {showAddPopup() && (
                 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div class="bg-white rounded-lg p-6 w-[90%] relative">
                         <button
-                            onClick={() => setShowPopup(false)}
+                            onClick={() => setShowAddPopup(false)}
                             class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
                         >
                             <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
@@ -832,10 +735,28 @@ const Cashflow = ({ cashflow, setCashflow }) => {
 
                         <h2 class="text-lg font-semibold mb-4 text-center text-blue-800">Nuovo movimento CASH</h2>
 
+                        {/* Sezione per selezionare la direzione del movimento */}
+                        <div class="flex justify-center gap-1 mb-4">
+                            <button
+                                type="button"
+                                class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${newMovementDirection() === 'entrata' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+                                onClick={() => setNewMovementDirection('entrata')}
+                            >
+                                IN ENTRATA
+                            </button>
+                            <button
+                                type="button"
+                                class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${newMovementDirection() === 'uscita' ? 'bg-red-200 text-red-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+                                onClick={() => setNewMovementDirection('uscita')}
+                            >
+                                IN USCITA
+                            </button>
+                        </div>
+
                         <form
                             onSubmit={async (e) => {
                                 e.preventDefault();
-                                await addNewSpesa();
+                                await addNewCashMovement();
                             }}
                         >
 
@@ -850,17 +771,27 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                                 />
                             </div>
 
-                            {/* campo Tipo */}
+                            {/* Campo Tipo: le opzioni variano in base alla direzione */}
                             <div class="mb-4">
                                 <label class="block text-sm font-medium mb-1">Tipo</label>
                                 <select
                                     value={newCashMovement().tipo}
-                                    onInput={(e) => setNewCashMovement({ ...newCashMovement(), tipo: e.currentTarget.value, })}
+                                    onInput={(e) =>
+                                        setNewCashMovement({
+                                            ...newCashMovement(),
+                                            tipo: e.currentTarget.value,
+                                        })
+                                    }
                                     class="w-full border rounded px-3 py-2"
                                 >
-                                    <option value="" disabled>Seleziona tipo di spesa</option>
-                                    {["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
-                                        "Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."].map((option) => (
+                                    <option value="" disabled>Seleziona tipo</option>
+                                    {newMovementDirection() === 'entrata'
+                                        ? ["Deposito", "Altro..."].map((option) => (
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))
+                                        : ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali", "Spese bancarie", "Tasse", "Utenze", "Altro..."].map((option) => (
                                             <option value={option} key={option}>
                                                 {option}
                                             </option>
@@ -868,20 +799,31 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                                 </select>
                             </div>
 
-                            {/* campo Metodo di pagamento */}
+                            {/* Campo Metodo di pagamento: anche qui le opzioni variano */}
                             <div class="mb-4">
                                 <label class="block text-sm font-medium mb-1">Metodo di pagamento</label>
                                 <select
                                     value={newCashMovement().metodo_di_pagamento}
-                                    onInput={(e) => setNewCashMovement({ ...newCashMovement(), metodo_di_pagamento: e.currentTarget.value, })}
+                                    onInput={(e) =>
+                                        setNewCashMovement({
+                                            ...newCashMovement(),
+                                            metodo_di_pagamento: e.currentTarget.value,
+                                        })
+                                    }
                                     class="w-full border rounded px-3 py-2"
                                 >
                                     <option value="" disabled>Seleziona metodo di pagamento</option>
-                                    {["Presi dalla cassa in serata", "Presi dai cash"].map((option) => (
-                                        <option value={option} key={option}>
-                                            {option}
-                                        </option>
-                                    ))}
+                                    {newMovementDirection() === 'entrata'
+                                        ? ["Aggiunti ai cash"].map((option) => (
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))
+                                        : ["Presi dalla cassa in serata", "Presi dai cash"].map((option) => (
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))}
                                 </select>
                             </div>
 
@@ -917,6 +859,218 @@ const Cashflow = ({ cashflow, setCashflow }) => {
                                     type="text"
                                     value={newCashMovement().descrizione || ''}
                                     onInput={(e) => setNewCashMovement({ ...newCashMovement(), descrizione: e.currentTarget.value, })}
+                                    class="w-full border rounded px-3 py-2"
+                                />
+                            </div>
+
+                            <div class="flex justify-center mt-8 w-full">
+                                <button
+                                    type="submit"
+                                    class="px-4 py-2 w-full text-xl bg-blue-500 text-white rounded hover:bg-blue-600"
+                                >
+                                    SALVA
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Popup di conferma cancellazione */}
+            {showDeletePopup() && (
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-red-100 rounded-lg p-6 w-[90%] relative">
+                        <button
+                            onClick={() => setShowDeletePopup(false)}
+                            class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+                        >
+                            <img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
+                        </button>
+                        <h2 class="text-lg font-semibold mt-4 mb-4 text-center">
+                            Verrà cancellato l'attuale movimento registrato in data{' '}
+                            {new Date(selectedMovement().data_operazione).toLocaleDateString('it-IT')}
+                        </h2>
+                        <div class="flex justify-center gap-4 mt-6">
+                            <button
+                                onClick={() => {
+                                    setSelectedMovementId(selectedMovement().id); // Imposta l'ID della spesa
+                                    deleteCashMovement(); // Chiama la funzione di cancellazione
+                                    setShowDeletePopup(false); // Nascondi il popup
+                                    setView('details'); // Torna alla view precedente
+                                }}
+                                class="px-4 py-2 w-full bg-red-500 text-white font-bold rounded hover:bg-red-600"
+                            >
+                                CONFERMA
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Popup per modificare una spesa */}
+            {showEditPopup() && (
+                <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white rounded-lg p-6 w-[90%] relative">
+                        <button
+                            onClick={() => setShowEditPopup(false)}
+                            class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+                        >
+                            <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
+                        </button>
+
+                        <h2 class="text-lg font-bold mb-4 text-center">Modifica Movimento CASH</h2>
+
+                        {/* Sezione per selezionare la direzione del movimento */}
+                        <div class="flex justify-center gap-2 mb-4">
+                            <button
+                                type="button"
+                                class={`px-4 py-2 rounded ${editMovementDirection() === 'entrata' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+                                onClick={() => {
+                                    setEditMovementDirection('entrata');
+                                    // Resetta i campi "tipo" e "metodo_di_pagamento"
+                                    setEditCashMovement({
+                                        ...editCashMovement(),
+                                        tipo: '',
+                                        metodo_di_pagamento: '',
+                                    });
+                                }}
+                            >
+                                IN ENTRATA
+                            </button>
+                            <button
+                                type="button"
+                                class={`px-4 py-2 rounded ${editMovementDirection() === 'uscita' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+                                onClick={() => {
+                                    setEditMovementDirection('uscita');
+                                    setEditCashMovement({
+                                        ...editCashMovement(),
+                                        tipo: '',
+                                        metodo_di_pagamento: '',
+                                    });
+                                }}
+                            >
+                                IN USCITA
+                            </button>
+                        </div>
+
+                        <form
+                            onSubmit={async (e) => {
+                                e.preventDefault();
+                                await updateCashMovement(); // La funzione updateCashMovement usa editMovementDirection per impostare il segno
+                                setShowEditPopup(false);
+                            }}
+                        >
+                            {/* Campo Data Competenza (modificabile) */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Data Competenza</label>
+                                <input
+                                    type="date"
+                                    value={editCashMovement().data_operazione || ''}
+                                    onInput={(e) =>
+                                        setEditCashMovement({
+                                            ...editCashMovement(),
+                                            data_operazione: e.currentTarget.value,
+                                        })
+                                    }
+                                    class="w-full border rounded px-3 py-2"
+                                />
+                            </div>
+
+                            {/* Campo Tipo: opzioni condizionali in base alla direzione */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Tipo</label>
+                                <select
+                                    value={editCashMovement().tipo || ''}
+                                    onInput={(e) =>
+                                        setEditCashMovement({
+                                            ...editCashMovement(),
+                                            tipo: e.currentTarget.value,
+                                        })
+                                    }
+                                    class="w-full border rounded px-3 py-2"
+                                >
+                                    <option value="" disabled>Seleziona tipo</option>
+                                    {editMovementDirection() === 'entrata'
+                                        ? ["Deposito", "Altro..."].map((option) => (
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))
+                                        : ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali", "Spese bancarie", "Tasse", "Utenze", "Altro..."].map((option) => (
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))}
+                                </select>
+                            </div>
+
+                            {/* Campo Metodo di pagamento: opzioni condizionali */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Metodo di pagamento</label>
+                                <select
+                                    value={editCashMovement().metodo_di_pagamento || ''}
+                                    onInput={(e) =>
+                                        setEditCashMovement({
+                                            ...editCashMovement(),
+                                            metodo_di_pagamento: e.currentTarget.value,
+                                        })
+                                    }
+                                    class="w-full border rounded px-3 py-2"
+                                >
+                                    <option value="" disabled>Seleziona metodo di pagamento</option>
+                                    {editMovementDirection() === 'entrata'
+                                        ? ["Aggiunti ai cash"].map((option) => (
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))
+                                        : ["Presi dalla cassa in serata", "Presi dai cash"].map((option) => (
+                                            <option value={option} key={option}>
+                                                {option}
+                                            </option>
+                                        ))}
+                                </select>
+                            </div>
+
+                            {/* Campo Importo: mostra sempre il valore assoluto, con colore in base alla direzione */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Importo</label>
+                                <input
+                                    type="text"
+                                    value={
+                                        editCashMovement().importo
+                                            ? Math.abs(parseFloat(editCashMovement().importo.replace(',', '.')) || 0)
+                                                .toString()
+                                                .replace('.', ',')
+                                            : ''
+                                    }
+                                    onInput={(e) => {
+                                        const input = e.currentTarget.value;
+                                        let sanitizedInput = input.replace('.', ',');
+                                        sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+                                        setEditCashMovement({ ...editCashMovement(), importo: sanitizedInput });
+                                    }}
+                                    class={`w-full border rounded px-3 py-2 ${editMovementDirection() === 'entrata'
+                                        ? 'text-green-600'
+                                        : editMovementDirection() === 'uscita'
+                                            ? 'text-red-600'
+                                            : ''
+                                        }`}
+                                />
+                            </div>
+
+                            {/* Campo Descrizione */}
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium mb-1">Descrizione</label>
+                                <input
+                                    type="text"
+                                    value={editCashMovement().descrizione || ''}
+                                    onInput={(e) =>
+                                        setEditCashMovement({
+                                            ...editCashMovement(),
+                                            descrizione: e.currentTarget.value,
+                                        })
+                                    }
                                     class="w-full border rounded px-3 py-2"
                                 />
                             </div>

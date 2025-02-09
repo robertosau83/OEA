@@ -6,13 +6,13 @@ const [cashflow, setCashflow] = createSignal([]);
 const composeCashflow = async () => {
   try {
     // Fetch spese dalla tabella CASH
-    const { data: speseData, error: speseError } = await supabase
+    const { data: cashData, error: cashError } = await supabase
       .from('CASH')
       .select('*');
-    if (speseError) throw speseError;
+    if (cashError) throw cashError;
 
     // Aggiungi il campo origin="CASH" ai movimenti di CASH
-    const transformedSpeseData = speseData.map(row => ({
+    const transformedCashData = cashData.map(row => ({
       ...row,
       origin: "CASH",
     }));
@@ -72,12 +72,12 @@ const composeCashflow = async () => {
       origin: "CONTANTI CASSA",
       data_operazione: row.data_competenza,
       tipo: "Incasso contanti",
-      importo: row.contanti_cassa,
+      importo: row.contanti_cassa_lordo_spese_serata,
       descrizione: `Incasso contanti del ${row.data_competenza}`, // Formattazione della descrizione
     }));
 
     // Unisci i dati di CASH, CC e quadrature
-    setCashflow([...transformedSpeseData, ...transformedCCData, ...quadrature, ...transformedIncassiData]);
+    setCashflow([...transformedCashData, ...transformedCCData, ...quadrature, ...transformedIncassiData]);
   } catch (error) {
     console.error("Errore nel caricamento del cashflow:", error.message);
   }
