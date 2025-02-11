@@ -6,8 +6,7 @@ import decodeTipo from "../lib/decodeTipo"; // Importa la funzione decodeTipo
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "node_modules/pdfjs-dist/build/pdf.worker.min.mjs";
 
-const MovCC = ({ movCC, setMovCC }) => {
-  //const [movCC, setMovCC] = createSignal([]);
+const EstrattoCC = ({ cc, setCC }) => {
   const [fileName, setFileName] = createSignal(null);
   const [importedMovCC, setImportedMovCC] = createSignal([]);
   const [startDate, setStartDate] = createSignal("");
@@ -19,25 +18,24 @@ const MovCC = ({ movCC, setMovCC }) => {
 
   // Esegui il caricamento automatico dei dati dal database all'avvio del componente
   onMount(() => {
-    //console.log(movCC());
-    //setFilteredMovCC(movCC());
+    console.log(cc());
   });
 
   const filterMovements = () => {
-    let filtered = movCC();
+    let filtered = cc();
 
     if (startDate()) {
       console.log(startDate());
-      filtered = filtered.filter((row) => convertDateToISO(row.data_operazione) >= startDate());
+      filtered = filtered.filter((row) => row.data_operazione >= startDate());
     }
     if (endDate()) {
-      filtered = filtered.filter((row) => convertDateToISO(row.data_operazione) <= endDate());
+      filtered = filtered.filter((row) => row.data_operazione <= endDate());
     }
     if (showWithoutType()) {
       filtered = filtered.filter((row) => row.tipo === "");
     }
 
-    //console.log(filtered);
+    console.log(filtered);
 
     setFilteredMovCC(filtered);
   };
@@ -50,7 +48,7 @@ const MovCC = ({ movCC, setMovCC }) => {
 
   const formatDate = (date) => {
     if (!date) return "";
-    const [day, month, year] = date.split("/");
+    const [year, month, day] = date.split("-");
     return `${day}/${month}/${year.slice(-2)}`; // Prende solo le ultime due cifre dell'anno
   };
 
@@ -71,7 +69,7 @@ const MovCC = ({ movCC, setMovCC }) => {
       if (error) throw error;
 
       // Aggiorna lo stato locale
-      setMovCC(movCC().map((item) =>
+      setCC(cc().map((item) =>
         item.id === id ? { ...item, tipo } : item
       ));
 
@@ -181,9 +179,9 @@ const MovCC = ({ movCC, setMovCC }) => {
   const processImportedMovements = async () => {
     if (!importedMovCC().length) return;
 
-    // Se movCC è vuoto, inserisci tutti i movimenti da importedMovCC
-    if (!movCC().length) {
-      console.log("movCC è vuoto. Importazione di tutti i movimenti.");
+    // Se cc è vuoto, inserisci tutti i movimenti da importedMovCC
+    if (!cc().length) {
+      console.log("cc è vuoto. Importazione di tutti i movimenti.");
 
       // Ottieni il numero progressivo iniziale
       const maxPrg = 0;
@@ -212,9 +210,9 @@ const MovCC = ({ movCC, setMovCC }) => {
 
         console.log("Tutti i movimenti inseriti:", movementsWithPrg);
 
-        // Aggiorna lo stato locale movCC con i nuovi movimenti
+        // Aggiorna lo stato locale cc con i nuovi movimenti
         const updatedMovCC = movementsWithPrg.sort((a, b) => b.prg - a.prg); // Ordina in ordine decrescente di prg
-        setMovCC(updatedMovCC);
+        setCC(updatedMovCC);
 
         return; // Esci dalla funzione
       } catch (err) {
@@ -223,9 +221,9 @@ const MovCC = ({ movCC, setMovCC }) => {
       }
     }
 
-    // Se movCC non è vuoto, continua con l'elaborazione normale
+    // Se cc non è vuoto, continua con l'elaborazione normale
     const matchingIndex = importedMovCC().findIndex((imported) =>
-      movCC().some(
+      cc().some(
         (existing) =>
           imported.codice_identificativo === existing.codice_identificativo &&
           imported.data_operazione === existing.data_operazione &&
@@ -249,7 +247,7 @@ const MovCC = ({ movCC, setMovCC }) => {
     }
 
     // Ottieni il prg massimo attuale
-    const maxPrg = Math.max(...movCC().map((row) => row.prg));
+    const maxPrg = Math.max(...cc().map((row) => row.prg));
 
     // Aggiungi un nuovo prg partendo dall'ultimo elemento dell'array
     const movementsWithPrg = newMovements
@@ -275,12 +273,12 @@ const MovCC = ({ movCC, setMovCC }) => {
 
       console.log("Nuovi movimenti inseriti:", movementsForDB);
       alert("Movimenti inseriti correttamente");
-      // Aggiorna lo stato locale `movCC` con i nuovi movimenti
-      const updatedMovCC = [...movementsWithPrg, ...movCC()].sort(
+      // Aggiorna lo stato locale `cc` con i nuovi movimenti
+      const updatedMovCC = [...movementsWithPrg, ...cc()].sort(
         (a, b) => b.prg - a.prg // Ordina in ordine decrescente di `prg`
       );
 
-      setMovCC(updatedMovCC);
+      setCC(updatedMovCC);
     } catch (err) {
       console.error("Errore durante l'inserimento dei nuovi movimenti:", err.message);
     }
@@ -292,7 +290,7 @@ const MovCC = ({ movCC, setMovCC }) => {
       <div class="flex items-center justify-between h-[50px]">
         <div class="pl-2 text-lg font-semibold">
           Saldo CC:
-          <span class="text-green-800"> {movCC().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
+          <span class="text-green-800"> {cc().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           })} €
@@ -408,4 +406,4 @@ const MovCC = ({ movCC, setMovCC }) => {
   );
 };
 
-export default MovCC;
+export default EstrattoCC;

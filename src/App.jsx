@@ -2,12 +2,12 @@ import { createSignal, onMount, createEffect } from 'solid-js';
 import { supabase } from './lib/supabaseClient.js';
 import Chiusure from './components/Chiusure.jsx';
 import Cashflow from './components/Cashflow.jsx';
-import MovCC from './components/MovCC.jsx';
+import EstrattoCC from './components/EstrattoCC.jsx';
 import Stats from './components/Stats.jsx';
 import { cashflow, setCashflow, composeCashflow } from './lib/composeCashflow.js'; // Importa cashflow
 import loadDataFromDB from "./lib/loadDataFromDB.js";
 import composeLocalStates from "./lib/composeLocalStates.js";
- 
+
 const App = ({ onLogout }) => {
   const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
   const [isLoading, setIsLoading] = createSignal(true);
@@ -16,49 +16,6 @@ const App = ({ onLogout }) => {
   const [cc, setCC] = createSignal([]);
   const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
   const [isMenuOpen, setIsMenuOpen] = createSignal(false);
-
-  // Funzione per caricare i dati dal database
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-
-      // Fetch incassi
-      const { data: incassiData, error: incassiError } = await supabase
-        .from('incassi')
-        .select('*');
-      if (incassiError) throw incassiError;
-
-      setIncassi(incassiData || []);
-
-      const { data: movCCData, error: movCCError } = await supabase
-        .from("CC")
-        .select("id, prg, codice_identificativo, data_operazione, data_valuta, descrizione, importo, tipo")
-        .order("prg", { ascending: false }); // Ordina per prg decrescente
-
-      if (movCCError) throw movCCError;
-
-      // Formatta le date nel formato "gg/mm/aaaa"
-      const formattedMovCCData = movCCData.map((row) => ({
-        ...row,
-        data_operazione: formatDate(row.data_operazione),
-        data_valuta: formatDate(row.data_valuta),
-      }));
-
-      // Imposta i dati nello stato locale
-      setMovCC(formattedMovCCData);
-      //console.log(movCC());
-
-      // Carica cashflow
-      await composeCashflow();
-
-      console.log(cashflow());
-
-    } catch (error) {
-      console.error("Errore nel caricamento dei dati:", error.message);
-    } finally {
-      setIsLoading(false); // Fine del caricamento
-    }
-  };
 
   // Esegui il caricamento dei dati quando il componente viene montato
   onMount(async () => {
@@ -69,8 +26,8 @@ const App = ({ onLogout }) => {
     setIsLoading(false);
   });
 
-   // Effetto reattivo: ogni volta che chiusure() o cash() cambiano, compone le chiusure con spese
-   createEffect(() => {
+  // Effetto reattivo: ogni volta che chiusure() o cash() cambiano, compone le chiusure con spese
+  createEffect(() => {
     // Vengono richiamati chiusure() e cash() per stabilire la dipendenza
     composeLocalStates(chiusure(), cash(), cc(), setChiusureConSpese, setCashflow);
     //console.log(chiusureConSpese());
@@ -85,7 +42,7 @@ const App = ({ onLogout }) => {
 
   const sharedProps = {
     chiusure, setChiusure,
-    cash, setCash, 
+    cash, setCash,
     cc, setCC,
     chiusureConSpese, setChiusureConSpese,
     cashflow,
@@ -102,8 +59,8 @@ const App = ({ onLogout }) => {
     if (currentBtmBarComponentName() === "Cashflow") {
       return <Cashflow {...sharedProps} />;
     }
-    if (currentBtmBarComponentName() === "MovCC") {
-      return <MovCC {...sharedProps} />;
+    if (currentBtmBarComponentName() === "EstrattoCC") {
+      return <EstrattoCC {...sharedProps} />;
     }
     return null; // In caso di valore non gestito
   };
@@ -135,7 +92,7 @@ const App = ({ onLogout }) => {
               <button
                 class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
                 onClick={() => {
-                  setCurrentBtmBarComponentName("MovCC");
+                  setCurrentBtmBarComponentName("EstrattoCC");
                   setIsMenuOpen(false);
                 }}
               >
@@ -151,53 +108,41 @@ const App = ({ onLogout }) => {
           </div>
 
           {/* Top Bar */}
-          <div class="bg-blue-500 text-white flex justify-between items-center min-h-[56px]">
-            <button onClick={() => setIsMenuOpen(true)} class="pl-3">
-              <img src="/menu.svg" alt="Menu" class="h-10 mx-auto" />
-            </button>
+          <div class="flex-none bg-blue-500 text-white h-[56px]">
+            <div class="flex h-full items-center justify-between">
+              <button onClick={() => setIsMenuOpen(true)} class="pl-3">
+                <img src="/menu.svg" alt="Menu" class="h-10 mx-auto" />
+              </button>
+            </div>
           </div>
 
           {/* Main Content */}
-          <div class="flex-grow bg-gray-100">
+          <div class="flex-grow overflow-hidden bg-gray-100">
             {renderMainContent()}
           </div>
 
           {/* Bottom Bar */}
-          <div class="flex bg-white border-t h-[92px] min-h-[92px] max-h-[92px]">
-            <button
-              onClick={() => setCurrentBtmBarComponentName("Chiusure")}
-              class={`flex-1 text-center ${currentBtmBarComponentName() === "Chiusure" ? 'bg-gray-200' : ''
-                }`}
-            >
-              <img src="/cash-register.svg" alt="Chiusure" class="h-8 mx-auto mb-1" />
-              Chiusure
-            </button>
-            {/* <button
-              onClick={() => setCurrentBtmBarComponentName("Stats")}
-              class={`flex-1 text-center hover:bg-gray-200 ${currentBtmBarComponentName() === "Stats" ? 'bg-gray-200' : ''
-                }`}
-            >
-              <img src="/stats.svg" alt="Fornitori" class="h-8 mx-auto mb-1" />
-              Stats
-            </button> */}
-            <button
-              onClick={() => setCurrentBtmBarComponentName("Cashflow")}
-              class={`flex-1 text-center ${currentBtmBarComponentName() === "Cashflow" ? 'bg-gray-200' : ''
-                }`}
-            >
-              <img src="/cashflow.png" alt="Spese" class="h-8 mx-auto mb-1" />
-              Cashflow
-            </button>
-            {/* <button
-              onClick={() => setCurrentBtmBarComponentName("MovCC")}
-              class={`flex-1 text-center ${currentBtmBarComponentName() === "MovCC" ? 'bg-gray-200' : ''
-                }`}
-            >
-              <img src="/bank-account.svg" alt="MovCC" class="h-8 mx-auto mb-1" />
-              CC
-            </button> */}
+          <footer class="flex-none bg-white border-t h-[92px]">
+            <div class="flex h-full">
+              <button
+                onClick={() => setCurrentBtmBarComponentName("Chiusure")}
+                class={`flex-1 text-center ${currentBtmBarComponentName() === "Chiusure" ? 'bg-gray-200' : ''
+                  }`}
+              >
+                <img src="/cash-register.svg" alt="Chiusure" class="h-8 mx-auto mb-1" />
+                Chiusure
+              </button>
 
-          </div>
+              <button
+                onClick={() => setCurrentBtmBarComponentName("Cashflow")}
+                class={`flex-1 text-center ${currentBtmBarComponentName() === "Cashflow" ? 'bg-gray-200' : ''
+                  }`}
+              >
+                <img src="/cashflow.png" alt="Spese" class="h-8 mx-auto mb-1" />
+                Cashflow
+              </button>
+            </div>
+          </footer>
         </>
       )}
     </div>

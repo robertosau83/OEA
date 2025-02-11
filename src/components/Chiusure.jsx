@@ -307,7 +307,7 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
   };
 
   return (
-    <div class="px-2 pt-2">
+    <div class="flex flex-col h-full px-2 pt-2">
 
       {/* tags */}
       {view() !== 'detail' && (
@@ -444,9 +444,13 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
 
       {/* View degli incassi giornalieri */}
       {view() === 'day' && (
-        <div>
-          <div class="flex justify-between h-[55px] mb-2">
-            <button class="w-[40px] bg-gray-100 font-bold text-black rounded" onClick={() => setView('month')}>
+        <div class="flex flex-col h-full">
+          {/* Intestazione fissa */}
+          <div class="flex-none flex justify-between items-center h-[55px] mb-2">
+            <button
+              class="w-[40px] bg-gray-100 font-bold text-black rounded"
+              onClick={() => setView('month')}
+            >
               <img src="/back.svg" alt="back" class="w-full h-auto" />
             </button>
             <div>
@@ -456,43 +460,46 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
             <div class="w-[40px]"></div>
           </div>
 
-          <ul class="overflow-y-auto h-[calc(100vh-268px)] pb-40">
-            {filterByDay().map((entry) => (
-              <li
-                class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
-                onClick={() => {
-                  setSelectedDay(entry.data_competenza);
-                  setView('detail');
-                }}
-              >
-                <div class="flex justify-between">
-                  <span class="">{new Date(entry.data_competenza).toLocaleDateString()}</span>
-                  <span class="text-green-600">
+          {/* Area scrollabile */}
+          <div class="flex-grow overflow-y-auto pb-40">
+            <ul>
+              {filterByDay().map((entry) => (
+                <li
+                  key={entry.data_competenza}
+                  class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+                  onClick={() => {
+                    setSelectedDay(entry.data_competenza);
+                    setView('detail');
+                  }}
+                >
+                  <div class="flex justify-between">
+                    <span>{new Date(entry.data_competenza).toLocaleDateString()}</span>
+                    <span class="text-green-600">
+                      {new Intl.NumberFormat('it-IT', {
+                        style: 'decimal',
+                        maximumFractionDigits: 0,
+                      }).format(Math.round(entry.total))} €
+                    </span>
+                  </div>
+                </li>
+              ))}
+
+              {/* Totale complessivo del mese selezionato */}
+              <li class="py-2 px-4 bg-gray-100 font-semibold">
+                <div class="flex justify-end">
+                  <span class="text-green-800 font-bold">
                     {new Intl.NumberFormat('it-IT', {
                       style: 'decimal',
                       maximumFractionDigits: 0,
-                    }).format(Math.round(entry.total))}{' '}
-                    €
+                    }).format(calculateTotalByTag(filterByDay()))} €
                   </span>
                 </div>
               </li>
-            ))}
-
-            {/* Totale complessivo del mese selezionato */}
-            <li class="py-2 px-4 bg-gray-100 font-semibold">
-              <div class="flex justify-end">
-                {/* <span>Totale giornaliero</span> */}
-                <span class="text-green-800 font-bold">
-                  {new Intl.NumberFormat('it-IT', {
-                    style: 'decimal',
-                    maximumFractionDigits: 0,
-                  }).format(calculateTotalByTag(filterByDay()))} €
-                </span>
-              </div>
-            </li>
-          </ul>
+            </ul>
+          </div>
         </div>
       )}
+
 
       {/* View di dettaglio per un giorno */}
       {view() === 'detail' && (

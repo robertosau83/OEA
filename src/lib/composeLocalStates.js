@@ -115,7 +115,7 @@ const composeLocalStates = (chiusure, cash, cc, setChiusureConSpese, setCashflow
 
     // Aggiorniamo lo stato locale cashflow
     setCashflow(combinedCashflow);
-    console.log(cashflow());
+    //console.log(cashflow());
 };
 
 export default composeLocalStates;
