@@ -23,7 +23,8 @@ const loadDataFromDB = async (setChiusure, setCash, setCC) => {
     // Fetch movimenti dalla tabella CC
     const { data: ccData, error: ccError } = await supabase
       .from('CC')
-      .select('*');
+      .select('*')
+		.order('prg', { ascending: false }); // Ordina per 'prg' in ordine decrescente
     if (ccError) throw ccError;
 
     setCC(ccData || []);

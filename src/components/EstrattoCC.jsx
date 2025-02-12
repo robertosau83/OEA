@@ -1,409 +1,528 @@
-import { createSignal, onMount } from "solid-js";
+import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
 import * as pdfjsLib from "pdfjs-dist";
 import { supabase } from "../lib/supabaseClient"; // Assicurati che il client Supabase sia configurato
 import decodeTipo from "../lib/decodeTipo"; // Importa la funzione decodeTipo
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
-  "node_modules/pdfjs-dist/build/pdf.worker.min.mjs";
+	"node_modules/pdfjs-dist/build/pdf.worker.min.mjs";
 
 const EstrattoCC = ({ cc, setCC }) => {
-  const [fileName, setFileName] = createSignal(null);
-  const [importedMovCC, setImportedMovCC] = createSignal([]);
-  const [startDate, setStartDate] = createSignal("");
-  const [endDate, setEndDate] = createSignal("");
-  const [showWithoutType, setShowWithoutType] = createSignal(false);
-  const [filteredMovCC, setFilteredMovCC] = createSignal([]);
-  const [showPopup, setShowPopup] = createSignal(false);
-  const [selectedRow, setSelectedRow] = createSignal(null);
+	const [fileName, setFileName] = createSignal(null);
+	const [importedMovCC, setImportedMovCC] = createSignal([]);
+	const [startDate, setStartDate] = createSignal("");
+	const [endDate, setEndDate] = createSignal("");
+	const [movementFilter, setMovementFilter] = createSignal("all"); // "all", "inEntrata" o "inUscita"
+	const [showSearch, setShowSearch] = createSignal(false);
+	const [showWithoutType, setShowWithoutType] = createSignal(false);
+	const [filteredMovCC, setFilteredMovCC] = createSignal([]);
+	const [showPopup, setShowPopup] = createSignal(false);
+	const [selectedRow, setSelectedRow] = createSignal(null);
+	const [firstOpDate, setFirstOpDate] = createSignal("");
+	const [lastOpDate, setLastOpDate] = createSignal("");
+	const [isLandscape, setIsLandscape] = createSignal(false);
 
-  // Esegui il caricamento automatico dei dati dal database all'avvio del componente
-  onMount(() => {
-    console.log(cc());
-  });
+	// Esegui il caricamento automatico dei dati dal database all'avvio del componente
+	onMount(() => {
+		getFirstAndLastOpDate();
+		//console.log(firstOpDate(), lastOpDate());
+		//console.log(cc());
+		const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
+		updateOrientation();
+		window.addEventListener("resize", updateOrientation);
+		onCleanup(() => window.removeEventListener("resize", updateOrientation));
+	});
 
-  const filterMovements = () => {
-    let filtered = cc();
+	const getFirstAndLastOpDate = () => {
+		if (!cc().length) {
+			setFirstOpDate("");
+			setLastOpDate("");
+			return;
+		}
 
-    if (startDate()) {
-      console.log(startDate());
-      filtered = filtered.filter((row) => row.data_operazione >= startDate());
-    }
-    if (endDate()) {
-      filtered = filtered.filter((row) => row.data_operazione <= endDate());
-    }
-    if (showWithoutType()) {
-      filtered = filtered.filter((row) => row.tipo === "");
-    }
+		// Inizializza con il primo elemento dell'array
+		let minDate = cc()[0].data_operazione;
+		let maxDate = cc()[0].data_operazione;
 
-    console.log(filtered);
+		// Itera su cc() per trovare le date minime e massime
+		cc().forEach((item) => {
+			// Confronto diretto in formato ISO è valido
+			if (item.data_operazione < minDate) {
+				minDate = item.data_operazione;
+			}
+			if (item.data_operazione > maxDate) {
+				maxDate = item.data_operazione;
+			}
+		});
 
-    setFilteredMovCC(filtered);
-  };
+		setFirstOpDate(minDate);
+		setLastOpDate(maxDate);
+	};
 
-  const convertDateToISO = (date) => {
-    if (!date) return "";
-    const [day, month, year] = date.split("/");
-    return `${year}-${month}-${day}`;
-  };
+	const filterMovements = () => {
+		let filtered = cc();
 
-  const formatDate = (date) => {
-    if (!date) return "";
-    const [year, month, day] = date.split("-");
-    return `${day}/${month}/${year.slice(-2)}`; // Prende solo le ultime due cifre dell'anno
-  };
+		if (startDate()) {
+			filtered = filtered.filter((row) => row.data_operazione >= startDate());
+		}
+		if (endDate()) {
+			filtered = filtered.filter((row) => row.data_operazione <= endDate());
+		}
+		if (showWithoutType()) {
+			filtered = filtered.filter((row) => row.tipo === "");
+		}
 
-  const getOptions = (importo) => {
-    return importo > 0
-      ? ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro"]
-      : ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
-         "Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."];
-  };
+		// Aggiungi il filtro per importi:
+		if (movementFilter() === "inEntrata") {
+			filtered = filtered.filter((row) => row.importo > 0);
+		} else if (movementFilter() === "inUscita") {
+			filtered = filtered.filter((row) => row.importo < 0);
+		}
 
-  const updateTipo = async (id, tipo) => {
-    try {
-      const { error } = await supabase
-        .from("CC")
-        .update({ tipo })
-        .eq("id", id);
+		setFilteredMovCC(filtered);
+	};
 
-      if (error) throw error;
+	// Filtro automatico: viene eseguito ogni volta che cambiano startDate, endDate o showWithoutType
+	createEffect(() => {
+		// La lettura di questi segnali crea una dipendenza
+		startDate();
+		endDate();
+		showWithoutType();
+		filterMovements();
+	});
 
-      // Aggiorna lo stato locale
-      setCC(cc().map((item) =>
-        item.id === id ? { ...item, tipo } : item
-      ));
+	const convertDateToISO = (date) => {
+		if (!date) return "";
+		const [day, month, year] = date.split("/");
+		return `${year}-${month}-${day}`;
+	};
 
-      setFilteredMovCC(filteredMovCC().map((item) =>
-        item.id === id ? { ...item, tipo } : item
-      ));
+	const formatDate = (date) => {
+		if (!date) return "";
+		const [year, month, day] = date.split("-");
+		return `${day}/${month}/${year.slice(-2)}`; // Prende solo le ultime due cifre dell'anno
+	};
 
-      setShowPopup(false);
-    } catch (err) {
-      console.error("Errore aggiornando il tipo:", err.message);
-    }
-  };
+	const getOptions = (importo) => {
+		return importo > 0
+			? ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro"]
+			: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
+				"Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."];
+	};
 
-  //Funzione per caricare il PDF dal disco
-  const handleFileUpload = async (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setFileName(file.name);
-      const fileReader = new FileReader();
+	const updateTipo = async (id, tipo) => {
+		try {
+			const { error } = await supabase
+				.from("CC")
+				.update({ tipo })
+				.eq("id", id);
 
-      fileReader.onload = async () => {
-        const typedArray = new Uint8Array(fileReader.result);
-        const pdf = await pdfjsLib.getDocument(typedArray).promise;
+			if (error) throw error;
 
-        let allTextContent = []; // Array per contenere tutti gli oggetti textContent.items
+			// Aggiorna lo stato locale
+			setCC(cc().map((item) =>
+				item.id === id ? { ...item, tipo } : item
+			));
 
-        for (let i = 1; i <= pdf.numPages; i++) {
-          const page = await pdf.getPage(i);
-          const textContent = await page.getTextContent();
+			setFilteredMovCC(filteredMovCC().map((item) =>
+				item.id === id ? { ...item, tipo } : item
+			));
 
-          // Concatena gli oggetti estratti nella variabile globale
-          allTextContent = allTextContent.concat(textContent.items);
-        }
+			setShowPopup(false);
+		} catch (err) {
+			console.error("Errore aggiornando il tipo:", err.message);
+		}
+	};
 
-        // Passa l'array completo al prossimo step di elaborazione
-        processPDFContent(allTextContent);
-      };
+	//Funzione per caricare il PDF dal disco
+	const handleFileUpload = async (event) => {
+		const file = event.target.files[0];
+		if (file) {
+			setFileName(file.name);
+			const fileReader = new FileReader();
 
-      fileReader.readAsArrayBuffer(file);
-    }
-  };
+			fileReader.onload = async () => {
+				const typedArray = new Uint8Array(fileReader.result);
+				const pdf = await pdfjsLib.getDocument(typedArray).promise;
 
-  // Funzione per processare il contenuto del PDF
-  const processPDFContent = (allTextContent) => {
-    const rows = []; // Array per memorizzare le righe
-    let currentRow = []; // Array temporaneo per costruire la riga corrente
+				let allTextContent = []; // Array per contenere tutti gli oggetti textContent.items
 
-    const isDate = (str) => /^\d{2}\/\d{2}\/\d{4}$/.test(str); // Controlla se è una data
-    const isDecimal = (str) => /^[+-]?\d+(\.\d{1,2}|,\d{1,2})$/.test(str); // Controlla se è un numero decimale
-    const isCurrency = (str) => str === "EUR"; // Controlla se è "EUR"
+				for (let i = 1; i <= pdf.numPages; i++) {
+					const page = await pdf.getPage(i);
+					const textContent = await page.getTextContent();
 
-    //console.log(allTextContent);
+					// Concatena gli oggetti estratti nella variabile globale
+					allTextContent = allTextContent.concat(textContent.items);
+				}
 
-    let i = 0;
-    while (i < allTextContent.length) {
-      const text = allTextContent[i].str;
+				// Passa l'array completo al prossimo step di elaborazione
+				processPDFContent(allTextContent);
+			};
 
-      if (isDate(text) && !currentRow.data_operazione) {
-        // Primo campo: data operazione
-        currentRow.codice_identificativo = parseInt(allTextContent[i - 2]?.str || ""); // Codice identificativo (2 elementi prima)
-        currentRow.data_operazione = text;
-        i++;
-        continue;
-      }
+			fileReader.readAsArrayBuffer(file);
+		}
+	};
 
-      if (isDate(text) && !currentRow.data_valuta) {
-        // Secondo campo: data valuta
-        currentRow.data_valuta = text;
-        i++;
-        continue;
-      }
+	// Funzione per processare il contenuto del PDF
+	const processPDFContent = (allTextContent) => {
+		const rows = []; // Array per memorizzare le righe
+		let currentRow = []; // Array temporaneo per costruire la riga corrente
 
-      if (!isCurrency(text) && !isDecimal(text.replace(/\./g, "")) && text.trim() !== "" && currentRow.data_operazione && currentRow.data_valuta) {
-        if (!currentRow.descrizione) {
-          currentRow.descrizione = text;
-          //console.log(currentRow.descrizione);
-          i++;
-          continue;
-        } else {
-          // Se già esiste una descrizione, aggiungiamo il testo a quella esistente
-          currentRow.descrizione += ` ${text}`;
-          i++;
-          continue;
-        }
+		const isDate = (str) => /^\d{2}\/\d{2}\/\d{4}$/.test(str); // Controlla se è una data
+		const isDecimal = (str) => /^[+-]?\d+(\.\d{1,2}|,\d{1,2})$/.test(str); // Controlla se è un numero decimale
+		const isCurrency = (str) => str === "EUR"; // Controlla se è "EUR"
 
-      }
+		//console.log(allTextContent);
 
-      if (isDecimal(text.replace(/\./g, "")) && !currentRow.importo && currentRow.data_operazione && currentRow.data_valuta) {
-        //console.log(text);
-        currentRow.importo = parseFloat(text.replace(/\./g, "").replace(",", ".")); // Converti stringa a numero
-        currentRow.tipo = decodeTipo(currentRow.importo, currentRow.descrizione); // Usa la funzione decodeTipo
-        rows.push(currentRow); // Aggiungi l'oggetto alla lista
-        currentRow = {}; // Reset per la prossima riga
-        i++;
-        continue;
-      }
+		let i = 0;
+		while (i < allTextContent.length) {
+			const text = allTextContent[i].str;
 
-      i++;
-    }
+			if (isDate(text) && !currentRow.data_operazione) {
+				// Primo campo: data operazione
+				currentRow.codice_identificativo = parseInt(allTextContent[i - 2]?.str || ""); // Codice identificativo (2 elementi prima)
+				currentRow.data_operazione = text;
+				i++;
+				continue;
+			}
 
-    setImportedMovCC(rows); // Imposta lo stato con le righe elaborate
-    console.log(importedMovCC());
-    processImportedMovements();
-    //console.log(importedMovCC());
-  };
+			if (isDate(text) && !currentRow.data_valuta) {
+				// Secondo campo: data valuta
+				currentRow.data_valuta = text;
+				i++;
+				continue;
+			}
 
-  const processImportedMovements = async () => {
-    if (!importedMovCC().length) return;
+			if (!isCurrency(text) && !isDecimal(text.replace(/\./g, "")) && text.trim() !== "" && currentRow.data_operazione && currentRow.data_valuta) {
+				if (!currentRow.descrizione) {
+					currentRow.descrizione = text;
+					//console.log(currentRow.descrizione);
+					i++;
+					continue;
+				} else {
+					// Se già esiste una descrizione, aggiungiamo il testo a quella esistente
+					currentRow.descrizione += ` ${text}`;
+					i++;
+					continue;
+				}
 
-    // Se cc è vuoto, inserisci tutti i movimenti da importedMovCC
-    if (!cc().length) {
-      console.log("cc è vuoto. Importazione di tutti i movimenti.");
+			}
 
-      // Ottieni il numero progressivo iniziale
-      const maxPrg = 0;
+			if (isDecimal(text.replace(/\./g, "")) && !currentRow.importo && currentRow.data_operazione && currentRow.data_valuta) {
+				//console.log(text);
+				currentRow.importo = parseFloat(text.replace(/\./g, "").replace(",", ".")); // Converti stringa a numero
+				currentRow.tipo = decodeTipo(currentRow.importo, currentRow.descrizione); // Usa la funzione decodeTipo
+				rows.push(currentRow); // Aggiungi l'oggetto alla lista
+				currentRow = {}; // Reset per la prossima riga
+				i++;
+				continue;
+			}
 
-      // Aggiungi un nuovo prg ai movimenti
-      const movementsWithPrg = importedMovCC()
-        .map((movement, index, arr) => ({
-          ...movement,
-          prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
-        }))
-        .reverse(); // Inverti l'array finale per mantenere l'ordine corretto
+			i++;
+		}
 
-      // Costante per il database: conversione delle date a ISO
-      const movementsForDB = movementsWithPrg.map((movement) => ({
-        ...movement,
-        data_operazione: convertDateToISO(movement.data_operazione),
-        data_valuta: convertDateToISO(movement.data_valuta),
-      }));
+		setImportedMovCC(rows); // Imposta lo stato con le righe elaborate
+		console.log(importedMovCC());
+		processImportedMovements();
+		//console.log(importedMovCC());
+	};
 
-      try {
-        // Inserisci nel database
-        const { error } = await supabase.from("CC").insert(movementsForDB);
-        if (error) {
-          throw error;
-        }
+	const processImportedMovements = async () => {
+		if (!importedMovCC().length) return;
 
-        console.log("Tutti i movimenti inseriti:", movementsWithPrg);
+		// Se cc è vuoto, inserisci tutti i movimenti da importedMovCC
+		if (!cc().length) {
+			console.log("cc è vuoto. Importazione di tutti i movimenti.");
 
-        // Aggiorna lo stato locale cc con i nuovi movimenti
-        const updatedMovCC = movementsWithPrg.sort((a, b) => b.prg - a.prg); // Ordina in ordine decrescente di prg
-        setCC(updatedMovCC);
+			// Ottieni il numero progressivo iniziale
+			const maxPrg = 0;
 
-        return; // Esci dalla funzione
-      } catch (err) {
-        console.error("Errore durante l'inserimento dei movimenti:", err.message);
-        return;
-      }
-    }
+			// Aggiungi un nuovo prg ai movimenti
+			const movementsWithPrg = importedMovCC()
+				.map((movement, index, arr) => ({
+					...movement,
+					prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
+				}))
+				.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
-    // Se cc non è vuoto, continua con l'elaborazione normale
-    const matchingIndex = importedMovCC().findIndex((imported) =>
-      cc().some(
-        (existing) =>
-          imported.codice_identificativo === existing.codice_identificativo &&
-          imported.data_operazione === existing.data_operazione &&
-          imported.data_valuta === existing.data_valuta &&
-          imported.descrizione === existing.descrizione &&
-          imported.importo === existing.importo
-      )
-    );
+			// Costante per il database: conversione delle date a ISO
+			const movementsForDB = movementsWithPrg.map((movement) => ({
+				...movement,
+				data_operazione: convertDateToISO(movement.data_operazione),
+				data_valuta: convertDateToISO(movement.data_valuta),
+			}));
 
-    if (matchingIndex === -1) {
-      alert("Nessuna corrispondenza trovata con i movimenti attuali.");
-      return;
-    }
+			try {
+				// Inserisci nel database
+				const { error } = await supabase.from("CC").insert(movementsForDB);
+				if (error) {
+					throw error;
+				}
 
-    // Ottieni le righe da inserire
-    const newMovements = importedMovCC().slice(0, matchingIndex);
+				console.log("Tutti i movimenti inseriti:", movementsWithPrg);
 
-    if (!newMovements.length) {
-      alert("Nessun nuovo movimento da inserire.");
-      return;
-    }
+				// Aggiorna lo stato locale cc con i nuovi movimenti
+				const updatedMovCC = movementsWithPrg.sort((a, b) => b.prg - a.prg); // Ordina in ordine decrescente di prg
+				setCC(updatedMovCC);
 
-    // Ottieni il prg massimo attuale
-    const maxPrg = Math.max(...cc().map((row) => row.prg));
+				return; // Esci dalla funzione
+			} catch (err) {
+				console.error("Errore durante l'inserimento dei movimenti:", err.message);
+				return;
+			}
+		}
 
-    // Aggiungi un nuovo prg partendo dall'ultimo elemento dell'array
-    const movementsWithPrg = newMovements
-      .map((movement, index, arr) => ({
-        ...movement,
-        prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
-      }))
-      .reverse(); // Inverti l'array finale per mantenere l'ordine corretto
+		// Se cc non è vuoto, continua con l'elaborazione normale
+		const matchingIndex = importedMovCC().findIndex((imported) =>
+			cc().some(
+				(existing) =>
+					imported.codice_identificativo === existing.codice_identificativo &&
+					imported.data_operazione === existing.data_operazione &&
+					imported.data_valuta === existing.data_valuta &&
+					imported.descrizione === existing.descrizione &&
+					imported.importo === existing.importo
+			)
+		);
 
-    // Costante per il database: conversione delle date a ISO
-    const movementsForDB = movementsWithPrg.map((movement) => ({
-      ...movement,
-      data_operazione: convertDateToISO(movement.data_operazione),
-      data_valuta: convertDateToISO(movement.data_valuta),
-    }));
+		if (matchingIndex === -1) {
+			alert("Nessuna corrispondenza trovata con i movimenti attuali.");
+			return;
+		}
 
-    try {
-      // Inserisci nel database
-      const { error } = await supabase.from("CC").insert(movementsForDB);
-      if (error) {
-        throw error;
-      }
+		// Ottieni le righe da inserire
+		const newMovements = importedMovCC().slice(0, matchingIndex);
 
-      console.log("Nuovi movimenti inseriti:", movementsForDB);
-      alert("Movimenti inseriti correttamente");
-      // Aggiorna lo stato locale `cc` con i nuovi movimenti
-      const updatedMovCC = [...movementsWithPrg, ...cc()].sort(
-        (a, b) => b.prg - a.prg // Ordina in ordine decrescente di `prg`
-      );
+		if (!newMovements.length) {
+			alert("Nessun nuovo movimento da inserire.");
+			return;
+		}
 
-      setCC(updatedMovCC);
-    } catch (err) {
-      console.error("Errore durante l'inserimento dei nuovi movimenti:", err.message);
-    }
-  };
+		// Ottieni il prg massimo attuale
+		const maxPrg = Math.max(...cc().map((row) => row.prg));
 
-  return (
-    <div class="">
+		// Aggiungi un nuovo prg partendo dall'ultimo elemento dell'array
+		const movementsWithPrg = newMovements
+			.map((movement, index, arr) => ({
+				...movement,
+				prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
+			}))
+			.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
-      <div class="flex items-center justify-between h-[50px]">
-        <div class="pl-2 text-lg font-semibold">
-          Saldo CC:
-          <span class="text-green-800"> {cc().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })} €
-          </span>
-        </div>
-        <div>
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileUpload}
-            class="hidden"
-            id="file-upload"
-          />
-          <label
-            for="file-upload"
-            class="cursor-pointer bg-blue-500 text-white py-2 px-4 mr-2 rounded-lg hover:bg-blue-600"
-          >
-            Importa PDF
-          </label>
-        </div>
-      </div>
+		// Costante per il database: conversione delle date a ISO
+		const movementsForDB = movementsWithPrg.map((movement) => ({
+			...movement,
+			data_operazione: convertDateToISO(movement.data_operazione),
+			data_valuta: convertDateToISO(movement.data_valuta),
+		}));
 
-      <div class="justify-center space-x-4 my-4 h-[100px]">
-        <input
-          type="date"
-          value={startDate()}
-          onInput={(e) => setStartDate(e.target.value)}
-          class="border px-2 py-1 rounded"
-          placeholder="Data inizio"
-        />
-        <input
-          type="date"
-          value={endDate()}
-          onInput={(e) => setEndDate(e.target.value)}
-          class="border px-2 py-1 rounded"
-          placeholder="Data fine"
-        />
-        <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={showWithoutType()}
-            onChange={() => setShowWithoutType(!showWithoutType())}
-          />
-          <span>Visualizza movimenti senza tipo</span>
-        </label>
-        <button
-          onClick={filterMovements}
-          class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          CERCA
-        </button>
-      </div>
-      
-      {filteredMovCC().length > 0 && (
-        <div class="text-sm text-right text-gray-500 mr-2">
-          Somma dei movimenti filtrati:
-          <span class="text-green-600"> {filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })} €
-          </span>
-        </div>
-      )}
+		try {
+			// Inserisci nel database
+			const { error } = await supabase.from("CC").insert(movementsForDB);
+			if (error) {
+				throw error;
+			}
 
-      <div class="mt-1 text-[10px] w-full overflow-y-auto h-[calc(100vh-360px)]">
-        {filteredMovCC().length > 0 && (
-          <div class="w-full overflow-hidden">
-            <table class="table-fixed border-collapse border border-gray-500 w-full">
-              <thead>
-                <tr class="">
-                  <th class="border border-gray-400 px-1 py-1 w-[15%]">Data Op</th>
-                  {/* <th class="border border-gray-400 px-1 py-1 w-[15%]">Data Valuta</th> */}
-                  <th class="border border-gray-400 px-1 py-1 w-[50%]">Descrizione</th>
-                  <th class="border border-gray-400 px-1 py-1 w-[15%]">Importo</th>
-                  <th class="border border-gray-400 px-1 py-1 w-[20%]">Tipo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMovCC().map((row) => (
-                  <tr class={`${row.importo > 0 ? "bg-green-50" : "bg-red-50"} h-10`} key={row}>
-                    <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
-                    {/* <td class="border border-gray-400 px-1 py-1 text-center">{formatDate(row.data_valuta)}</td> */}
-                    <td class="border border-gray-400 px-1 py-1 break-words">{row.descrizione}</td>
-                    <td class="border border-gray-400 px-1 py-1 text-right">
-                      {row.importo.toLocaleString("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                    </td>
-                    <td class="border border-gray-400 px-1 py-1 text-center cursor-pointer underline text-blue-600" onClick={() => { setSelectedRow(row); setShowPopup(true); }}>
-                      {row.tipo}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+			console.log("Nuovi movimenti inseriti:", movementsForDB);
+			alert("Movimenti inseriti correttamente");
+			// Aggiorna lo stato locale `cc` con i nuovi movimenti
+			const updatedMovCC = [...movementsWithPrg, ...cc()].sort(
+				(a, b) => b.prg - a.prg // Ordina in ordine decrescente di `prg`
+			);
 
-      {showPopup() && (
-        <div class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
-          <div class="bg-white p-4 rounded-lg shadow-lg w-64">
-            <h3 class="text-lg font-semibold mb-2">Seleziona Tipo</h3>
-            {getOptions(selectedRow().importo).map((option) => (
-              <div key={option} class="p-2 cursor-pointer hover:bg-gray-200" onClick={() => updateTipo(selectedRow().id, option)}>
-                {option}
-              </div>
-            ))}
-            <button class="mt-4 w-full bg-red-500 text-white py-2 rounded-lg" onClick={() => setShowPopup(false)}>Annulla</button>
-          </div>
-        </div>
-      )}
+			setCC(updatedMovCC);
+		} catch (err) {
+			console.error("Errore durante l'inserimento dei nuovi movimenti:", err.message);
+		}
+	};
 
-    </div>
-  );
+	return (
+		<div class="flex flex-col h-full">
+
+			{/* saldo cc e bottone importa pdf */}
+			<div class="flex-none flex items-center justify-between h-[50px]">
+				<div class="flex pl-2 text-lg font-semibold">
+					<div>Saldo CC al {formatDate(lastOpDate())}:</div>
+					<span class="ml-2 text-green-800"> {cc().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
+						minimumFractionDigits: 2,
+						maximumFractionDigits: 2,
+					})} €
+					</span>
+				</div>
+
+				
+				<div class="flex items-center justify-center gap-2 mr-2">
+					<div class="flex justify-center my-2">
+						<button
+							onClick={() => setShowSearch(!showSearch())}
+							class="bg-gray-300 p-2 rounded-full"
+						>
+							🔍
+						</button>
+					</div>
+
+					{isLandscape() && (
+						<div>
+							<input
+								type="file"
+								accept=".pdf"
+								onChange={handleFileUpload}
+								class="hidden"
+								id="file-upload"
+							/>
+							<label
+								for="file-upload"
+								class="cursor-pointer bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
+							>
+								Importa PDF
+							</label>
+						</div>
+					)}
+				</div>
+
+			</div>
+
+			{/* Zona di ricerca */}
+			{showSearch() && (
+				<div class="flex-none border-y py-4">
+					<div class="flex w-full items-center justify-center gap-3">
+						<div class="flex flex-col">
+							<label for="start-date" class="mb-1 text-sm">Data Inizio</label>
+							<input
+								id="start-date"
+								type="date"
+								value={startDate()}
+								onInput={(e) => setStartDate(e.target.value)}
+								class="border px-2 py-1 rounded"
+							/>
+						</div>
+						<div class="flex flex-col">
+							<label for="end-date" class="mb-1 text-sm">Data Fine</label>
+							<input
+								id="end-date"
+								type="date"
+								value={endDate()}
+								onInput={(e) => setEndDate(e.target.value)}
+								class="border px-2 py-1 rounded"
+							/>
+						</div>
+					</div>
+					<label class="flex w-full items-center justify-center py-2 gap-2">
+						<input
+							type="checkbox"
+							checked={showWithoutType()}
+							onChange={() => setShowWithoutType(!showWithoutType())}
+						/>
+						<span>Visualizza solo movimenti senza Tipo</span>
+					</label>
+					{/* Bottoni per il filtro in entrata/uscita */}
+					<div class="flex gap-1 mt-2 justify-center text-sm">
+						<button
+							onClick={() => setMovementFilter(movementFilter() === "inEntrata" ? "all" : "inEntrata")}
+							class={`px-4 py-2 w-[100px] rounded-l-full shadow-lg ${movementFilter() === 'inEntrata' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+						>
+							In Entrata
+						</button>
+						<button
+							onClick={() => setMovementFilter(movementFilter() === "inUscita" ? "all" : "inUscita")}
+							class={`px-4 py-2 w-[100px] rounded-r-full shadow-lg ${movementFilter() === 'inUscita' ? 'bg-red-200 text-red-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+						>
+							In Uscita
+						</button>
+					</div>
+				</div>
+			)}
+
+			{/* div per somma movimenti filtrati */}
+			{/* {filteredMovCC().length > 0 && ( */}
+			<div class="flex-none text-sm text-left text-gray-500 ml-2 mt-4">
+				Movimenti{" "}
+				<span class="font-semibold">{movementFilter() === "all" ? "" : `${movementFilter() === "inEntrata" ? "in entrata" : "in uscita"}`}</span>
+				<span class="font-semibold">{showWithoutType() ? " (senza Tipo)" : ""}</span> dal{" "}
+				<span class="font-semibold">{startDate() ? formatDate(startDate()) : formatDate(firstOpDate())}</span> al{" "}
+				<span class="font-semibold">{endDate() ? formatDate(endDate()) : formatDate(lastOpDate())}</span> (
+				<span class={`${filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0) > 0 ? "text-green-600" : "text-red-600"}`}>
+					{filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
+						minimumFractionDigits: 2,
+						maximumFractionDigits: 2,
+					})} €
+				</span>)
+			</div>
+			{/* )} */}
+
+			{/* tabella movimenti cc */}
+			<div class="flex flex-col h-full mt-2 text-[10px] w-full">
+				{filteredMovCC().length > 0 ? (
+					// Container scrollabile con altezza fissa
+					<div class="flex-grow w-full overflow-y-auto pb-[300px]">
+						<table class="table-fixed w-full">
+							<thead class="bg-gray-100 sticky top-0 z-10">
+								<tr>
+									<th class="px-1 py-1 w-[15%]">Data Op</th>
+									<th class="px-1 py-1 w-[50%]">Descrizione</th>
+									<th class="px-1 py-1 w-[15%]">Importo</th>
+									<th class="px-1 py-1 w-[20%]">Tipo</th>
+								</tr>
+							</thead>
+							<tbody>
+								{filteredMovCC().map((row) => (
+									<tr class={`${row.importo > 0 ? "bg-green-50" : "bg-red-50"} h-10`} key={row.id}>
+										<td class="border-b border-gray-200 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
+										<td class="border-b border-gray-200 px-1 py-1 break-words">{row.descrizione}</td>
+										<td class="border-b border-gray-200 px-1 py-1 text-right">
+											{row.importo.toLocaleString("it-IT", {
+												minimumFractionDigits: 0,
+												maximumFractionDigits: 2,
+											})}
+										</td>
+										<td
+											class="border-b border-gray-200 px-1 py-1 text-center cursor-pointer underline text-blue-600"
+											onClick={() => {
+												setSelectedRow(row);
+												setShowPopup(true);
+											}}
+										>
+											{row.tipo}
+										</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				) : (
+					<div class="flex h-full items-center justify-center text-xl">
+						Nuessun movimento corrispondente ai termini della ricerca
+					</div>
+				)}
+			</div>
+
+
+			{showPopup() && (
+				<div class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20"
+					onClick={() => setShowPopup(false)}>
+					<div class={`relative ${selectedRow().importo > 0 ? "bg-green-50" : "bg-red-50"} p-4 rounded-lg shadow-lg w-[90%]`}>
+						<button
+							onClick={() => setShowPopup(false)}
+							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+						>
+							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
+						</button>
+						<h3 class="text-lg text-center font-semibold mb-2">Seleziona Tipo</h3>
+						{getOptions(selectedRow().importo).map((option) => (
+							<div
+								key={option}
+								class={`p-2 text-center cursor-pointer hover:bg-gray-200 
+									${selectedRow().tipo === option ? `${selectedRow().importo > 0 ? "bg-green-500 text-white" : "bg-red-500 text-white"}` : ""}`}
+								onClick={() => updateTipo(selectedRow().id, option)}
+							>
+								{option}
+							</div>
+						))}
+
+					</div>
+				</div>
+			)}
+
+		</div>
+	);
 };
 
 export default EstrattoCC;

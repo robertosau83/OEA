@@ -26,7 +26,7 @@ const App = ({ onLogout }) => {
 		setIsLoading(false);
 	});
 
-	// Effetto reattivo: ogni volta che chiusure() o cash() cambiano, compone le chiusure con spese
+	// Effetto reattivo: ogni volta che chiusure(), cash() o cc() cambiano, compone le chiusure con spese e il cashflow
 	createEffect(() => {
 		// Vengono richiamati chiusure() e cash() per stabilire la dipendenza
 		composeLocalStates(chiusure(), cash(), cc(), setChiusureConSpese, setCashflow);
@@ -87,10 +87,18 @@ const App = ({ onLogout }) => {
 						class={`fixed top-0 left-0 w-64 h-full bg-white shadow-md z-50 transform ${isMenuOpen() ? "translate-x-0" : "-translate-x-full"
 							} transition-transform duration-300 ease-in-out`}
 					>
-						<div class="p-4">
-							<h2 class="text-lg font-semibold mb-4">Menù</h2>
+						<div class="p-2">
+							{/* <h2 class="text-lg font-semibold mb-4">Menù</h2> */}
+							<div class="flex items-center justify-start mb-4">
+								<img src="/ElSanto Business 192.png" alt="Logo Piccolo" class="h-10" />
+								<div class="ml-2 font-semibold">El Santo Business</div>
+							</div>
+
+
 							<button
-								class="w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "EstrattoCC" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
 								onClick={() => {
 									setCurrentBtmBarComponentName("EstrattoCC");
 									setIsMenuOpen(false);
@@ -98,12 +106,14 @@ const App = ({ onLogout }) => {
 							>
 								Estratto CC
 							</button>
+
 							<button
-								class="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+								class="w-full text-left px-2 py-2 text-red-600 hover:bg-gray-100 border-t"
 								onClick={onLogout}
 							>
 								Logout
 							</button>
+
 						</div>
 					</div>
 
