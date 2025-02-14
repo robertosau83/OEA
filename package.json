@@ -19,7 +19,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.47.16",
+    "apexcharts": "^4.4.0",
     "pdfjs-dist": "^4.10.38",
+    "react-apexcharts": "^1.7.0",
     "solid-js": "^1.9.3"
   }
 }

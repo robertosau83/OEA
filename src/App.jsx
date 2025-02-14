@@ -4,6 +4,7 @@ import Chiusure from './components/Chiusure.jsx';
 import Cashflow from './components/Cashflow.jsx';
 import EstrattoCC from './components/EstrattoCC.jsx';
 import Quadratura_CASH from './components/Quadratura_CASH.jsx';
+import Statistiche from './components/Statistiche.jsx';
 import Stats from './components/Stats.jsx';
 import { cashflow, setCashflow, composeCashflow } from './lib/composeCashflow.js'; // Importa cashflow
 import loadDataFromDB from "./lib/loadDataFromDB.js";
@@ -66,6 +67,9 @@ const App = ({ onLogout }) => {
 		if (currentBtmBarComponentName() === "Quadratura_CASH") {
 			return <Quadratura_CASH {...sharedProps} />;
 		}
+		if (currentBtmBarComponentName() === "Statistiche") {
+			return <Statistiche {...sharedProps} />;
+		}
 		return null; // In caso di valore non gestito
 	};
 
@@ -120,6 +124,18 @@ const App = ({ onLogout }) => {
 								}}
 							>
 								Quadratura CASH
+							</button>
+
+							<button
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "Statistiche" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
+								onClick={() => {
+									setCurrentBtmBarComponentName("Statistiche");
+									setIsMenuOpen(false);
+								}}
+							>
+								Statistiche
 							</button>
 
 							<button

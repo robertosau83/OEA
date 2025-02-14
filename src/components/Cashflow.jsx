@@ -689,7 +689,7 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 					</div>
 
 					{/* Pulsanti di azione */}
-					{selectedMovement().origin === "CASH" && (
+					{selectedMovement().origin === "CASH" && selectedMovement().tipo !== "Quadratura" && (
 						<div class="flex justify-around py-4 h-[56]">
 							{/* Bottone Cancella */}
 							<button
