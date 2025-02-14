@@ -53,9 +53,9 @@ const Statistiche = (props) => {
 	});
 
 	return (
-		<div class="p-5">
+		<div class="flex flex-col h-full p-5">
 			{/* Barra superiore con i tag */}
-			<div class="flex space-x-2 mb-5">
+			<div class="flex flex-none space-x-2 mb-5">
 				{tags.map((tag) => (
 					<div
 						class={`px-4 py-2 border rounded cursor-pointer select-none ${selectedTag() === tag ? "bg-blue-500 text-white" : "bg-white text-black"
@@ -68,7 +68,7 @@ const Statistiche = (props) => {
 			</div>
 
 			{/* Grid responsive per le cards */}
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+			<div class="flex-grow overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{/* Card con il grafico a barre */}
 				<div class="border rounded shadow">
 					<h3 class="text-lg font-semibold mb-3">Andamento Chiusure Con Spese</h3>
