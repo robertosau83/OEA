@@ -39,15 +39,7 @@ const Statistiche = (props) => {
 
 		return Array.from(groupedData.entries())
 			.map(([key, value]) => ({ label: value.label, total: value.total }))
-			.sort((a, b) => {
-				if (mode === "daily") {
-					const [dayA, monthA] = a.label.split(" ");
-					const [dayB, monthB] = b.label.split(" ");
-					return new Date(`${currentYear}-${monthA}-${dayA}`) - new Date(`${currentYear}-${monthB}-${dayB}`);
-				} else {
-					return new Date(`20${a.label.split("-")[1]}`) - new Date(`20${b.label.split("-")[1]}`);
-				}
-			});
+			.sort((a, b) => new Date(`20${a.label.split("-")[1]}`) - new Date(`20${b.label.split("-")[1]}`));
 	};
 
 	// Dati filtrati in base alla tag selezionata

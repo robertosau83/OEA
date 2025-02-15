@@ -48,8 +48,11 @@ const composeLocalStates = (chiusure, cash, cc, setChiusureConSpese, setCashflow
 		};
 	});
 
-	// Aggiorna lo stato locale con il nuovo array di chiusure aggiornato
-	setChiusureConSpese(newChiusure);
+	// Ordina newChiusure per data_competenza (dal meno recente al più recente)
+	const sortedChiusure = newChiusure.sort((a, b) => new Date(a.data_competenza) - new Date(b.data_competenza));
+	
+	// Aggiorna lo stato locale con il nuovo array di chiusure ordinato
+	setChiusureConSpese(sortedChiusure);
 
 	// Componiamo lo stato cashflow derivante dai movimenti di chiusureConSpese
 	const cashflowFromChiusure = newChiusure.map((row) => ({
