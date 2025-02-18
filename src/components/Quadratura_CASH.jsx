@@ -51,9 +51,9 @@ const Quadratura_CASH = ({ cashflow, cash, setCash }) => {
 
 		// Inserisci nel database (utilizzando supabase)
 		const newMovement = {
-			descrizione: "Quadratura CASH reali / CASH effettivi",
+			descrizione: "Allineamento CASH reali / CASH effettivi",
 			importo: roundedDifference,
-			tipo: "Quadratura",
+			tipo: "Allineamento",
 			metodo_di_pagamento,
 			data_operazione,
 		};
@@ -64,7 +64,7 @@ const Quadratura_CASH = ({ cashflow, cash, setCash }) => {
 			.select('*')
 			.single();
 		if (error) {
-			alert("Errore durante l'inserimento della quadratura: " + error.message);
+			alert("Errore durante l'inserimento dell'importo di allineamento: " + error.message);
 			return;
 		}
 		// Aggiorna lo stato locale: aggiungi la nuova riga alla lista cash
@@ -76,7 +76,7 @@ const Quadratura_CASH = ({ cashflow, cash, setCash }) => {
 
 	return (
 		<div class="p-4">
-			<div class="flex text-center items-center justify-center text-gray-400 mb-5">Quadratura tra l'ammontare dei CASH teorici calcolati dalla applicazione e quelli reali in possesso all'utente</div>
+			<div class="flex text-center items-center justify-center text-gray-400 mb-5">Allineamento tra l'ammontare dei CASH teorici calcolati dalla applicazione e quelli reali in possesso all'utente</div>
 
 			<div class="flex flex-col items-center justify-center mb-4">
 				<label class="block text-gray-700">
@@ -168,7 +168,7 @@ const Quadratura_CASH = ({ cashflow, cash, setCash }) => {
 							<span class="font-semibold">{parseFloat(cashEffettivi().replace(',', '.')).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>.
 						</p>
 						<p class="mb-8 text-gray-700 text-center">
-							Verrà quindi inserito un movimento di quadratura di
+							Verrà quindi inserito un movimento di allineamento di
 							<span class="font-semibold">{parseFloat(cashEffettivi().replace(',', '.')) - totalTeorici() > 0 ? " +" : " "}
 								{(parseFloat(cashEffettivi().replace(',', '.')) - totalTeorici()).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
 							</span>

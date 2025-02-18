@@ -50,7 +50,7 @@ const composeLocalStates = (chiusure, cash, cc, setChiusureConSpese, setCashflow
 
 	// Ordina newChiusure per data_competenza (dal meno recente al più recente)
 	const sortedChiusure = newChiusure.sort((a, b) => new Date(a.data_competenza) - new Date(b.data_competenza));
-	
+
 	// Aggiorna lo stato locale con il nuovo array di chiusure ordinato
 	setChiusureConSpese(sortedChiusure);
 
@@ -93,18 +93,18 @@ const composeLocalStates = (chiusure, cash, cc, setChiusureConSpese, setCashflow
 				id: null, // Campo id vuoto
 				origin: "CASH",
 				data_operazione: row.data_operazione,
-				tipo: "Quadratura",
+				tipo: "Storno",
 				importo: -row.importo, // Segno negativo
-				descrizione: "Quadratura trasferimento da CASH a CC",
+				descrizione: "Storno trasferimento da CASH a CC",
 			});
 		} else if (row.tipo === "Trasf CC -> CASH") {
 			acc.push({
 				id: null, // Campo id vuoto
 				origin: "CASH",
 				data_operazione: row.data_operazione,
-				tipo: "Quadratura",
+				tipo: "Storno",
 				importo: -row.importo, // Segno invertito
-				descrizione: "Quadratura trasferimento da CC a CASH",
+				descrizione: "Storno trasferimento da CC a CASH",
 			});
 		}
 		return acc;
@@ -118,9 +118,11 @@ const composeLocalStates = (chiusure, cash, cc, setChiusureConSpese, setCashflow
 		...cashflowTransfers,
 	];
 
-	// Aggiorniamo lo stato locale cashflow
-	setCashflow(combinedCashflow);
-	//console.log(cashflow());
+	// Ordina cashflow per data_operazione (dal meno recente al più recente)
+	const sortedCashflow = combinedCashflow.sort((a, b) => new Date(a.data_operazione) - new Date(b.data_operazione));
+
+	// Aggiorniamo lo stato locale cashflow con i dati ordinati
+	setCashflow(sortedCashflow);
 };
 
 export default composeLocalStates;

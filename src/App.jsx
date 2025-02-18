@@ -123,7 +123,7 @@ const App = ({ onLogout }) => {
 									setIsMenuOpen(false);
 								}}
 							>
-								Quadratura CASH
+								Allineamento CASH
 							</button>
 
 							<button
