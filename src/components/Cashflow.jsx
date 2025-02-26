@@ -2,7 +2,6 @@ import { createSignal, createEffect, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
 const Cashflow = ({ setCash, cashflow, setCashflow }) => {
-	//const [spese, setSpese] = createSignal([]); // Stato locale per le spese
 	const [view, setView] = createSignal('year'); // 'month' | 'day' | 'details'
 	const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
 	const [selectedMonth, setSelectedMonth] = createSignal('');

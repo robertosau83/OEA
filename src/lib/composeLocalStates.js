@@ -1,5 +1,3 @@
-import { cashflow } from "./composeCashflow";
-
 const composeLocalStates = (chiusure, cash, cc, setChiusureConSpese, setCashflow) => {
 
 	//console.log(cash);

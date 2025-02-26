@@ -271,13 +271,14 @@ const EstrattoCC = ({ cc, setCC }) => {
 			}
 		}
 
+		console.log(cc());
 		// Se cc non è vuoto, continua con l'elaborazione normale
 		const matchingIndex = importedMovCC().findIndex((imported) =>
 			cc().some(
 				(existing) =>
 					imported.codice_identificativo === existing.codice_identificativo &&
-					imported.data_operazione === existing.data_operazione &&
-					imported.data_valuta === existing.data_valuta &&
+					convertDateToISO(imported.data_operazione) === existing.data_operazione &&
+					convertDateToISO(imported.data_valuta) === existing.data_valuta &&
 					imported.descrizione === existing.descrizione &&
 					imported.importo === existing.importo
 			)

@@ -18,6 +18,19 @@ const Auth = ({ setSession }) => {
     }
   };
 
+  // 🔹 Funzione per il login con Google
+  const signInWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin, // Reindirizza alla tua app dopo il login
+      },
+    });
+    if (error) {
+      setError(error.message);
+    }
+  };
+
   return (
     <div class="flex w-full h-[100vh] flex-col items-center justify-center">
       <img
@@ -37,12 +50,20 @@ const Auth = ({ setSession }) => {
         onInput={(e) => setPassword(e.currentTarget.value)}
         onKeyDown={(e) => e.key === 'Enter' && signIn()}
         class="border rounded px-2 py-1 mt-2"
-
       />
       <button onClick={signIn} class="bg-orange-400 text-white px-4 py-2 mt-4">
         Sign In
       </button>
-      {/* <div class="text-4xl">PROVA CACHE RISOLTA</div> */}
+
+      {/* 🔹 Bottone per login con Google */}
+      {/* <button
+        onClick={signInWithGoogle}
+        class="bg-red-500 text-white px-4 py-2 mt-4 flex items-center gap-2"
+      >
+        <img src="/google-icon.svg" alt="Google" class="w-5 h-5" />
+        Sign in with Google
+      </button> */}
+
       {error() && <p class="text-red-500 mt-2">{error()}</p>}
     </div>
   );

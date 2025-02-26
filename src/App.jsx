@@ -1,12 +1,9 @@
 import { createSignal, onMount, createEffect } from 'solid-js';
-import { supabase } from './lib/supabaseClient.js';
 import Chiusure from './components/Chiusure.jsx';
 import Cashflow from './components/Cashflow.jsx';
 import EstrattoCC from './components/EstrattoCC.jsx';
 import Quadratura_CASH from './components/Quadratura_CASH.jsx';
 import Statistiche from './components/Statistiche.jsx';
-import Stats from './components/Stats.jsx';
-import { cashflow, setCashflow, composeCashflow } from './lib/composeCashflow.js'; // Importa cashflow
 import loadDataFromDB from "./lib/loadDataFromDB.js";
 import composeLocalStates from "./lib/composeLocalStates.js";
 
@@ -14,6 +11,7 @@ const App = ({ onLogout }) => {
 	const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
 	const [isLoading, setIsLoading] = createSignal(true);
 	const [chiusure, setChiusure] = createSignal([]);
+	const [cashflow, setCashflow] = createSignal([]);
 	const [cash, setCash] = createSignal([]);
 	const [cc, setCC] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
@@ -54,9 +52,6 @@ const App = ({ onLogout }) => {
 	const renderMainContent = () => {
 		if (currentBtmBarComponentName() === "Chiusure") {
 			return <Chiusure {...sharedProps} />;
-		}
-		if (currentBtmBarComponentName() === "Stats") {
-			return <Stats {...sharedProps} />;
 		}
 		if (currentBtmBarComponentName() === "Cashflow") {
 			return <Cashflow {...sharedProps} />;
