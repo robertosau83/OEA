@@ -121,7 +121,7 @@ const Forniture = ({ forniture, setForniture }) => {
 				</thead>
 			</table>
 			<div class="overflow-y-auto max-h-[calc(100vh-150px)]">
-				<table class="w-full">
+				<table class="w-full mb-40">
 					<tbody>
 						{forniture()
 							.sort((a, b) => new Date(a.data_scadenza) - new Date(b.data_scadenza))
