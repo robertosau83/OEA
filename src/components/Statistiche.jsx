@@ -2,8 +2,9 @@ import { createSignal, createMemo, onMount } from "solid-js";
 import ApexCharts from "apexcharts";
 
 const Statistiche = (props) => {
-	const { cc, cash, chiusureConSpese, cashflow } = props;
-	const [selectedTag, setSelectedTag] = createSignal("Mese corrente"); // Default: ultimi 12 mesi
+	const { cc, cash, chiusureConSpese, cashflow, forniture } = props;
+
+	const [selectedTag, setSelectedTag] = createSignal("Da inizio"); // Default: ultimi 12 mesi
 	const tags = ["Da inizio", "Mese corrente", "12 mesi", "Da inizio anno"];
 
 	const today = new Date();
@@ -156,6 +157,12 @@ const Statistiche = (props) => {
 			);
 		}
 		return [];
+	});
+
+	const fornitureDaPagare = createMemo(() => {
+		return forniture()
+			.filter(f => f.status === "NOT_PAYED")
+			.reduce((sum, f) => sum + f.importo, 0);
 	});
 
 	// Calcolo del massimo valore Y arrotondato
@@ -718,7 +725,19 @@ const Statistiche = (props) => {
 							<span></span>
 							<span>{summaryData().saldoCashCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
 						</li>
+
 					</div>
+
+					<div class="mt-4">
+						{/* Forniture da pagare - Mostrato solo se il tag selezionato è "Da inizio" */}
+						{selectedTag() === "Da inizio" && (
+							<li class={`flex justify-between border-b text-gray-600`}>
+								<span>Forniture da pagare</span>
+								<span class="text-red-600 font-semibold">{fornitureDaPagare().toLocaleString("it-IT", { minimumFractionDigits: 2 })}€</span>
+							</li>
+						)}
+					</div>
+
 
 				</div>
 
