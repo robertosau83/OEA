@@ -1,7 +1,6 @@
-import { createSignal } from "solid-js";
 import { supabase } from "../lib/supabaseClient.js"; // Assicurati che il percorso sia corretto
 
-const loadDataFromDB = async (setChiusure, setCash, setCC) => {
+const loadDataFromDB = async (setChiusure, setCash, setCC, setForniture) => {
   try {
 
     // Fetch chiusure dalla tabella chiusure
@@ -28,7 +27,16 @@ const loadDataFromDB = async (setChiusure, setCash, setCC) => {
     if (ccError) throw ccError;
 
     setCC(ccData || []);
-    
+
+	 // Fetch movimenti dalla tabella CC
+    const { data: fornitureData, error: fornitureError } = await supabase
+      .from('forniture')
+      .select('*')
+		.order('data_scadenza', { ascending: true }); // Ordina per 'data_scadenza' in ordine decrescente
+    if (fornitureError) throw fornitureError;
+
+    setForniture(fornitureData || []);
+
   } catch (error) {
     console.error("Errore nel caricamento dei dati dal DB:", error.message);
   }

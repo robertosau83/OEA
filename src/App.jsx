@@ -2,6 +2,7 @@ import { createSignal, onMount, createEffect } from 'solid-js';
 import Chiusure from './components/Chiusure.jsx';
 import Cashflow from './components/Cashflow.jsx';
 import EstrattoCC from './components/EstrattoCC.jsx';
+import Forniture from './components/Forniture.jsx';
 import Quadratura_CASH from './components/Quadratura_CASH.jsx';
 import Statistiche from './components/Statistiche.jsx';
 import loadDataFromDB from "./lib/loadDataFromDB.js";
@@ -14,15 +15,15 @@ const App = ({ onLogout }) => {
 	const [cashflow, setCashflow] = createSignal([]);
 	const [cash, setCash] = createSignal([]);
 	const [cc, setCC] = createSignal([]);
+	const [forniture, setForniture] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
 	const [isMenuOpen, setIsMenuOpen] = createSignal(false);
 
 	// Esegui il caricamento dei dati quando il componente viene montato
 	onMount(async () => {
-		//await loadData();
-		await loadDataFromDB(setChiusure, setCash, setCC);
-		//composeLocalStates(chiusure(), cash(), setChiusureConSpese);
-		//console.log("Chiusure con spese:", chiusureConSpese());
+		await loadDataFromDB(setChiusure, setCash, setCC, setForniture);
+
+		console.log(forniture());
 		setIsLoading(false);
 	});
 
@@ -45,8 +46,8 @@ const App = ({ onLogout }) => {
 		cash, setCash,
 		cc, setCC,
 		chiusureConSpese, setChiusureConSpese,
-		cashflow,
-		setCashflow,
+		cashflow, setCashflow,
+		forniture, setForniture,
 	};
 
 	const renderMainContent = () => {
@@ -58,6 +59,9 @@ const App = ({ onLogout }) => {
 		}
 		if (currentBtmBarComponentName() === "EstrattoCC") {
 			return <EstrattoCC {...sharedProps} />;
+		}
+		if (currentBtmBarComponentName() === "Forniture") {
+			return <Forniture {...sharedProps} />;
 		}
 		if (currentBtmBarComponentName() === "Quadratura_CASH") {
 			return <Quadratura_CASH {...sharedProps} />;
@@ -107,6 +111,18 @@ const App = ({ onLogout }) => {
 								}}
 							>
 								Estratto CC
+							</button>
+							
+							<button
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "Forniture" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
+								onClick={() => {
+									setCurrentBtmBarComponentName("Forniture");
+									setIsMenuOpen(false);
+								}}
+							>
+								Forniture
 							</button>
 
 							<button
