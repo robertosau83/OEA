@@ -6,7 +6,7 @@ import decodeTipo from "../lib/decodeTipo"; // Importa la funzione decodeTipo
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 	"pdfjs-dist/build/pdf.worker.min.mjs",
 	import.meta.url
- ).toString();
+).toString();
 
 const EstrattoCC = ({ cc, setCC }) => {
 	const [fileName, setFileName] = createSignal(null);
@@ -27,7 +27,7 @@ const EstrattoCC = ({ cc, setCC }) => {
 	onMount(() => {
 		getFirstAndLastOpDate();
 		//console.log(firstOpDate(), lastOpDate());
-		//console.log(cc());
+		console.log(cc());
 		const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
 		updateOrientation();
 		window.addEventListener("resize", updateOrientation);
@@ -173,7 +173,7 @@ const EstrattoCC = ({ cc, setCC }) => {
 		const isDecimal = (str) => /^[+-]?\d+(\.\d{1,2}|,\d{1,2})$/.test(str); // Controlla se è un numero decimale
 		const isCurrency = (str) => str === "EUR"; // Controlla se è "EUR"
 
-		//console.log(allTextContent);
+		console.log(allTextContent);
 
 		let i = 0;
 		while (i < allTextContent.length) {
@@ -187,9 +187,18 @@ const EstrattoCC = ({ cc, setCC }) => {
 				continue;
 			}
 
-			if (isDate(text) && !currentRow.data_valuta) {
+			// if (isDate(text) && !currentRow.data_valuta) {
+			// 	// Secondo campo: data valuta
+			// 	currentRow.data_valuta = text;
+			// 	i++;
+			// 	continue;
+			// }
+
+			// provo qui la correzione per i campi data_valuta="-"
+			if (!currentRow.data_valuta) {
 				// Secondo campo: data valuta
-				currentRow.data_valuta = text;
+				if (isDate(text)) currentRow.data_valuta = text;
+				else if (text === "-") currentRow.data_valuta = currentRow.data_operazione;
 				i++;
 				continue;
 			}
@@ -223,9 +232,8 @@ const EstrattoCC = ({ cc, setCC }) => {
 		}
 
 		setImportedMovCC(rows); // Imposta lo stato con le righe elaborate
-		console.log(importedMovCC());
 		processImportedMovements();
-		//console.log(importedMovCC());
+		console.log(importedMovCC());
 	};
 
 	const processImportedMovements = async () => {
@@ -242,30 +250,34 @@ const EstrattoCC = ({ cc, setCC }) => {
 			const movementsWithPrg = importedMovCC()
 				.map((movement, index, arr) => ({
 					...movement,
+					data_operazione: convertDateToISO(movement.data_operazione),
+					data_valuta: convertDateToISO(movement.data_valuta),
 					prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
 				}))
 				.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
 			// Costante per il database: conversione delle date a ISO
-			const movementsForDB = movementsWithPrg.map((movement) => ({
-				...movement,
-				data_operazione: convertDateToISO(movement.data_operazione),
-				data_valuta: convertDateToISO(movement.data_valuta),
-			}));
+			// const movementsForDB = movementsWithPrg.map((movement) => ({
+			// 	...movement,
+			// 	data_operazione: convertDateToISO(movement.data_operazione),
+			// 	data_valuta: convertDateToISO(movement.data_valuta),
+			// }));
 
 			try {
-				// Inserisci nel database
-				const { error } = await supabase.from("CC").insert(movementsForDB);
+				// Inserisci nel database e ottieni i dati inseriti
+				const { data, error } = await supabase
+					.from("CC")
+					.insert(movementsWithPrg)
+					.select("*"); // 👈 Ottiene i valori con ID e created_at
+
 				if (error) {
 					throw error;
 				}
 
-				console.log("Tutti i movimenti inseriti:", movementsWithPrg);
+				console.log("Movimenti inseriti:", data);
 
 				// Aggiorna lo stato locale cc con i nuovi movimenti
-				const updatedMovCC = movementsWithPrg.sort((a, b) => b.prg - a.prg); // Ordina in ordine decrescente di prg
-				setCC(updatedMovCC);
-
+				setCC(data.sort((a, b) => b.prg - a.prg)); // Ordina per prg decrescente
 				return; // Esci dalla funzione
 			} catch (err) {
 				console.error("Errore durante l'inserimento dei movimenti:", err.message);
@@ -273,7 +285,7 @@ const EstrattoCC = ({ cc, setCC }) => {
 			}
 		}
 
-		console.log(cc());
+		//console.log(cc());
 		// Se cc non è vuoto, continua con l'elaborazione normale
 		const matchingIndex = importedMovCC().findIndex((imported) =>
 			cc().some(
@@ -306,28 +318,35 @@ const EstrattoCC = ({ cc, setCC }) => {
 		const movementsWithPrg = newMovements
 			.map((movement, index, arr) => ({
 				...movement,
+				data_operazione: convertDateToISO(movement.data_operazione),
+				data_valuta: convertDateToISO(movement.data_valuta),
 				prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
 			}))
 			.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
 		// Costante per il database: conversione delle date a ISO
-		const movementsForDB = movementsWithPrg.map((movement) => ({
-			...movement,
-			data_operazione: convertDateToISO(movement.data_operazione),
-			data_valuta: convertDateToISO(movement.data_valuta),
-		}));
+		// const movementsForDB = movementsWithPrg.map((movement) => ({
+		// 	...movement,
+		// 	data_operazione: convertDateToISO(movement.data_operazione),
+		// 	data_valuta: convertDateToISO(movement.data_valuta),
+		// }));
 
 		try {
-			// Inserisci nel database
-			const { error } = await supabase.from("CC").insert(movementsForDB);
+			// Inserisci nel database e ottieni i dati inseriti
+			const { data, error } = await supabase
+				.from("CC")
+				.insert(movementsWithPrg)
+				.select("*"); // 👈 Ottiene i valori con ID e created_at
+
 			if (error) {
 				throw error;
 			}
 
-			console.log("Nuovi movimenti inseriti:", movementsForDB);
+			console.log("Nuovi movimenti inseriti:", data);
 			alert("Movimenti inseriti correttamente");
+
 			// Aggiorna lo stato locale `cc` con i nuovi movimenti
-			const updatedMovCC = [...movementsWithPrg, ...cc()].sort(
+			const updatedMovCC = [...data, ...cc()].sort(
 				(a, b) => b.prg - a.prg // Ordina in ordine decrescente di `prg`
 			);
 
@@ -336,6 +355,7 @@ const EstrattoCC = ({ cc, setCC }) => {
 			console.error("Errore durante l'inserimento dei nuovi movimenti:", err.message);
 		}
 	};
+
 
 	return (
 		<div class="flex flex-col h-full">
@@ -351,7 +371,7 @@ const EstrattoCC = ({ cc, setCC }) => {
 					</span>
 				</div>
 
-				
+
 				<div class="flex items-center justify-center gap-2 mr-2">
 					<div class="flex justify-center my-2">
 						<button
