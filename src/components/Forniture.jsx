@@ -109,26 +109,24 @@ const Forniture = ({ forniture, setForniture }) => {
 
 	return (
 		<div class="flex flex-col h-full px-2 pt-2">
-			<table class="w-full">
-				<thead class="sticky top-0 z-10">
-					<tr class="text-xs">
-						<th class="border-b py-2 w-[20%]">Data Scadenza</th>
-						<th class="border-b py-2 w-[35%]">Nome</th>
-						<th class="border-b py-2 w-[20%]">Importo</th>
-						<th class="border-b py-2 w-[15%]">Pagato</th>
-						<th class="border-b py-2 w-[10%]"></th>
-					</tr>
-				</thead>
-			</table>
-			<div class="overflow-y-auto max-h-[calc(100vh-150px)]">
-				<table class="w-full mb-40">
-					<tbody>
+			<div class="flex flex-none text-gray-600 w-full h-[30px] items-center justify-center">
+				Forniture
+			</div>
+			<div class="flex flex-none w-full text-xs h-[30px] border-b items-center font-semibold">
+				<div class="text-center w-[20%]">Scadenza</div>
+				<div class="text-center w-[35%]">Nome</div>
+				<div class="text-center w-[20%]">Importo</div>
+				<div class="text-center w-[15%]">Pagato</div>
+				<div class="text-center w-[10%]"></div>
+			</div>
+			<div class="flex-grow overflow-y-auto pb-40">
+
 						{forniture()
 							.sort((a, b) => new Date(a.data_scadenza) - new Date(b.data_scadenza))
 							.map(f => (
-								<tr
+								<div
 									key={f.id}
-									class="text-xs cursor-pointer hover:bg-gray-100"
+									class="flex items-center border-b py-2 text-xs cursor-pointer hover:bg-gray-100"
 									onClick={() => {
 										setEditFornitura({
 											...f,
@@ -138,28 +136,28 @@ const Forniture = ({ forniture, setForniture }) => {
 									}}
 
 								>
-									<td class="border-b text-center py-2 w-[20%]">
+									<div class="text-center w-[20%]">
 										{new Date(f.data_scadenza).toLocaleDateString('it-IT')}
-									</td>
+									</div>
 
-									<td class="border-b text-center py-2 w-[35%]">{f.nome}</td>
-									<td class="border-b text-right pr-3 py-2 w-[20%]">
+									<div class="text-center px-2 w-[35%]">{f.nome}</div>
+									<div class="text-right pr-3 w-[20%]">
 										{new Intl.NumberFormat('it-IT', {
 											minimumFractionDigits: 0,
 											maximumFractionDigits: 2
 										}).format(f.importo)} €
-									</td>
-									<td class="text-center w-[15%] h-full">
+									</div>
+									<div class="text-center w-[15%] h-full">
 										<input
 											type="checkbox"
 											checked={f.status === 'PAYED'}
 											onClick={(e) => e.stopPropagation()} // Blocca la propagazione
 											onChange={() => togglePaymentStatus(f.id, f.status)}
-											class="cursor-pointer w-5 h-5"
+											class="cursor-pointer w-6 h-6"
 										/>
-									</td>
+									</div>
 
-									<td class=" text-center w-[10%]">
+									<div class="text-center w-[10%]">
 										<button
 											onClick={(e) => {
 												e.stopPropagation(); // Blocca la propagazione del click
@@ -167,14 +165,13 @@ const Forniture = ({ forniture, setForniture }) => {
 											}}
 											class="text-red-500 hover:text-red-700"
 										>
-											<img src="/trash-black.svg" alt="cestino" class="h-5 w-5" />
+											<img src="/trash-black.svg" alt="cestino" class="h-6 w-6" />
 										</button>
-									</td>
+									</div>
 
-								</tr>
+								</div>
 							))}
-					</tbody>
-				</table>
+				
 			</div>
 
 			<button

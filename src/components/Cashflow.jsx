@@ -802,7 +802,7 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 												{option}
 											</option>
 										))
-										: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali", "Spese bancarie", "Tasse", "Utenze", "Altro..."].map((option) => (
+										: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Eventi", "Fornitori", "Prelievi/Spese personali", "Spese bancarie", "Tasse", "Utenze", "Altro..."].map((option) => (
 											<option value={option} key={option}>
 												{option}
 											</option>
@@ -1007,7 +1007,7 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 												{option}
 											</option>
 										))
-										: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali", "Spese bancarie", "Tasse", "Utenze", "Altro..."].map((option) => (
+										: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Eventi", "Fornitori", "Prelievi/Spese personali", "Spese bancarie", "Tasse", "Utenze", "Altro..."].map((option) => (
 											<option value={option} key={option}>
 												{option}
 											</option>

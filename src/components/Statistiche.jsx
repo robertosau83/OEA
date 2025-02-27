@@ -5,7 +5,7 @@ const Statistiche = (props) => {
 	const { cc, cash, chiusureConSpese, cashflow, forniture } = props;
 
 	const [selectedTag, setSelectedTag] = createSignal("Da inizio"); // Default: ultimi 12 mesi
-	const tags = ["Da inizio", "Mese corrente", "12 mesi", "Da inizio anno"];
+	const tags = ["Da inizio", "Mese corrente", "Ultimi 12 mesi", "Da inizio anno"];
 
 	const today = new Date();
 	const currentYear = today.getFullYear();
@@ -667,7 +667,7 @@ const Statistiche = (props) => {
 		<div class="flex flex-col h-full justify-center">
 
 			{/* Barra superiore con i tag */}
-			<div class="flex flex-none items-center justify-center gap-1 py-3 border-b">
+			<div class="flex flex-none flex-wrap items-center justify-center gap-1 py-3 border-b">
 				{tags.map((tag) => (
 					<div
 						class={`text-sm px-2 py-1 border rounded-xl cursor-pointer shadow-lg select-none ${selectedTag() === tag ? "bg-blue-500 text-white" : "bg-white text-black"
@@ -796,7 +796,7 @@ const Statistiche = (props) => {
 					<h3 class="text-center text-lg font-semibold mb-3">Uscite per Tipo</h3>
 
 					{/* Lista delle spese con overflow scrollabile */}
-					<ul class="text-sm space-y-2 flex-grow overflow-y-auto">
+					<ul class="text-sm space-y-1 flex-grow overflow-y-auto">
 						{expensesByType().slice(0, -1).map((expense) => ( // Escludiamo il totale dalla lista scorrevole
 							<li class="flex justify-between border-b">
 								<span>{expense.tipo}</span>
@@ -838,8 +838,6 @@ const Statistiche = (props) => {
 						</div>
 					)}
 				</div>
-
-
 
 				{/* Card con il grafico a barre */}
 				<div class="border rounded shadow-lg bg-white p-4 h-[400px]"

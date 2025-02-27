@@ -104,7 +104,7 @@ const EstrattoCC = ({ cc, setCC }) => {
 
 	const getOptions = (importo) => {
 		return importo > 0
-			? ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro"]
+			? ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro..."]
 			: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Fornitori", "Prelievi/Spese personali",
 				"Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."];
 	};
