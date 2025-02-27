@@ -3,8 +3,10 @@ import * as pdfjsLib from "pdfjs-dist";
 import { supabase } from "../lib/supabaseClient"; // Assicurati che il client Supabase sia configurato
 import decodeTipo from "../lib/decodeTipo"; // Importa la funzione decodeTipo
 
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-	"node_modules/pdfjs-dist/build/pdf.worker.min.mjs";
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+	"pdfjs-dist/build/pdf.worker.min.mjs",
+	import.meta.url
+ ).toString();
 
 const EstrattoCC = ({ cc, setCC }) => {
 	const [fileName, setFileName] = createSignal(null);
