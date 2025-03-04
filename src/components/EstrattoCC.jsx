@@ -472,7 +472,7 @@ const EstrattoCC = ({ cc, setCC }) => {
 			{/* )} */}
 
 			{/* tabella movimenti cc */}
-			<div class="flex flex-col h-full mt-2 text-[10px] w-full">
+			<div class={`flex flex-col h-full mt-2 ${isLandscape() ? "text-[18px]" : "text-[10px]"} w-full`}>
 				{filteredMovCC().length > 0 ? (
 					// Container scrollabile con altezza fissa
 					<div class="flex-grow w-full overflow-y-auto pb-[300px]">
