@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient.js"; // Assicurati che il percorso sia corretto
 
-const loadDataFromDB = async (setChiusure, setCash, setCC, setForniture) => {
+const loadDataFromDB = async (setChiusure, setCash, setCC, setForniture, setBudget) => {
   try {
 
     // Fetch chiusure dalla tabella chiusure
@@ -28,7 +28,7 @@ const loadDataFromDB = async (setChiusure, setCash, setCC, setForniture) => {
 
     setCC(ccData || []);
 
-	 // Fetch movimenti dalla tabella CC
+	 // Fetch movimenti dalla tabella forniture
     const { data: fornitureData, error: fornitureError } = await supabase
       .from('forniture')
       .select('*')
@@ -36,6 +36,14 @@ const loadDataFromDB = async (setChiusure, setCash, setCC, setForniture) => {
     if (fornitureError) throw fornitureError;
 
     setForniture(fornitureData || []);
+ 
+	 // Fetch movimenti dalla tabella forniture
+    const { data: budgetData, error: budgetError } = await supabase
+      .from('budget')
+      .select('*')
+    if (budgetError) throw budgetError;
+
+    setBudget(budgetData || []);
 
   } catch (error) {
     console.error("Errore nel caricamento dei dati dal DB:", error.message);

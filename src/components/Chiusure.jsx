@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
+const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 	const [view, setView] = createSignal('year'); // 'month' | 'day' | 'detail'
 	const [selectedYear, setSelectedYear] = createSignal(''); // Anno selezionato
 	const [selectedMonth, setSelectedMonth] = createSignal('');
@@ -36,50 +36,96 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
 		//console.log(chiusureConSpese());
 	});
 
+	// -------------------------------
+	// Nuova logica per elaborare budget() aggiungendo il campo incassi_puntuale
+	// -------------------------------
+
+	// Calcola incassi_puntuale per una singola istanza di budget
+	const computeIncassiPuntuale = (b) => {
+		const currentDate = new Date();
+		const instanceYear = b.anno_rif;
+		const instanceMonth = b.mese_rif; // 1-12
+		const totalIncassi = b.incassi;
+
+		// Data del primo e dell'ultimo giorno del mese
+		const startOfMonth = new Date(instanceYear, instanceMonth - 1, 1);
+		const endOfMonth = new Date(instanceYear, instanceMonth, 0);
+
+		if (instanceYear < currentDate.getFullYear() ||
+			(instanceYear === currentDate.getFullYear() && instanceMonth < currentDate.getMonth() + 1)) {
+			// Mese già trascorso
+			return totalIncassi;
+		} else if (instanceYear > currentDate.getFullYear() ||
+			(instanceYear === currentDate.getFullYear() && instanceMonth > currentDate.getMonth() + 1)) {
+			// Mese futuro
+			return 0;
+		} else {
+			// Mese in corso: calcola il progressivo in base ai giorni trascorsi
+			const daysPassed = currentDate.getDate();
+			const totalDays = endOfMonth.getDate();
+			return Math.round(totalIncassi * (daysPassed / totalDays));
+		}
+	};
+
+	// Elaboriamo l'array budget aggiungendo ad ogni istanza il campo incassi_puntuale
+	const computedBudget = () =>
+		budget().map(b => ({
+			...b,
+			incassi_puntuale: computeIncassiPuntuale(b)
+		}));
+
+	// Raggruppa il budget per anno (somma degli incassi_puntuale dei mesi dell'anno)
+	const groupBudgetByYear = () => {
+		const grouped = {};
+		computedBudget().forEach(b => {
+			const year = b.anno_rif;
+			if (!grouped[year]) grouped[year] = 0;
+			grouped[year] += b.incassi_puntuale;
+		});
+		return Object.entries(grouped)
+			.sort(([a], [b]) => b - a)
+			.map(([year, total]) => [year, total]);
+	};
+
+	// Helper per trovare il record di budget corrispondente a un determinato mese (chiave "YYYY-MM")
+	const findBudgetForKey = (key) => {
+		const [year, month] = key.split('-');
+		return computedBudget().find(b => b.anno_rif === parseInt(year) && b.mese_rif === parseInt(month));
+	};
+
 	// Raggruppa gli incassi per anno e calcola la somma totale
 	const groupByYear = () => {
 		const grouped = {};
-
 		chiusureConSpese().forEach((entry) => {
 			const yearKey = new Date(entry.data_competenza).getFullYear();
-
 			if (!grouped[yearKey]) grouped[yearKey] = 0;
-
 			const tag = selectedTag();
 			if (tag && tagMap[tag]) {
 				grouped[yearKey] += entry[tagMap[tag]] || 0;
 			} else {
-				grouped[yearKey] += (entry.chiusura_lorda_reale || 0);
-				//(entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+				grouped[yearKey] += entry.chiusura_lorda_reale || 0;
 			}
 		});
-
 		return Object.entries(grouped)
-			.sort(([a], [b]) => b - a) // Ordine decrescente per anno
+			.sort(([a], [b]) => b - a)
 			.map(([year, total]) => [year, total]);
 	};
 
-	// Raggruppa gli incassi per mese e calcola la somma totale
 	const groupByMonth = () => {
 		const grouped = {};
-
 		chiusureConSpese()
 			.filter((entry) => new Date(entry.data_competenza).getFullYear() === parseInt(selectedYear()))
 			.forEach((entry) => {
 				const date = new Date(entry.data_competenza);
-				const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-				if (!grouped[monthKey]) grouped[monthKey] = 0;
-
+				const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+				if (!grouped[key]) grouped[key] = 0;
 				const tag = selectedTag();
 				if (tag && tagMap[tag]) {
-					grouped[monthKey] += entry[tagMap[tag]] || 0;
+					grouped[key] += entry[tagMap[tag]] || 0;
 				} else {
-					grouped[monthKey] += (entry.chiusura_lorda_reale || 0);
-					//(entry.carte || 0) + (entry.satispay || 0) + (entry.contanti_cassa_lordo_spese || 0);
+					grouped[key] += entry.chiusura_lorda_reale || 0;
 				}
 			});
-
 		return Object.entries(grouped)
 			.sort(([a], [b]) => new Date(a).getTime() - new Date(b).getTime())
 			.map(([key, total]) => {
@@ -88,9 +134,10 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
 					month: 'long',
 					year: 'numeric',
 				});
-				return [formattedMonth, total];
+				return { formattedMonth, total, key };
 			});
 	};
+
 
 	// Filtra gli incassi per giorno per il mese selezionato
 	const filterByDay = () => {
@@ -332,41 +379,82 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
 					<h2 class="flex-none flex items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
 						Chiusure annuali
 					</h2>
-
+					<div class="flex-none flex items-center justify-end px-4">
+						<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+							Var BDG
+						</div>
+					</div>
 					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByYear().map(([year, total]) => (
-							<li
-								class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
-								onClick={() => {
-									setSelectedYear(year);
-									setView('month');
-								}}
-							>
-								<div class="flex justify-between">
-									<span>{year}</span>
-									<span class="text-green-600">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(Math.round(total))}{' '}
-										€
-									</span>
-								</div>
-							</li>
-						))}
+						{groupByYear().map(([year, total]) => {
+							const budgetYearEntry = groupBudgetByYear().find(([yr]) => yr == year);
+							const budgetTotal = budgetYearEntry ? budgetYearEntry[1] : 0;
+							const diff = total - budgetTotal;
+							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+							const diffFormatted =
+								diff >= 0
+									? `+${new Intl.NumberFormat('it-IT', {
+										style: 'decimal',
+										maximumFractionDigits: 0,
+									}).format(Math.round(diff))} €`
+									: `${new Intl.NumberFormat('it-IT', {
+										style: 'decimal',
+										maximumFractionDigits: 0,
+									}).format(Math.round(diff))} €`;
 
-						{/* Totale complessivo di tutti gli anni */}
+							return (
+								<li
+									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									onClick={() => {
+										setSelectedYear(year);
+										setView('month');
+									}}
+								>
+									<div class="flex justify-between items-center">
+										<span>{year}</span>
+										<div class="flex text-green-600">
+											{new Intl.NumberFormat('it-IT', {
+												style: 'decimal',
+												maximumFractionDigits: 0,
+											}).format(Math.round(total))} €
+											<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+												({diffFormatted})
+											</div>
+										</div>
+									</div>
+								</li>
+							);
+						})}
 						<li class="py-2 px-4 bg-gray-100 font-semibold">
-							<div class="flex justify-end">
+							<div class="flex justify-end items-center">
 								<span class="text-green-800 font-bold">
 									{new Intl.NumberFormat('it-IT', {
 										style: 'decimal',
 										maximumFractionDigits: 0,
-									}).format(groupByYear().reduce((sum, [, total]) => sum + total, 0))}{' '}
-									€
+									}).format(
+										groupByYear().reduce((sum, [, total]) => sum + total, 0)
+									)} €
 								</span>
+								<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+									groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+									? 'text-green-600'
+									: 'text-red-600'
+									}`}>
+									(
+									{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+										groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+										? '+'
+										: ''}
+									{new Intl.NumberFormat('it-IT', {
+										style: 'decimal',
+										maximumFractionDigits: 0,
+									}).format(
+										groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+										groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
+									)} €)
+								</div>
 							</div>
 						</li>
+
 					</ul>
 				</div>
 			)}
@@ -388,43 +476,87 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese }) => {
 						<div class="w-[40px]"></div>
 					</div>
 
+					<div class="flex-none flex items-center justify-end px-4">
+						<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+							Var BDG
+						</div>
+					</div>
+
 					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByMonth().map(([month, total]) => (
-							<li
-								class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
-								onClick={() => {
-									setSelectedMonth(month);
-									setView('day');
-								}}
-							>
-								<div class="flex justify-between">
-									<span>{month}</span>
-									<span class="text-green-600">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(Math.round(total))}{' '}
-										€
-									</span>
-								</div>
-							</li>
-						))}
+						{groupByMonth().map(({ formattedMonth, total, key }) => {
+							const budgetRecord = findBudgetForKey(key);
+							const budgetValue = budgetRecord ? budgetRecord.incassi_puntuale : 0;
+							const diff = total - budgetValue;
+							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+							const diffFormatted =
+								diff >= 0
+									? `+${new Intl.NumberFormat('it-IT', {
+										style: 'decimal',
+										maximumFractionDigits: 0,
+									}).format(Math.round(diff))} €`
+									: `${new Intl.NumberFormat('it-IT', {
+										style: 'decimal',
+										maximumFractionDigits: 0,
+									}).format(Math.round(diff))} €`;
+							return (
+								<li
+									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									onClick={() => {
+										setSelectedMonth(formattedMonth);
+										setView('day');
+									}}
+								>
+									<div class="flex justify-between items-center">
+										<span>{formattedMonth}</span>
+										<div class="flex text-green-600">
+											{new Intl.NumberFormat('it-IT', {
+												style: 'decimal',
+												maximumFractionDigits: 0,
+											}).format(Math.round(total))} €
+											<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+												({diffFormatted})
+											</div>
+										</div>
+									</div>
+								</li>
+							);
+						})}
 
 						{/* Totale complessivo di tutti i mesi */}
 						<li class="py-2 px-4 bg-gray-100 font-semibold">
-							<div class="flex justify-end">
+							<div class="flex justify-end items-center">
 								<span class="text-green-800 font-bold">
 									{new Intl.NumberFormat('it-IT', {
 										style: 'decimal',
 										maximumFractionDigits: 0,
-									}).format(groupByMonth().reduce((sum, [, total]) => sum + total, 0))}{' '}
-									€
+									}).format(
+										groupByMonth().reduce((sum, { total }) => sum + total, 0)
+									)} €
 								</span>
+								<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
+									sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+										? 'text-green-600'
+										: 'text-red-600'
+									}`}>
+									(
+									{groupByMonth().reduce((sum, { total, key }) =>
+										sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+										? '+'
+										: ''}
+									{new Intl.NumberFormat('it-IT', {
+										style: 'decimal',
+										maximumFractionDigits: 0,
+									}).format(
+										groupByMonth().reduce((sum, { total, key }) =>
+											sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
+									)} €)
+								</div>
 							</div>
 						</li>
 					</ul>
 				</div>
 			)}
+
 
 			{/* View degli incassi giornalieri */}
 			{view() === 'day' && (

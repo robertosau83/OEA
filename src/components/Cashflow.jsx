@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Cashflow = ({ setCash, cashflow, setCashflow }) => {
+const Cashflow = ({ setCash, cashflow, setCashflow, budget }) => {
 	const [view, setView] = createSignal('year'); // 'month' | 'day' | 'details'
 	const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
 	const [selectedMonth, setSelectedMonth] = createSignal('');
@@ -31,6 +31,68 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 	const [selectedGr2Tag, setSelectedGr2Tag] = createSignal(''); // Stato per il filtro Entrate/Uscite
 	const [filteredCashflow, setFilteredCashflow] = createSignal([]);
 
+	// Calcola spese_puntuali per una singola istanza di budget
+	const computeSpesePuntuali = (b) => {
+		const currentDate = new Date();
+		const instanceYear = b.anno_rif;
+		const instanceMonth = b.mese_rif; // 1-12
+		const totalSpese = b.spese; // budget delle spese
+		const endOfMonth = new Date(instanceYear, instanceMonth, 0);
+		if (
+			instanceYear < currentDate.getFullYear() ||
+			(instanceYear === currentDate.getFullYear() && instanceMonth < currentDate.getMonth() + 1)
+		) {
+			return totalSpese;
+		} else if (
+			instanceYear > currentDate.getFullYear() ||
+			(instanceYear === currentDate.getFullYear() && instanceMonth > currentDate.getMonth() + 1)
+		) {
+			return 0;
+		} else {
+			const daysPassed = currentDate.getDate();
+			const totalDays = endOfMonth.getDate();
+			return Math.round(totalSpese * (daysPassed / totalDays));
+		}
+	};
+
+	// Elaborazione del budget per le spese
+	const computedBudgetForSpese = () =>
+		budget().map(b => ({
+			...b,
+			spese_puntuali: computeSpesePuntuali(b)
+		}));
+
+	// Helper per trovare il record di budget (per le spese) corrispondente a un determinato mese (chiave "YYYY-MM")
+	const findBudgetForKey = (key) => {
+		return groupBudgetByMonthForSpese().find((item) => item.key === key);
+	};
+
+	// Raggruppa il budget delle spese per anno
+	const groupBudgetByYearForSpese = () => {
+		const grouped = {};
+		computedBudgetForSpese().forEach(b => {
+			const year = b.anno_rif;
+			if (!grouped[year]) grouped[year] = 0;
+			grouped[year] += b.spese_puntuali;
+		});
+		return Object.entries(grouped)
+			.sort(([a], [b]) => b - a)
+			.map(([year, total]) => [year, total]);
+	};
+
+	// Raggruppa il budget delle spese per mese (chiave "YYYY-MM")
+	const groupBudgetByMonthForSpese = () => {
+		const grouped = {};
+		computedBudgetForSpese().forEach(b => {
+			const key = `${b.anno_rif}-${String(b.mese_rif).padStart(2, '0')}`;
+			if (!grouped[key]) grouped[key] = 0;
+			grouped[key] += b.spese_puntuali;
+		});
+		return Object.entries(grouped)
+			.sort(([a], [b]) => new Date(a + "-01") - new Date(b + "-01"))
+			.map(([key, total]) => ({ key, total }));
+	};
+
 	// Aggiorna filteredCashflow ogni volta che cambia cashflow() o selectedGr1Tag()
 	createEffect(() => {
 		let filtered = cashflow();
@@ -52,36 +114,45 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 		setFilteredCashflow(filtered);
 	});
 
-	// Funzione per raggruppare le spese per anno
+	// 1. Aggiungi la funzione helper
+	const isExcluded = (entry) =>
+		["Storno", "Trasf CASH -> CC", "Trasf CC -> CASH"].includes(entry.tipo);
+
+	// 2. Modifica groupByYear
 	const groupByYear = () => {
 		const grouped = {};
-
 		filteredCashflow().forEach((entry) => {
 			const year = new Date(entry.data_operazione).getFullYear();
 			if (!grouped[year]) {
 				grouped[year] = 0;
 			}
-			grouped[year] += entry.importo;
+			// Aggiungi l'importo solo se il movimento non è escluso
+			if (!isExcluded(entry)) {
+				grouped[year] += entry.importo;
+			}
 		});
 
-		// Ordina gli anni in ordine decrescente
 		return Object.entries(grouped)
-			.sort(([a], [b]) => b - a) // Ordine decrescente per anno
+			.sort(([a], [b]) => b - a)
 			.map(([year, total]) => [year, total]);
 	};
 
-	// Funzione che raggruppa le spese per mese
+	// 3. Modifica groupByMonth
 	const groupByMonth = () => {
 		const grouped = {};
-
 		filteredCashflow()
-			.filter((entry) => new Date(entry.data_operazione).getFullYear() === parseInt(selectedYear()))
+			.filter(
+				(entry) =>
+					new Date(entry.data_operazione).getFullYear() === parseInt(selectedYear())
+			)
 			.forEach((entry) => {
-				const monthKey = new Date(entry.data_operazione).toISOString().slice(0, 7); // YYYY-MM
+				const monthKey = new Date(entry.data_operazione).toISOString().slice(0, 7);
 				if (!grouped[monthKey]) {
 					grouped[monthKey] = 0;
 				}
-				grouped[monthKey] += entry.importo;
+				if (!isExcluded(entry)) {
+					grouped[monthKey] += entry.importo;
+				}
 			});
 
 		return Object.entries(grouped)
@@ -91,11 +162,11 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 					month: 'long',
 					year: 'numeric',
 				});
-				return [monthLabel, total];
+				return { formattedMonth: monthLabel, total, key: monthKey };
 			});
 	};
 
-	// Funzione per la view dei giorni del mese
+	// 4. Modifica groupByDate
 	const groupByDate = () => {
 		const grouped = filteredCashflow()
 			.filter((entry) => {
@@ -110,17 +181,19 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 				if (!acc[date]) {
 					acc[date] = { total: 0, spese: [] };
 				}
-				acc[date].total += entry.importo;
+				// Incrementa il totale solo se il movimento non è escluso
+				if (!isExcluded(entry)) {
+					acc[date].total += entry.importo;
+				}
 				acc[date].spese.push(entry);
 				return acc;
 			}, {});
 
 		return Object.entries(grouped).sort(([dateA], [dateB]) => {
-			const date1 = new Date(dateA);
-			const date2 = new Date(dateB);
-			return date1.getTime() - date2.getTime();
+			return new Date(dateA).getTime() - new Date(dateB).getTime();
 		});
 	};
+
 
 	//Funzione che carica i dettagli di un giorno
 	const getDailyDetails = () => {
@@ -364,53 +437,89 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 			{/* View delle spese per anno */}
 			{view() === 'year' && (
 				<div class="flex flex-col h-full">
-
 					<h2 class="flex flex-none items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
 						Cashflow annuale
 					</h2>
-
+					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
+						<div class="flex-none flex items-center justify-end px-4">
+							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+								Var BDG
+							</div>
+						</div>
+					)}
 					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByYear().map(([year, total]) => (
-							<li
-								class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
-								onClick={() => {
-									setSelectedYear(year); // Imposta l'anno selezionato
-									setView('month'); // Passa alla view 'month'
-								}}
-							>
-								<div class="flex justify-between">
-									<span>{year}</span>
-									<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(Math.round(total))} €
-									</span>
-								</div>
-							</li>
-						))}
+						{groupByYear().map(([year, total]) => {
+							// Recupera il budget delle spese per l'anno corrente
+							const budgetYearEntry = groupBudgetByYearForSpese().find(([yr]) => yr == year);
+							const budgetTotal = budgetYearEntry ? budgetYearEntry[1] : 0;
+							// Poiché le spese sono valori negativi, usiamo il valore assoluto per il confronto
+							const diff = budgetTotal - Math.abs(total);
+							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+							const diffFormatted =
+								diff >= 0
+									? `+${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`
+									: `${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`;
+
+							return (
+								<li
+									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									onClick={() => {
+										setSelectedYear(year);
+										setView('month');
+									}}
+								>
+									<div class="flex justify-between items-center">
+										<span>{year}</span>
+										<div class="flex items-center">
+											<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
+												{new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(total))} €
+											</span>
+											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
+												<span class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+													({diffFormatted})
+												</span>
+											)}
+										</div>
+									</div>
+								</li>
+							);
+						})}
 
 						{/* Totale complessivo di tutti gli anni */}
-						<li class="py-2 px-4 bg-gray-100 font-semibold">
-							<div class="flex justify-end">
-								<span class={`${groupByYear().reduce((sum, [, total]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
-										groupByYear().reduce((sum, [, total]) => sum + total, 0)
-									)} €
-								</span>
-							</div>
-						</li>
+						{(() => {
+							const totalExpense = groupByYear().reduce((sum, [, total]) => sum + total, 0);
+							const totalBudget = groupBudgetByYearForSpese().reduce((sum, [, bTotal]) => sum + bTotal, 0);
+							const overallDiff = totalBudget + totalExpense;
+							return (
+								<li class="py-2 px-4 bg-gray-100 font-semibold">
+									<div class="flex justify-end items-center">
+										<span class={`${totalExpense > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
+											{new Intl.NumberFormat('it-IT', {
+												style: 'decimal',
+												maximumFractionDigits: 0,
+											}).format(totalExpense)} €
+										</span>
+										{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
+											<span class={`flex items-center justify-end w-[70px] text-xs italic ${overallDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
+												({overallDiff >= 0 ? '+' : ''}{new Intl.NumberFormat('it-IT', {
+													style: 'decimal',
+													maximumFractionDigits: 0,
+												}).format(overallDiff)} €)
+											</span>
+										)}
+									</div>
+								</li>
+							);
+						})()}
 					</ul>
 				</div>
 			)}
 
+
+
 			{/* View delle spese per mese */}
 			{view() === 'month' && (
 				<div class="flex flex-col h-full">
-
 					<div class="flex flex-none justify-between h-[55px] mb-16 mt-2">
 						<button class="w-[40px] bg-gray-100 font-bold text-black rounded" onClick={() => setView('year')}>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
@@ -421,45 +530,110 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 						</div>
 						<div class="w-[40px]"></div>
 					</div>
-
-					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByMonth().map(([month, total]) => (
-							<li
-								class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
-								onClick={() => {
-									setSelectedMonth(month); // Imposta il mese selezionato
-									setView('day'); // Passa alla view 'day'
-								}}
-							>
-								<div class="flex justify-between">
-									<span>{month}</span>
-									<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(Math.round(total))} €
-									</span>
-								</div>
-							</li>
-						))}
-
-						{/* Totale complessivo del mese */}
-						<li class="py-2 px-4 bg-gray-100 font-semibold">
-							<div class="flex justify-end">
-								<span class={`${groupByMonth().reduce((sum, [, total]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
-										groupByMonth().reduce((sum, [, total]) => sum + total, 0)
-									)} €
-								</span>
+					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
+						<div class="flex-none flex items-center justify-end px-4">
+							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+								Var BDG
 							</div>
-						</li>
-					</ul>
+						</div>
+					)}
+					<ul class="flex-grow overflow-y-auto pb-40">
+						{groupByMonth().map(({ formattedMonth, total, key }) => {
+							// Usa formattedMonth, total e key qui
+							// Ad esempio:
+							const budgetRecord = findBudgetForKey(key);
+							//console.log("bbbb",budgetRecord);
+							const budgetValue = budgetRecord ? budgetRecord.total : 0;
+							//console.log("aaaa",budgetValue);
+							const diff = budgetValue - Math.abs(total);
+							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+							const diffFormatted =
+								diff >= 0
+									? `+${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`
+									: `${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`;
 
+							return (
+								<li
+									key={key}
+									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									onClick={() => {
+										setSelectedMonth(formattedMonth);
+										setView('day');
+									}}
+								>
+									<div class="flex justify-between items-center">
+										<span>{formattedMonth}</span>
+										<div class="flex items-center">
+											<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
+												{new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(total))} €
+											</span>
+											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
+												<span class={`ml-2 flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+													({diffFormatted})
+												</span>
+											)}
+										</div>
+									</div>
+								</li>
+							);
+						})}
+
+
+						{/* Totale complessivo di tutti i mesi */}
+						{(() => {
+							// 1) Otteniamo l'array dei mesi
+							const months = groupByMonth(); // [{ formattedMonth, total, key }, ...]
+							// 2) Somma delle spese effettive (i movimenti in "month")
+							const sumOfTotals = months.reduce((acc, { total }) => acc + total, 0);
+							// 3) Somma del budget spese puntuali per questi mesi
+							const sumOfBudget = months.reduce((acc, { key }) => {
+								const spesePuntuale = findBudgetForKey(key)?.total || 0;
+								return acc + spesePuntuale;
+							}, 0);
+
+							// 4) Differenza complessiva (stessa logica usata nelle singole righe: total - spese_puntuale)
+							//    ma sommata su tutti i mesi
+							const sumOfDiff = sumOfTotals + sumOfBudget;
+
+							return (
+								<li class="py-2 px-4 bg-gray-100 font-semibold">
+									<div class="flex justify-end items-center gap-2">
+										{/* Mostra la somma effettiva di tutti i movimenti (negativa se sono spese) */}
+										<span
+											class={`${sumOfTotals > 0 ? "text-green-800" : "text-red-800"
+												} font-bold`}
+										>
+											{new Intl.NumberFormat("it-IT", {
+												style: "decimal",
+												maximumFractionDigits: 0,
+											}).format(sumOfTotals)} €
+										</span>
+
+										{/* Se siamo in "uscite" e non c’è filtro su CC/CASH, mostra la differenza rispetto al budget */}
+										{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
+											<span
+												class={`flex items-center justify-end w-[70px] text-xs italic ${sumOfDiff >= 0 ? "text-green-600" : "text-red-600"
+													}`}
+											>
+												(
+												{sumOfDiff >= 0 ? "+" : ""}
+												{new Intl.NumberFormat("it-IT", {
+													style: "decimal",
+													maximumFractionDigits: 0,
+												}).format(sumOfDiff)}{" "}
+												€)
+											</span>
+										)}
+									</div>
+								</li>
+							);
+						})()}
+
+
+					</ul>
 				</div>
 			)}
+
 
 			{/* View delle spese giornaliere */}
 			{view() === 'day' && (
@@ -546,7 +720,9 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 												style: 'decimal',
 												maximumFractionDigits: 0,
 											}).format(
-												getCashMovements().reduce((sum, entry) => sum + entry.importo, 0)
+												getCashMovements()
+													.filter((entry) => !isExcluded(entry))
+													.reduce((sum, entry) => sum + entry.importo, 0)
 											)} €
 										</span>
 										<span class="text-blue-800">)</span>
@@ -556,7 +732,7 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 								<table class="w-full text-sm text-gray-700">
 									<tbody>
 										{getCashMovements().map((entry) => (
-											<tr class="flex items-center justify-center border-b h-[40px]"
+											<tr class={`flex items-center justify-center border-b h-[40px] ${isExcluded(entry) ? "italic opacity-50" : ""}`}
 												onClick={() => {
 													setSelectedMovement(entry); // Salva la spesa selezionata
 													//console.log(selectedMovement());
@@ -591,7 +767,9 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 												style: 'decimal',
 												maximumFractionDigits: 0,
 											}).format(
-												getCCMovements().reduce((sum, entry) => sum + entry.importo, 0)
+												getCCMovements()
+													.filter((entry) => !isExcluded(entry))
+													.reduce((sum, entry) => sum + entry.importo, 0)
 											)} €
 										</span>
 										<span class="text-blue-800">)</span>
@@ -600,7 +778,7 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 								<table class="w-full text-sm text-gray-700">
 									<tbody>
 										{getCCMovements().map((entry) => (
-											<tr class="flex items-center justify-center border-b h-[40px]"
+											<tr class={`flex items-center justify-center border-b h-[40px] ${isExcluded(entry) ? "italic opacity-50" : ""}`}
 												onClick={() => {
 													setSelectedMovement(entry); // Salva la spesa selezionata
 													setSelectedMovementId(entry.id);
@@ -625,13 +803,13 @@ const Cashflow = ({ setCash, cashflow, setCashflow }) => {
 						{getCashMovements().length > 0 && getCCMovements().length > 0 && (
 							<div class="flex justify-end text-lg mr-2 mt-8">
 								<span class={
-									`${getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) +
-										getCCMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
+									`${getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) +
+										getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
 									{new Intl.NumberFormat('it-IT', {
 										style: 'decimal',
 										maximumFractionDigits: 0,
 									}).format(
-										getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) + getCCMovements().reduce((sum, entry) => sum + entry.importo, 0)
+										getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) + getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0)
 									)} €
 								</span>
 							</div>

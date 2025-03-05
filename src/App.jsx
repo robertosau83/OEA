@@ -5,6 +5,7 @@ import EstrattoCC from './components/EstrattoCC.jsx';
 import Forniture from './components/Forniture.jsx';
 import Quadratura_CASH from './components/Quadratura_CASH.jsx';
 import Statistiche from './components/Statistiche.jsx';
+import Budget from './components/Budget.jsx';
 import loadDataFromDB from "./lib/loadDataFromDB.js";
 import composeLocalStates from "./lib/composeLocalStates.js";
 
@@ -16,14 +17,15 @@ const App = ({ onLogout }) => {
 	const [cash, setCash] = createSignal([]);
 	const [cc, setCC] = createSignal([]);
 	const [forniture, setForniture] = createSignal([]);
+	const [budget, setBudget] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
 	const [isMenuOpen, setIsMenuOpen] = createSignal(false);
 
 	// Esegui il caricamento dei dati quando il componente viene montato
 	onMount(async () => {
-		await loadDataFromDB(setChiusure, setCash, setCC, setForniture);
+		await loadDataFromDB(setChiusure, setCash, setCC, setForniture, setBudget);
 
-		console.log(forniture());
+		console.log(budget());
 		setIsLoading(false);
 	});
 
@@ -48,6 +50,7 @@ const App = ({ onLogout }) => {
 		chiusureConSpese, setChiusureConSpese,
 		cashflow, setCashflow,
 		forniture, setForniture,
+		budget, setBudget,
 	};
 
 	const renderMainContent = () => {
@@ -68,6 +71,9 @@ const App = ({ onLogout }) => {
 		}
 		if (currentBtmBarComponentName() === "Statistiche") {
 			return <Statistiche {...sharedProps} />;
+		}
+		if (currentBtmBarComponentName() === "Budget") {
+			return <Budget {...sharedProps} />;
 		}
 		return null; // In caso di valore non gestito
 	};
@@ -147,6 +153,18 @@ const App = ({ onLogout }) => {
 								}}
 							>
 								Statistiche
+							</button>
+
+							<button
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "Budget" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
+								onClick={() => {
+									setCurrentBtmBarComponentName("Budget");
+									setIsMenuOpen(false);
+								}}
+							>
+								Budget
 							</button>
 
 							<button

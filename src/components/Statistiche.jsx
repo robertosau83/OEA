@@ -307,8 +307,8 @@ const Statistiche = (props) => {
 
 		//console.log("Filtered Data:", filteredData);
 
-		// Filtriamo solo i movimenti con importo negativo ed escludiamo gli "Storno"
-		const negativeMovements = filteredData.filter(item => item.importo < 0 && item.tipo !== "Storno");
+		// Filtriamo solo i movimenti con importo negativo ed escludiamo gli "Storno" o le controparti, ovvero i trasferimenti
+		const negativeMovements = filteredData.filter(item => item.importo < 0 && item.tipo !== "Storno" && item.tipo !== "Trasf CASH -> CC" && item.tipo !== "Trasf CC -> CASH");
 		//console.log("Negative Movements:", negativeMovements);
 
 		// Creiamo una mappa per sommare gli importi per tipo
@@ -364,8 +364,8 @@ const Statistiche = (props) => {
 			});
 		}
 
-		// Filtriamo solo i movimenti con importo positivo ed escludiamo gli "Storno"
-		const positiveMovements = filteredData.filter(item => item.importo > 0 && item.tipo !== "Trasf CASH -> CC" && item.tipo !== "Trasf CC -> CASH");
+		// Filtriamo solo i movimenti con importo positivo ed escludiamo gli "Storno" o le controparti, ovvero i trasferimenti
+		const positiveMovements = filteredData.filter(item => item.importo > 0 && item.tipo !== "Storno" && item.tipo !== "Trasf CASH -> CC" && item.tipo !== "Trasf CC -> CASH");
 
 		// Creiamo una mappa per sommare gli importi per tipo
 		const groupedData = new Map();
