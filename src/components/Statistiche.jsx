@@ -2,7 +2,7 @@ import { createSignal, createMemo, onMount } from "solid-js";
 import ApexCharts from "apexcharts";
 
 const Statistiche = (props) => {
-	const { cc, cash, chiusureConSpese, cashflow, forniture } = props;
+	const { cc, cash, chiusureConSpese, cashflow, forniture, budget } = props;
 
 	const [selectedTag, setSelectedTag] = createSignal("Da inizio"); // Default: ultimi 12 mesi
 	const tags = ["Da inizio", "Mese corrente", "Ultimi 12 mesi", "Da inizio anno"];
@@ -42,6 +42,157 @@ const Statistiche = (props) => {
 			.map(([key, value]) => ({ label: value.label, total: value.total }))
 			.sort((a, b) => new Date(`20${a.label.split("-")[1]}`) - new Date(`20${b.label.split("-")[1]}`));
 	};
+
+	const confrontoData = createMemo(() => {
+		// Filtra i dati di chiusureConSpese in base al tag selezionato
+		const rawData = chiusureConSpese();
+		let filtered;
+		if (selectedTag() === "Da inizio") {
+			filtered = rawData;
+		} else if (selectedTag() === "Mese corrente") {
+			filtered = rawData.filter(item => {
+				const date = new Date(item.data_competenza);
+				return date.getFullYear() === currentYear && (date.getMonth() + 1) === currentMonth;
+			});
+		} else if (selectedTag() === "Ultimi 12 mesi") {
+			filtered = rawData.filter(item => new Date(item.data_competenza) >= last12Months);
+		} else if (selectedTag() === "Da inizio anno") {
+			filtered = rawData.filter(item => new Date(item.data_competenza).getFullYear() === currentYear);
+		} else {
+			filtered = rawData;
+		}
+
+		// Raggruppa i dati filtrati per mese
+		const incassiMap = new Map();
+		filtered.forEach(item => {
+			const date = new Date(item.data_competenza);
+			const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+			const current = incassiMap.get(key) || 0;
+			incassiMap.set(key, current + (item.chiusura_lorda_reale || 0));
+		});
+
+		const incassiArray = Array.from(incassiMap.entries()).map(([key, incassi]) => {
+			const [year, month] = key.split("-");
+			const formattedLabel = `${month}/${year}`; // Formato 03/2025
+			return { key, label: formattedLabel, incassi };
+		});
+
+		// Raggruppa i dati di budget per mese
+		const budgetArray = budget().map(b => {
+			const key = `${b.anno_rif}-${String(b.mese_rif).padStart(2, '0')}`;
+			return { key, budget: b.incassi || 0 };
+		});
+		const budgetMap = new Map(budgetArray.map(item => [item.key, item.budget]));
+
+		// Determiniamo il budget parziale per il mese in corso
+		const today = new Date();
+		const currentMonthKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+		const giorniTrascorsi = today.getDate();
+		const giorniTotaliMese = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate(); // Ultimo giorno del mese
+		const budgetCorrente = budgetMap.get(currentMonthKey) || 0;
+		const budgetParziale = (budgetCorrente * giorniTrascorsi) / giorniTotaliMese; // Budget proporzionato per il mese corrente
+
+		// Effettua il merge e calcola la variazione percentuale
+		const merged = incassiArray.map(item => {
+			let budgetVal = budgetMap.get(item.key) || 0;
+			if (item.key === currentMonthKey) {
+				budgetVal = budgetParziale;
+			}
+			const variazionePercentuale = budgetVal !== 0 ? ((item.incassi - budgetVal) / budgetVal) * 100 : 0;
+			return {
+				...item,
+				budget: budgetVal,
+				variazionePercentuale
+			};
+		});
+
+		// Ordina i dati in ordine ascendente (dal meno recente al più recente)
+		merged.sort((a, b) => a.key.localeCompare(b.key));
+		// Prendi gli ultimi X mesi mantenendo l'ordine ascendente
+		const X = 6;
+		return merged.slice(-X);
+	});
+
+	// Nuovo memo per il confronto delle spese
+	const confrontoSpeseData = createMemo(() => {
+		// Filtra cashflow in base al tag selezionato (usando data_operazione)
+		const rawData = cashflow();
+		let filtered;
+		if (selectedTag() === "Da inizio") {
+			filtered = rawData;
+		} else if (selectedTag() === "Mese corrente") {
+			filtered = rawData.filter(item => {
+				const date = new Date(item.data_operazione);
+				return date.getFullYear() === currentYear && (date.getMonth() + 1) === currentMonth;
+			});
+		} else if (selectedTag() === "12 mesi") {
+			filtered = rawData.filter(item => new Date(item.data_operazione) >= last12Months);
+		} else if (selectedTag() === "Da inizio anno") {
+			filtered = rawData.filter(item => new Date(item.data_operazione).getFullYear() === currentYear);
+		} else {
+			filtered = rawData;
+		}
+
+		// Filtra solo i movimenti negativi (le spese) escludendo "Storno" e i trasferimenti
+		const negativeMovements = filtered.filter(item =>
+			item.importo < 0 &&
+			item.tipo !== "Storno" &&
+			item.tipo !== "Trasf CASH -> CC" &&
+			item.tipo !== "Trasf CC -> CASH"
+		);
+
+		// Raggruppa le spese reali per mese (utilizzando data_operazione)
+		const expensesMap = new Map();
+		negativeMovements.forEach(item => {
+			const date = new Date(item.data_operazione);
+			const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+			const currentValue = expensesMap.get(key) || 0;
+			expensesMap.set(key, currentValue + Math.abs(item.importo));
+		});
+
+		const expensesArray = Array.from(expensesMap.entries()).map(([key, expense]) => {
+			const [year, month] = key.split("-");
+			const formattedLabel = `${month}/${year}`; // es. "03/2025"
+			return { key, label: formattedLabel, expense };
+		});
+
+		// Raggruppa i dati di budget per mese per le spese
+		// Assumiamo che ogni oggetto del budget abbia un campo "spese" contenente le spese previste
+		const budgetExpensesArray = budget().map(b => {
+			const key = `${b.anno_rif}-${String(b.mese_rif).padStart(2, '0')}`;
+			return { key, plannedExpense: b.spese || 0 };
+		});
+		const budgetExpensesMap = new Map(budgetExpensesArray.map(item => [item.key, item.plannedExpense]));
+
+		// Per il mese in corso, calcola il budget parziale in base ai giorni trascorsi
+		const todayForExpenses = new Date();
+		const currentMonthKeyExpenses = `${todayForExpenses.getFullYear()}-${String(todayForExpenses.getMonth() + 1).padStart(2, '0')}`;
+		const giorniTrascorsi = todayForExpenses.getDate();
+		const giorniTotaliMese = new Date(todayForExpenses.getFullYear(), todayForExpenses.getMonth() + 1, 0).getDate();
+		const plannedExpenseCurrent = budgetExpensesMap.get(currentMonthKeyExpenses) || 0;
+		const plannedExpensePartial = (plannedExpenseCurrent * giorniTrascorsi) / giorniTotaliMese;
+
+		// Effettua il merge delle spese reali con quelle previste e calcola la variazione percentuale
+		const merged = expensesArray.map(item => {
+			let plannedExpense = budgetExpensesMap.get(item.key) || 0;
+			if (item.key === currentMonthKeyExpenses) {
+				plannedExpense = plannedExpensePartial;
+			}
+			// Calcola la variazione: se le spese reali superano quelle previste, la variazione sarà positiva
+			const variationPercent = plannedExpense !== 0 ? ((item.expense - plannedExpense) / plannedExpense) * 100 : 0;
+			return {
+				...item,
+				plannedExpense,
+				variationPercent
+			};
+		});
+
+		// Ordina i dati in ordine ascendente (dal meno recente al più recente)
+		merged.sort((a, b) => a.key.localeCompare(b.key));
+		// Prendi gli ultimi X mesi (ad es. 6) mantenendo l'ordine ascendente
+		const X = 6;
+		return merged.slice(-X);
+	});
 
 	const groupCashflowData = (data, mode) => {
 		const groupedData = new Map();
@@ -639,6 +790,123 @@ const Statistiche = (props) => {
 		};
 	});
 
+	const budgetChartOptions = createMemo(() => ({
+		chart: {
+			type: "bar",
+			height: "100%",
+			width: "100%",
+			stacked: false,
+			toolbar: { show: false }
+		},
+		title: {
+			text: "Chiusure vs Budget Puntuale",
+			align: "center",
+			style: {
+				fontSize: "16px",
+				fontWeight: "bold"
+			}
+		},
+		plotOptions: {
+			bar: {
+				borderRadius: 2
+			}
+		},
+		series: [
+			{
+				name: "Chiusure",
+				data: confrontoData().map(item => item.incassi)
+			},
+			{
+				name: "Budget",
+				data: confrontoData().map(item => item.budget)
+			}
+		],
+		xaxis: {
+			categories: confrontoData().map(item => item.label),
+			title: { text: "" }
+		},
+		yaxis: {
+			labels: {
+				formatter: (val) => val.toLocaleString("it-IT", { maximumFractionDigits: 0 })
+			},
+			title: { text: "" }
+		},
+		fill: {
+			type: 'gradient',
+			gradient: {
+				shade: 'light',
+				type: "horizontal",
+				shadeIntensity: 0.25,
+				gradientToColors: undefined,
+				inverseColors: true,
+				opacityFrom: 0.8,
+				opacityTo: 0.9,
+				stops: [50, 0, 100]
+			},
+		},
+		dataLabels: { enabled: false },
+		grid: { show: true }
+	}));
+
+	const expenseBudgetChartOptions = createMemo(() => ({
+		chart: {
+			type: "bar",
+			height: "100%",
+			width: "100%",
+			stacked: false,
+			toolbar: { show: false }
+		},
+		title: {
+			text: "Spese vs Budget Puntuale",
+			align: "center",
+			style: {
+				fontSize: "16px",
+				fontWeight: "bold"
+			}
+		},
+		plotOptions: {
+			bar: {
+				borderRadius: 2
+			}
+		},
+		series: [
+			{
+				name: "Spese",
+				data: confrontoSpeseData().map(item => item.expense)
+			},
+			{
+				name: "Budget",
+				data: confrontoSpeseData().map(item => item.plannedExpense)
+			}
+		],
+		xaxis: {
+			categories: confrontoSpeseData().map(item => item.label),
+			title: { text: "" }
+		},
+		yaxis: {
+			labels: {
+				formatter: (val) => val.toLocaleString("it-IT", { maximumFractionDigits: 0 })
+			},
+			title: { text: "" }
+		},
+		fill: {
+			type: 'gradient',
+			gradient: {
+				shade: 'light',
+				type: "horizontal",
+				shadeIntensity: 0.25,
+				gradientToColors: undefined,
+				inverseColors: true,
+				opacityFrom: 0.8,
+				opacityTo: 0.9,
+				stops: [50, 0, 100]
+			}
+		},
+		dataLabels: { enabled: false },
+		grid: { show: true },
+		colors: ["#F44336", "#FFEB3B"] // Rosso per le spese, giallo per il budget
+	}));
+
 
 	onMount(() => {
 		const chart1 = new ApexCharts(document.querySelector("#chart"), chartOptions());
@@ -653,11 +921,19 @@ const Statistiche = (props) => {
 		const chart4 = new ApexCharts(document.querySelector("#pie-chart-income"), pieChartOptionsIncome()); // 🎯 Nuovo grafico
 		chart4.render();
 
+		const chart5 = new ApexCharts(document.querySelector("#budget-chart"), budgetChartOptions());
+		chart5.render();
+
+		const chart6 = new ApexCharts(document.querySelector("#expense-budget-chart"), expenseBudgetChartOptions());
+		chart6.render();
+
 		const updateCharts = () => {
 			chart1.updateOptions(chartOptions());
 			chart2.updateOptions(cashflowChartOptions());
 			chart3.updateOptions(pieChartOptions());
 			chart4.updateOptions(pieChartOptionsIncome()); // 🎯 Nuovo grafico
+			chart5.updateOptions(budgetChartOptions());
+			chart6.updateOptions(expenseBudgetChartOptions());
 		};
 
 		createMemo(updateCharts);
@@ -733,7 +1009,7 @@ const Statistiche = (props) => {
 						{selectedTag() === "Da inizio" && (
 							<li class={`flex justify-between border-b text-gray-600`}>
 								<span>Forniture da pagare</span>
-								<span class="text-red-600 font-semibold">{fornitureDaPagare().toLocaleString("it-IT", { minimumFractionDigits: 2 })}€</span>
+								<span class="text-red-600 font-semibold">{fornitureDaPagare().toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
 							</li>
 						)}
 					</div>
@@ -812,6 +1088,122 @@ const Statistiche = (props) => {
 						<span>{expensesByType().at(-1).tipo}</span>
 						<span>{expensesByType().at(-1).total.toLocaleString("it-IT", { minimumFractionDigits: 2 })}€</span>
 					</div>
+				</div>
+
+				{/* Slot per "Chiusure vs Budget Puntuale" */}
+				<div class="border rounded shadow-lg bg-white px-4 py-2 h-[400px] flex flex-col"
+					style="flex: 1 1 auto; min-width: 300px;">
+					<h2 class="text-lg text-center font-semibold mb-4">
+						Chiusure vs Budget Puntuale
+					</h2>
+					<ul class="text-sm font-semibold">
+						<li class="flex justify-between items-center py-1">
+							<span class="w-1/4"></span>
+							<span class="w-1/4 text-right">Chiusure</span>
+							<span class="w-1/4 text-right">Bdg</span>
+							<span class="w-1/4 text-right">Var %</span>
+						</li>
+					</ul>
+					<ul class="text-sm space-y-1 flex-grow overflow-y-auto">
+						{confrontoData().map(({ key, label, incassi, budget, variazionePercentuale }) => (
+							<li key={key} class="flex justify-between items-center py-1 border-b">
+								<span class="w-1/4">{label}</span> {/* es. 03/2025 */}
+								<span class="w-1/4 text-right">
+									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(incassi)} €
+								</span>
+								<span class="w-1/4 text-right">
+									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(budget)} €
+								</span>
+								<span class={`w-1/4 text-right font-semibold ${variazionePercentuale >= 0 ? "text-green-600" : "text-red-600"}`}>
+									{variazionePercentuale.toFixed(1)}%
+								</span>
+							</li>
+						))}
+						{(() => {
+							const data = confrontoData();
+							const totalIncassi = data.reduce((sum, item) => sum + item.incassi, 0);
+							const totalBudget = data.reduce((sum, item) => sum + item.budget, 0);
+							const globalVariation = totalBudget !== 0 ? ((totalIncassi - totalBudget) / totalBudget) * 100 : 0;
+							return (
+								<li class="flex justify-between items-center py-1 font-bold">
+									<span class="w-1/4">Totale</span>
+									<span class="w-1/4 text-right">
+										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalIncassi)} €
+									</span>
+									<span class="w-1/4 text-right">
+										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalBudget)} €
+									</span>
+									<span class={`w-1/4 text-right ${globalVariation >= 0 ? "text-green-600" : "text-red-600"}`}>
+										{globalVariation.toFixed(1)}%
+									</span>
+								</li>
+							);
+						})()}
+					</ul>
+				</div>
+
+				{/* Card con il grafico Incassi vs Budget Puntuale */}
+				<div class="border rounded shadow-lg bg-white p-4 h-[400px]"
+					style="flex: 1 1 auto; min-width: 300px;">
+					<div id="budget-chart" class="flex justify-center w-full h-full"></div>
+				</div>
+
+				{/* Slot per "Spese vs Budget Previste" */}
+				<div class="border rounded shadow-lg bg-white px-4 py-2 h-[400px] flex flex-col"
+					style="flex: 1 1 auto; min-width: 300px;">
+					<h2 class="text-lg text-center font-semibold mb-4">
+						Spese vs Budget Puntuale
+					</h2>
+					<ul class="text-sm font-semibold">
+						<li class="flex justify-between items-center py-1">
+							<span class="w-1/4"></span>
+							<span class="w-1/4 text-right">Spese</span>
+							<span class="w-1/4 text-right">Bdg</span>
+							<span class="w-1/4 text-right">Var %</span>
+						</li>
+					</ul>
+					<ul class="text-sm space-y-1 flex-grow overflow-y-auto">
+						{confrontoSpeseData().map(({ key, label, expense, plannedExpense, variationPercent }) => (
+							<li key={key} class="flex justify-between items-center py-1 border-b">
+								<span class="w-1/4">{label}</span>
+								<span class="w-1/4 text-right">
+									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(expense)} €
+								</span>
+								<span class="w-1/4 text-right">
+									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(plannedExpense)} €
+								</span>
+								<span class={`w-1/4 text-right font-semibold ${variationPercent > 0 ? "text-red-600" : "text-green-600"}`}>
+									{variationPercent.toFixed(1)}%
+								</span>
+							</li>
+						))}
+						{(() => {
+							const data = confrontoSpeseData();
+							const totalExpense = data.reduce((sum, item) => sum + item.expense, 0);
+							const totalPlannedExpense = data.reduce((sum, item) => sum + item.plannedExpense, 0);
+							const globalVariationExpense = totalPlannedExpense !== 0 ? ((totalExpense - totalPlannedExpense) / totalPlannedExpense) * 100 : 0;
+							return (
+								<li class="flex justify-between items-center py-1 font-bold">
+									<span class="w-1/4">Totale</span>
+									<span class="w-1/4 text-right">
+										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalExpense)} €
+									</span>
+									<span class="w-1/4 text-right">
+										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalPlannedExpense)} €
+									</span>
+									<span class={`w-1/4 text-right ${globalVariationExpense > 0 ? "text-red-600" : "text-green-600"}`}>
+										{globalVariationExpense.toFixed(1)}%
+									</span>
+								</li>
+							);
+						})()}
+					</ul>
+				</div>
+
+				{/* Card con il grafico Spese vs Budget Previste */}
+				<div class="border rounded shadow-lg bg-white p-4 h-[400px]"
+					style="flex: 1 1 auto; min-width: 300px;">
+					<div id="expense-budget-chart" class="flex justify-center w-full h-full"></div>
 				</div>
 
 				{/* Card con il grafico a torta e la legenda */}
