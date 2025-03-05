@@ -444,7 +444,7 @@ const Statistiche = (props) => {
 				const date = new Date(item.data_operazione);
 				return date.getFullYear() === currentYear && date.getMonth() + 1 === currentMonth;
 			});
-		} else if (selectedTag() === "12 mesi") {
+		} else if (selectedTag() === "Ultimi 12 mesi") {
 			filteredData = rawData.filter(item => {
 				const date = new Date(item.data_operazione);
 				return date >= last12Months;
@@ -494,6 +494,8 @@ const Statistiche = (props) => {
 	const incomeByType = createMemo(() => {
 		const rawData = cashflow();
 
+
+
 		// Filtriamo i dati in base alla tag selezionata
 		let filteredData = [];
 		if (selectedTag() === "Da inizio") {
@@ -503,7 +505,7 @@ const Statistiche = (props) => {
 				const date = new Date(item.data_operazione);
 				return date.getFullYear() === currentYear && date.getMonth() + 1 === currentMonth;
 			});
-		} else if (selectedTag() === "12 mesi") {
+		} else if (selectedTag() === "Ultimi 12 mesi") {
 			filteredData = rawData.filter(item => {
 				const date = new Date(item.data_operazione);
 				return date >= last12Months;
@@ -539,6 +541,8 @@ const Statistiche = (props) => {
 		if (incomesArray.length > 0) {
 			incomesArray.push({ tipo: "Totale Entrate", total: totalEntrate });
 		}
+
+		console.log(incomesArray);
 
 		return incomesArray;
 	});
