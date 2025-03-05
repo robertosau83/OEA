@@ -379,11 +379,13 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 					<h2 class="flex-none flex items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
 						Chiusure annuali
 					</h2>
-					<div class="flex-none flex items-center justify-end px-4">
-						<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
-							Var BDG
+					{!selectedTag() && (
+						<div class="flex-none flex items-center justify-end px-4">
+							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+								Var BDG
+							</div>
 						</div>
-					</div>
+					)}
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByYear().map(([year, total]) => {
 							const budgetYearEntry = groupBudgetByYear().find(([yr]) => yr == year);
@@ -416,9 +418,11 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 												style: 'decimal',
 												maximumFractionDigits: 0,
 											}).format(Math.round(total))} €
-											<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
-												({diffFormatted})
-											</div>
+											{!selectedTag() && (
+												<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+													({diffFormatted})
+												</div>
+											)}
 										</div>
 									</div>
 								</li>
@@ -434,24 +438,26 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 										groupByYear().reduce((sum, [, total]) => sum + total, 0)
 									)} €
 								</span>
-								<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-									groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-									? 'text-green-600'
-									: 'text-red-600'
-									}`}>
-									(
-									{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+								{!selectedTag() && (
+									<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
 										groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-										? '+'
-										: ''}
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
-										groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-										groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
-									)} €)
-								</div>
+										? 'text-green-600'
+										: 'text-red-600'
+										}`}>
+										(
+										{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+											groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+											? '+'
+											: ''}
+										{new Intl.NumberFormat('it-IT', {
+											style: 'decimal',
+											maximumFractionDigits: 0,
+										}).format(
+											groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+											groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
+										)} €)
+									</div>
+								)}
 							</div>
 						</li>
 
@@ -476,11 +482,13 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 						<div class="w-[40px]"></div>
 					</div>
 
-					<div class="flex-none flex items-center justify-end px-4">
-						<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
-							Var BDG
+					{!selectedTag() && (
+						<div class="flex-none flex items-center justify-end px-4">
+							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+								Var BDG
+							</div>
 						</div>
-					</div>
+					)}
 
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByMonth().map(({ formattedMonth, total, key }) => {
@@ -513,9 +521,11 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 												style: 'decimal',
 												maximumFractionDigits: 0,
 											}).format(Math.round(total))} €
-											<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
-												({diffFormatted})
-											</div>
+											{!selectedTag() && (
+												<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+													({diffFormatted})
+												</div>
+											)}
 										</div>
 									</div>
 								</li>
@@ -533,24 +543,26 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 										groupByMonth().reduce((sum, { total }) => sum + total, 0)
 									)} €
 								</span>
-								<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
-									sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+								{!selectedTag() && (
+									<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
+										sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
 										? 'text-green-600'
 										: 'text-red-600'
-									}`}>
-									(
-									{groupByMonth().reduce((sum, { total, key }) =>
-										sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
-										? '+'
-										: ''}
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
-										groupByMonth().reduce((sum, { total, key }) =>
-											sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
-									)} €)
-								</div>
+										}`}>
+										(
+										{groupByMonth().reduce((sum, { total, key }) =>
+											sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+											? '+'
+											: ''}
+										{new Intl.NumberFormat('it-IT', {
+											style: 'decimal',
+											maximumFractionDigits: 0,
+										}).format(
+											groupByMonth().reduce((sum, { total, key }) =>
+												sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
+										)} €)
+									</div>
+								)}
 							</div>
 						</li>
 					</ul>
