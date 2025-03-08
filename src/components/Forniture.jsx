@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Forniture = ({ forniture, setForniture }) => {
+const Forniture = ({ forniture, setForniture, isLandscape }) => {
 	const [showAddPopup, setShowAddPopup] = createSignal(false);
 	const [newFornitura, setNewFornitura] = createSignal({
 		data_scadenza: new Date().toISOString().split('T')[0],
@@ -108,11 +108,11 @@ const Forniture = ({ forniture, setForniture }) => {
 	};
 
 	return (
-		<div class="flex flex-col h-full px-2 pt-2">
-			<div class="flex flex-none text-gray-600 w-full h-[30px] items-center justify-center">
+		<div class={`flex flex-col h-full px-2 pt-2 ${isLandscape() ? "text-xl" : "text-xs"}`}>
+			<div class="flex flex-none text-gray-600 w-full h-[30px] items-center justify-center text-lg mb-2 font-semibold">
 				Forniture
 			</div>
-			<div class="flex flex-none w-full text-xs h-[30px] border-b items-center font-semibold">
+			<div class="flex flex-none w-full h-[30px] border-b items-center font-semibold">
 				<div class="text-center w-[20%]">Scadenza</div>
 				<div class="text-center w-[35%]">Nome</div>
 				<div class="text-center w-[20%]">Importo</div>
@@ -121,57 +121,57 @@ const Forniture = ({ forniture, setForniture }) => {
 			</div>
 			<div class="flex-grow overflow-y-auto pb-40">
 
-						{forniture()
-							.sort((a, b) => new Date(a.data_scadenza) - new Date(b.data_scadenza))
-							.map(f => (
-								<div
-									key={f.id}
-									class="flex items-center border-b py-2 text-xs cursor-pointer hover:bg-gray-100"
-									onClick={() => {
-										setEditFornitura({
-											...f,
-											importo: f.importo.toString().replace('.', ','), // Converti il separatore decimale in ","
-										});
-										setShowEditPopup(true);
+				{forniture()
+					.sort((a, b) => new Date(a.data_scadenza) - new Date(b.data_scadenza))
+					.map(f => (
+						<div
+							key={f.id}
+							class="flex items-center border-b py-2 cursor-pointer hover:bg-gray-100"
+							onClick={() => {
+								setEditFornitura({
+									...f,
+									importo: f.importo.toString().replace('.', ','), // Converti il separatore decimale in ","
+								});
+								setShowEditPopup(true);
+							}}
+
+						>
+							<div class="text-center w-[20%]">
+								{new Date(f.data_scadenza).toLocaleDateString('it-IT')}
+							</div>
+
+							<div class="text-center px-2 w-[35%]">{f.nome}</div>
+							<div class="text-right pr-3 w-[20%]">
+								{new Intl.NumberFormat('it-IT', {
+									minimumFractionDigits: 0,
+									maximumFractionDigits: 2
+								}).format(f.importo)} €
+							</div>
+							<div class="text-center w-[15%] h-full">
+								<input
+									type="checkbox"
+									checked={f.status === 'PAYED'}
+									onClick={(e) => e.stopPropagation()} // Blocca la propagazione
+									onChange={() => togglePaymentStatus(f.id, f.status)}
+									class="cursor-pointer w-6 h-6"
+								/>
+							</div>
+
+							<div class="text-center w-[10%]">
+								<button
+									onClick={(e) => {
+										e.stopPropagation(); // Blocca la propagazione del click
+										deleteFornitura(f.id);
 									}}
-
+									class="text-red-500 hover:text-red-700"
 								>
-									<div class="text-center w-[20%]">
-										{new Date(f.data_scadenza).toLocaleDateString('it-IT')}
-									</div>
+									<img src="/trash-black.svg" alt="cestino" class="h-6 w-6" />
+								</button>
+							</div>
 
-									<div class="text-center px-2 w-[35%]">{f.nome}</div>
-									<div class="text-right pr-3 w-[20%]">
-										{new Intl.NumberFormat('it-IT', {
-											minimumFractionDigits: 0,
-											maximumFractionDigits: 2
-										}).format(f.importo)} €
-									</div>
-									<div class="text-center w-[15%] h-full">
-										<input
-											type="checkbox"
-											checked={f.status === 'PAYED'}
-											onClick={(e) => e.stopPropagation()} // Blocca la propagazione
-											onChange={() => togglePaymentStatus(f.id, f.status)}
-											class="cursor-pointer w-6 h-6"
-										/>
-									</div>
+						</div>
+					))}
 
-									<div class="text-center w-[10%]">
-										<button
-											onClick={(e) => {
-												e.stopPropagation(); // Blocca la propagazione del click
-												deleteFornitura(f.id);
-											}}
-											class="text-red-500 hover:text-red-700"
-										>
-											<img src="/trash-black.svg" alt="cestino" class="h-6 w-6" />
-										</button>
-									</div>
-
-								</div>
-							))}
-				
 			</div>
 
 			<button
@@ -252,18 +252,19 @@ const Forniture = ({ forniture, setForniture }) => {
 									type="text"
 									value={newFornitura().importo}
 									onInput={(e) => {
-										const input = e.currentTarget.value;
+										let input = e.currentTarget.value;
 
-										// Sostituisci immediatamente "." con ","
-										let sanitizedInput = input.replace('.', ',');
+										// Permette solo numeri, il segno meno all'inizio e una singola virgola
+										input = input.replace(/[^0-9,-]/g, '');
 
-										// Rimuovi tutti i caratteri non validi (solo numeri e ",")
-										sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+										// Evita più segni meno consecutivi e impedisce il meno in posizioni non valide
+										if (input.length > 1) {
+											input = input.replace(/(?!^)-/g, '');
+										}
 
-										// Aggiorna lo stato con il valore sanitizzato
 										setNewFornitura({
 											...newFornitura(),
-											importo: sanitizedInput,
+											importo: input,
 										});
 									}}
 									class="w-full border rounded px-3 py-2"
@@ -346,8 +347,20 @@ const Forniture = ({ forniture, setForniture }) => {
 									type="text"
 									value={editFornitura().importo}
 									onInput={(e) => {
-										const input = e.currentTarget.value.replace('.', ',').replace(/[^0-9,]/g, '');
-										setEditFornitura({ ...editFornitura(), importo: input });
+										let input = e.currentTarget.value;
+
+										// Permette solo numeri, il segno meno all'inizio e una singola virgola
+										input = input.replace(/[^0-9,-]/g, '');
+
+										// Evita più segni meno consecutivi e impedisce il meno in posizioni non valide
+										if (input.length > 1) {
+											input = input.replace(/(?!^)-/g, '');
+										}
+
+										setEditFornitura({
+											...editFornitura(),
+											importo: input,
+										});
 									}}
 									class="w-full border rounded px-3 py-2"
 								/>

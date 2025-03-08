@@ -1,4 +1,4 @@
-import { createSignal, onMount, createEffect } from 'solid-js';
+import { createSignal, onMount, createEffect, onCleanup } from 'solid-js';
 import Chiusure from './components/Chiusure.jsx';
 import Cashflow from './components/Cashflow.jsx';
 import EstrattoCC from './components/EstrattoCC.jsx';
@@ -20,12 +20,18 @@ const App = ({ onLogout }) => {
 	const [budget, setBudget] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
 	const [isMenuOpen, setIsMenuOpen] = createSignal(false);
+	const [isLandscape, setIsLandscape] = createSignal(false);
 
 	// Esegui il caricamento dei dati quando il componente viene montato
 	onMount(async () => {
 		await loadDataFromDB(setChiusure, setCash, setCC, setForniture, setBudget);
 
-		console.log(budget());
+		const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
+		updateOrientation();
+		window.addEventListener("resize", updateOrientation);
+		onCleanup(() => window.removeEventListener("resize", updateOrientation));
+
+		//console.log(budget());
 		setIsLoading(false);
 	});
 
@@ -44,6 +50,7 @@ const App = ({ onLogout }) => {
 	};
 
 	const sharedProps = {
+		isLandscape, 
 		chiusure, setChiusure,
 		cash, setCash,
 		cc, setCC,

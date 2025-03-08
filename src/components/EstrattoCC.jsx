@@ -8,7 +8,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 	import.meta.url
 ).toString();
 
-const EstrattoCC = ({ cc, setCC }) => {
+const EstrattoCC = ({ cc, setCC, isLandscape }) => {
 	const [fileName, setFileName] = createSignal(null);
 	const [importedMovCC, setImportedMovCC] = createSignal([]);
 	const [startDate, setStartDate] = createSignal("");
@@ -21,17 +21,17 @@ const EstrattoCC = ({ cc, setCC }) => {
 	const [selectedRow, setSelectedRow] = createSignal(null);
 	const [firstOpDate, setFirstOpDate] = createSignal("");
 	const [lastOpDate, setLastOpDate] = createSignal("");
-	const [isLandscape, setIsLandscape] = createSignal(false);
+	// const [isLandscape, setIsLandscape] = createSignal(false);
 
 	// Esegui il caricamento automatico dei dati dal database all'avvio del componente
 	onMount(() => {
 		getFirstAndLastOpDate();
 		//console.log(firstOpDate(), lastOpDate());
 		console.log(cc());
-		const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
-		updateOrientation();
-		window.addEventListener("resize", updateOrientation);
-		onCleanup(() => window.removeEventListener("resize", updateOrientation));
+		// const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
+		// updateOrientation();
+		// window.addEventListener("resize", updateOrientation);
+		// onCleanup(() => window.removeEventListener("resize", updateOrientation));
 	});
 
 	const getFirstAndLastOpDate = () => {
