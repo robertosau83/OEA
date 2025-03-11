@@ -8,7 +8,7 @@ import Statistiche from './components/Statistiche.jsx';
 import Budget from './components/Budget.jsx';
 import loadDataFromDB from "./lib/loadDataFromDB.js";
 import composeLocalStates from "./lib/composeLocalStates.js";
-
+ 
 const App = ({ companyId, onLogout }) => {
 	const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
 	const [isLoading, setIsLoading] = createSignal(true);
