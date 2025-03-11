@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
+const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }) => {
 	const [view, setView] = createSignal('year'); // 'month' | 'day' | 'detail'
 	const [selectedYear, setSelectedYear] = createSignal(''); // Anno selezionato
 	const [selectedMonth, setSelectedMonth] = createSignal('');
@@ -34,6 +34,7 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 
 	onMount(() => {
 		//console.log(chiusureConSpese());
+		//console.log(companyId);
 	});
 
 	// -------------------------------
@@ -215,6 +216,7 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 		const incassoToInsert = {
 			...newChiusura(),
 			...convertedValues,
+			company_id: companyId, // 🔹 Assicura che ogni insert abbia il company_id corretto
 		};
 
 		// Inserisci nel database
@@ -329,6 +331,7 @@ const Chiusure = ({ chiusure, setChiusure, chiusureConSpese, budget }) => {
 		const incassoToInsert = {
 			...editChiusura(),
 			...convertedValues,
+			company_id: companyId, // 🔹 Assicura che ogni insert abbia il company_id corretto
 		};
 
 		const { error } = await supabase

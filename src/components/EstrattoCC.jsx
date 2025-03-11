@@ -8,7 +8,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 	import.meta.url
 ).toString();
 
-const EstrattoCC = ({ cc, setCC, isLandscape }) => {
+const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 	const [fileName, setFileName] = createSignal(null);
 	const [importedMovCC, setImportedMovCC] = createSignal([]);
 	const [startDate, setStartDate] = createSignal("");
@@ -27,7 +27,7 @@ const EstrattoCC = ({ cc, setCC, isLandscape }) => {
 	onMount(() => {
 		getFirstAndLastOpDate();
 		//console.log(firstOpDate(), lastOpDate());
-		console.log(cc());
+		//console.log(cc());
 		// const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
 		// updateOrientation();
 		// window.addEventListener("resize", updateOrientation);
@@ -253,6 +253,7 @@ const EstrattoCC = ({ cc, setCC, isLandscape }) => {
 					data_operazione: convertDateToISO(movement.data_operazione),
 					data_valuta: convertDateToISO(movement.data_valuta),
 					prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
+					company_id: companyId, // 🔹 Assicura che ogni insert abbia il company_id corretto
 				}))
 				.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 

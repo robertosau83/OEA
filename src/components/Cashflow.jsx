@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Cashflow = ({ setCash, cashflow, setCashflow, budget }) => {
+const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 	const [view, setView] = createSignal('year'); // 'month' | 'day' | 'details'
 	const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
 	const [selectedMonth, setSelectedMonth] = createSignal('');
@@ -256,6 +256,7 @@ const Cashflow = ({ setCash, cashflow, setCashflow, budget }) => {
 		const sanitizedSpesa = {
 			...newCashMovement(),
 			importo: convertedValue,
+			company_id: companyId,
 			//origin: "CASH", // Imposta il campo origin
 		};
 

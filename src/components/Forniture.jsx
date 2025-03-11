@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Forniture = ({ forniture, setForniture, isLandscape }) => {
+const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 	const [showAddPopup, setShowAddPopup] = createSignal(false);
 	const [newFornitura, setNewFornitura] = createSignal({
 		data_scadenza: new Date().toISOString().split('T')[0],
@@ -46,6 +46,7 @@ const Forniture = ({ forniture, setForniture, isLandscape }) => {
 			importo: numericImporto,
 			riferimento: newFornitura().riferimento, // Campo opzionale
 			data_ricevuta: newFornitura().data_ricevuta,
+			company_id: companyId, 
 		};
 
 		const { data, error } = await supabase

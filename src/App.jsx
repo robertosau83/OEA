@@ -9,7 +9,7 @@ import Budget from './components/Budget.jsx';
 import loadDataFromDB from "./lib/loadDataFromDB.js";
 import composeLocalStates from "./lib/composeLocalStates.js";
 
-const App = ({ onLogout }) => {
+const App = ({ companyId, onLogout }) => {
 	const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
 	const [isLoading, setIsLoading] = createSignal(true);
 	const [chiusure, setChiusure] = createSignal([]);
@@ -20,19 +20,27 @@ const App = ({ onLogout }) => {
 	const [budget, setBudget] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
 	const [isMenuOpen, setIsMenuOpen] = createSignal(false);
-	const [isLandscape, setIsLandscape] = createSignal(false);
+
+	// Stato per tracciare l'orientamento dello schermo
+	const [isLandscape, setIsLandscape] = createSignal(window.innerWidth > window.innerHeight);
+
+	// Funzione per aggiornare l'orientamento
+	const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
 
 	// Esegui il caricamento dei dati quando il componente viene montato
 	onMount(async () => {
 		await loadDataFromDB(setChiusure, setCash, setCC, setForniture, setBudget);
-
-		const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
-		updateOrientation();
-		window.addEventListener("resize", updateOrientation);
-		onCleanup(() => window.removeEventListener("resize", updateOrientation));
-
-		//console.log(budget());
 		setIsLoading(false);
+	});
+
+	// Gestisci il resize dello schermo con `createEffect`
+	createEffect(() => {
+		window.addEventListener("resize", updateOrientation);
+
+		// Cleanup corretto quando il componente si smonta
+		return () => {
+			window.removeEventListener("resize", updateOrientation);
+		};
 	});
 
 	// Effetto reattivo: ogni volta che chiusure(), cash() o cc() cambiano, compone le chiusure con spese e il cashflow
@@ -50,7 +58,8 @@ const App = ({ onLogout }) => {
 	};
 
 	const sharedProps = {
-		isLandscape, 
+		companyId,
+		isLandscape,
 		chiusure, setChiusure,
 		cash, setCash,
 		cc, setCC,
@@ -110,8 +119,9 @@ const App = ({ onLogout }) => {
 						<div class="p-2">
 							{/* <h2 class="text-lg font-semibold mb-4">Menù</h2> */}
 							<div class="flex items-center justify-start mb-4">
-								<img src="/ElSanto Business 192.png" alt="Logo Piccolo" class="h-10" />
-								<div class="ml-2 font-semibold">El Santo Business</div>
+								<img src="/wiseflow 192.png" alt="Logo Piccolo" class="h-10" />
+								{companyId === "f5f41f26-2831-49d3-8a0c-ecc6d2a128c7" && (<div class="ml-2 font-semibold">El Santo</div>)}
+								{companyId === "70cd0446-5fb9-474c-95fa-b11cc38e69e2" && (<div class="ml-2 font-semibold">Sboccia</div>)}
 							</div>
 
 							<button
@@ -125,7 +135,7 @@ const App = ({ onLogout }) => {
 							>
 								Estratto CC
 							</button>
-							
+
 							<button
 								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
 									${currentBtmBarComponentName() === "Forniture" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}

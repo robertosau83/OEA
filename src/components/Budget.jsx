@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient.js';
 
-const Budget = ({ budget, setBudget }) => {
+const Budget = ({ companyId, budget, setBudget }) => {
 	// Stato per la modifica inline; per ogni record si memorizzano le stringhe dei numeri
 	const [editing, setEditing] = createSignal({});
 
@@ -26,7 +26,7 @@ const Budget = ({ budget, setBudget }) => {
 	};
 
 	onMount(() => {
-		console.log("Budget:", budget());
+		//console.log("Budget:", budget());
 	});
 
 	// Gestione della modifica inline: rimuove caratteri non numerici
@@ -153,7 +153,8 @@ const Budget = ({ budget, setBudget }) => {
 				mese_rif,
 				anno_rif: anno,
 				incassi: incassiVal,
-				spese: speseVal
+				spese: speseVal,
+				company_id: companyId,
 			})
 			.select();
 
@@ -177,7 +178,7 @@ const Budget = ({ budget, setBudget }) => {
 					<table class="w-full table-auto">
 						<thead class="sticky top-0 bg-gray-100 z-10">
 							<tr class="border-b">
-								<th class="w-[120px]">Data</th>
+								<th class="w-[140px] min-w-[140px]">Data</th>
 								<th>Incassi</th>
 								<th>Spese</th>
 								<th class="max-w-[30px]"></th>
@@ -191,10 +192,10 @@ const Budget = ({ budget, setBudget }) => {
 								})
 								.map(b => (
 									<tr class="h-[50px]" key={b.id}>
-										<td class="border-b px-2">
+										<td class="border-b px-2 text-base">
 											{getMonthYearText(b.mese_rif, b.anno_rif)}
 										</td>
-										<td class="border-b px-2 min-w-[80px] ">
+										<td class="border-b px-2 min-w-[100px]">
 											<input
 												type="text"
 												value={editing()[b.id]?.incassi !== undefined
@@ -202,10 +203,10 @@ const Budget = ({ budget, setBudget }) => {
 													: formatNumber(b.incassi)}
 												onInput={(e) => handleEditChange(b.id, 'incassi', e.target.value)}
 												onBlur={() => handleSave(b.id)}
-												class="w-full pl-2 h-[40px] text-sm rounded-lg text-right pr-2"
+												class="w-full pl-2 h-[40px] text-base rounded-lg text-right pr-2"
 											/>
 										</td>
-										<td class="border-b px-2 min-w-[80px]">
+										<td class="border-b px-2 min-w-[100px]">
 											<input
 												type="text"
 												value={editing()[b.id]?.spese !== undefined
@@ -213,7 +214,7 @@ const Budget = ({ budget, setBudget }) => {
 													: formatNumber(b.spese)}
 												onInput={(e) => handleEditChange(b.id, 'spese', e.target.value)}
 												onBlur={() => handleSave(b.id)}
-												class="w-full pl-2 h-[40px] min-w-[50px] text-sm rounded-lg text-right pr-2"
+												class="w-full pl-2 h-[40px] min-w-[50px] text-base rounded-lg text-right pr-2"
 											/>
 										</td>
 										<td class="border-b w-[60px] p-0">
@@ -228,11 +229,11 @@ const Budget = ({ budget, setBudget }) => {
 								))
 							}
 							<tr>
-								<td class="border-b p-2">
+								<td class="border-b h-full">
 									<select
 										value={newDate()}
 										onInput={(e) => setNewDate(e.target.value)}
-										class="w-full rounded-lg pl-2"
+										class="w-full rounded-lg pl-2 h-[30px]"
 									>
 										<option value="">Seleziona data</option>
 										{dateOptions.map(opt => (

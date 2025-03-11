@@ -1,7 +1,7 @@
 import { createSignal, onMount } from "solid-js";
 import { supabase } from '../lib/supabaseClient';
 
-const Quadratura_CASH = ({ cashflow, cash, setCash }) => {
+const Quadratura_CASH = ({ companyId, cashflow, cash, setCash }) => {
 	const [cashEffettivi, setCashEffettivi] = createSignal("");
 	const [cutoffDate, setCutoffDate] = createSignal("");
 	const [showConfirmPopup, setShowConfirmPopup] = createSignal(false);
@@ -56,6 +56,7 @@ const Quadratura_CASH = ({ cashflow, cash, setCash }) => {
 			tipo: "Allineamento",
 			metodo_di_pagamento,
 			data_operazione,
+			company_id: companyId,
 		};
 
 		const { error, data } = await supabase
