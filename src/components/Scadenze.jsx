@@ -9,7 +9,7 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 		nome: '',
 		importo: '',
 		status: 'NOT_PAYED',
-		riferimento: '', // Nuovo campo per Rif Fattura
+		descrizione: '', // Nuovo campo per Rif Fattura
 	});
 	const [showEditPopup, setShowEditPopup] = createSignal(false);
 	const [editScadenza, setEditScadenza] = createSignal(null);
@@ -44,7 +44,7 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 		const newEntry = {
 			...newScadenza(),
 			importo: numericImporto,
-			riferimento: newScadenza().riferimento, // Campo opzionale
+			descrizione: newScadenza().descrizione, // Campo opzionale
 			data_ricevuta: newScadenza().data_ricevuta,
 			company_id: companyId,
 		};
@@ -183,7 +183,7 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 						nome: '',
 						importo: '',
 						status: 'NOT_PAYED',
-						riferimento: '',
+						descrizione: '',
 					});
 					setShowAddPopup(true);
 				}}
@@ -242,8 +242,8 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Rif Fattura (opzionale)</label>
 								<input
 									type="text"
-									value={newScadenza().riferimento}
-									onInput={(e) => setNewScadenza({ ...newScadenza(), riferimento: e.currentTarget.value })}
+									value={newScadenza().descrizione}
+									onInput={(e) => setNewScadenza({ ...newScadenza(), descrizione: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -336,8 +336,8 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Rif Fattura (opzionale)</label>
 								<input
 									type="text"
-									value={editScadenza().riferimento}
-									onInput={(e) => setEditScadenza({ ...editScadenza(), riferimento: e.currentTarget.value })}
+									value={editScadenza().descrizione}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), descrizione: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
