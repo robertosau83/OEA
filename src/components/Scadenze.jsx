@@ -1,9 +1,9 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
+const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 	const [showAddPopup, setShowAddPopup] = createSignal(false);
-	const [newFornitura, setNewFornitura] = createSignal({
+	const [newScadenza, setNewScadenza] = createSignal({
 		data_scadenza: new Date().toISOString().split('T')[0],
 		data_ricevuta: new Date().toISOString().split('T')[0], // Nuovo campo per la data di ricezione
 		nome: '',
@@ -12,29 +12,29 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 		riferimento: '', // Nuovo campo per Rif Fattura
 	});
 	const [showEditPopup, setShowEditPopup] = createSignal(false);
-	const [editFornitura, setEditFornitura] = createSignal(null);
+	const [editScadenza, setEditScadenza] = createSignal(null);
 
 	const togglePaymentStatus = async (id, currentStatus) => {
 		const newStatus = currentStatus === 'PAYED' ? 'NOT_PAYED' : 'PAYED';
 		const { error } = await supabase
-			.from('forniture')
+			.from('scadenze')
 			.update({ status: newStatus })
 			.eq('id', id);
 		if (!error) {
-			setForniture(prevForniture =>
-				prevForniture.map(f => (f.id === id ? { ...f, status: newStatus } : f))
+			setScadenze(prevScadenze =>
+				prevScadenze.map(f => (f.id === id ? { ...f, status: newStatus } : f))
 			);
 		}
 	};
 
-	const addNewFornitura = async () => {
+	const addNewScadenza = async () => {
 		// Controllo campi obbligatori
-		if (!newFornitura().data_scadenza || !newFornitura().data_ricevuta || !newFornitura().nome || !newFornitura().importo) {
+		if (!newScadenza().data_scadenza || !newScadenza().data_ricevuta || !newScadenza().nome || !newScadenza().importo) {
 			alert("Tutti i campi sono obbligatori tranne 'Rif Fattura'.");
 			return;
 		}
 
-		const sanitizedImporto = newFornitura().importo.replace(',', '.');
+		const sanitizedImporto = newScadenza().importo.replace(',', '.');
 		const numericImporto = parseFloat(sanitizedImporto);
 		if (isNaN(numericImporto)) {
 			alert("Inserisci un importo valido.");
@@ -42,31 +42,31 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 		}
 
 		const newEntry = {
-			...newFornitura(),
+			...newScadenza(),
 			importo: numericImporto,
-			riferimento: newFornitura().riferimento, // Campo opzionale
-			data_ricevuta: newFornitura().data_ricevuta,
-			company_id: companyId, 
+			riferimento: newScadenza().riferimento, // Campo opzionale
+			data_ricevuta: newScadenza().data_ricevuta,
+			company_id: companyId,
 		};
 
 		const { data, error } = await supabase
-			.from('forniture')
+			.from('scadenze')
 			.insert([newEntry])
 			.select('*');
 
 		if (!error) {
-			setForniture(prev => [...prev, ...data]);
+			setScadenze(prev => [...prev, ...data]);
 			setShowAddPopup(false);
 		}
 	};
 
-	const updateFornitura = async () => {
-		if (!editFornitura().data_scadenza || !editFornitura().data_ricevuta || !editFornitura().nome || !editFornitura().importo) {
+	const updateScadenza = async () => {
+		if (!editScadenza().data_scadenza || !editScadenza().data_ricevuta || !editScadenza().nome || !editScadenza().importo) {
 			alert("Tutti i campi sono obbligatori tranne 'Rif Fattura'.");
 			return;
 		}
 
-		const sanitizedImporto = editFornitura().importo.replace(',', '.');
+		const sanitizedImporto = editScadenza().importo.replace(',', '.');
 		const numericImporto = parseFloat(sanitizedImporto);
 		if (isNaN(numericImporto)) {
 			alert("Inserisci un importo valido.");
@@ -74,35 +74,35 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 		}
 
 		const updatedEntry = {
-			...editFornitura(),
+			...editScadenza(),
 			importo: numericImporto,
 		};
 
 		const { error } = await supabase
-			.from('forniture')
+			.from('scadenze')
 			.update(updatedEntry)
-			.eq('id', editFornitura().id);
+			.eq('id', editScadenza().id);
 
 		if (!error) {
-			setForniture(prev =>
-				prev.map(f => (f.id === editFornitura().id ? updatedEntry : f))
+			setScadenze(prev =>
+				prev.map(f => (f.id === editScadenza().id ? updatedEntry : f))
 			);
 			setShowEditPopup(false);
 		}
 	};
 
 
-	const deleteFornitura = async (id) => {
-		const confirmDelete = confirm("Sei sicuro di voler eliminare questa fornitura?");
+	const deleteScadenza = async (id) => {
+		const confirmDelete = confirm("Sei sicuro di voler eliminare questa Scadenza?");
 		if (!confirmDelete) return;
 
 		const { error } = await supabase
-			.from('forniture')
+			.from('scadenze')
 			.delete()
 			.eq('id', id);
 
 		if (!error) {
-			setForniture(prevForniture => prevForniture.filter(f => f.id !== id));
+			setScadenze(prevScadenze => prevScadenze.filter(f => f.id !== id));
 		} else {
 			alert("Errore durante la cancellazione. Riprova.");
 		}
@@ -111,7 +111,7 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 	return (
 		<div class={`flex flex-col h-full px-2 pt-2 ${isLandscape() ? "text-xl" : "text-xs"}`}>
 			<div class="flex flex-none text-gray-600 w-full h-[30px] items-center justify-center text-lg mb-2 font-semibold">
-				Forniture
+				Scadenze
 			</div>
 			<div class="flex flex-none w-full h-[30px] border-b items-center font-semibold">
 				<div class="text-center w-[20%]">Scadenza</div>
@@ -122,14 +122,14 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 			</div>
 			<div class="flex-grow overflow-y-auto pb-40">
 
-				{forniture()
+				{scadenze()
 					.sort((a, b) => new Date(a.data_scadenza) - new Date(b.data_scadenza))
 					.map(f => (
 						<div
 							key={f.id}
 							class="flex items-center border-b py-2 cursor-pointer hover:bg-gray-100"
 							onClick={() => {
-								setEditFornitura({
+								setEditScadenza({
 									...f,
 									importo: f.importo.toString().replace('.', ','), // Converti il separatore decimale in ","
 								});
@@ -162,7 +162,7 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<button
 									onClick={(e) => {
 										e.stopPropagation(); // Blocca la propagazione del click
-										deleteFornitura(f.id);
+										deleteScadenza(f.id);
 									}}
 									class="text-red-500 hover:text-red-700"
 								>
@@ -177,7 +177,7 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 
 			<button
 				onClick={() => {
-					setNewFornitura({
+					setNewScadenza({
 						data_scadenza: new Date().toISOString().split('T')[0],
 						data_ricevuta: new Date().toISOString().split('T')[0],
 						nome: '',
@@ -202,20 +202,20 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
 						</button>
 
-						<h2 class="text-lg font-bold mb-4 text-center">Nuova Fornitura</h2>
+						<h2 class="text-lg font-bold mb-4 text-center">Nuova Scadenza</h2>
 
 						<form
 							onSubmit={async (e) => {
 								e.preventDefault();
-								await addNewFornitura();
+								await addNewScadenza();
 							}}
 						>
 							<div class="mb-4">
 								<label class="block text-sm font-medium mb-1">Data Ricevuta</label>
 								<input
 									type="date"
-									value={newFornitura().data_ricevuta}
-									onInput={(e) => setNewFornitura({ ...newFornitura(), data_ricevuta: e.currentTarget.value })}
+									value={newScadenza().data_ricevuta}
+									onInput={(e) => setNewScadenza({ ...newScadenza(), data_ricevuta: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -224,8 +224,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Data Scadenza</label>
 								<input
 									type="date"
-									value={newFornitura().data_scadenza}
-									onInput={(e) => setNewFornitura({ ...newFornitura(), data_scadenza: e.currentTarget.value })}
+									value={newScadenza().data_scadenza}
+									onInput={(e) => setNewScadenza({ ...newScadenza(), data_scadenza: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -233,8 +233,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Nome</label>
 								<input
 									type="text"
-									value={newFornitura().nome}
-									onInput={(e) => setNewFornitura({ ...newFornitura(), nome: e.currentTarget.value })}
+									value={newScadenza().nome}
+									onInput={(e) => setNewScadenza({ ...newScadenza(), nome: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -242,8 +242,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Rif Fattura (opzionale)</label>
 								<input
 									type="text"
-									value={newFornitura().riferimento}
-									onInput={(e) => setNewFornitura({ ...newFornitura(), riferimento: e.currentTarget.value })}
+									value={newScadenza().riferimento}
+									onInput={(e) => setNewScadenza({ ...newScadenza(), riferimento: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -251,7 +251,7 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Importo</label>
 								<input
 									type="text"
-									value={newFornitura().importo}
+									value={newScadenza().importo}
 									onInput={(e) => {
 										let input = e.currentTarget.value;
 
@@ -263,8 +263,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 											input = input.replace(/(?!^)-/g, '');
 										}
 
-										setNewFornitura({
-											...newFornitura(),
+										setNewScadenza({
+											...newScadenza(),
 											importo: input,
 										});
 									}}
@@ -294,20 +294,20 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
 						</button>
 
-						<h2 class="text-lg font-bold mb-4 text-center">Modifica Fornitura</h2>
+						<h2 class="text-lg font-bold mb-4 text-center">Modifica Scadenza</h2>
 
 						<form
 							onSubmit={async (e) => {
 								e.preventDefault();
-								await updateFornitura();
+								await updateScadenza();
 							}}
 						>
 							<div class="mb-4">
 								<label class="block text-sm font-medium mb-1">Data Ricevuta</label>
 								<input
 									type="date"
-									value={editFornitura().data_ricevuta}
-									onInput={(e) => setEditFornitura({ ...editFornitura(), data_ricevuta: e.currentTarget.value })}
+									value={editScadenza().data_ricevuta}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), data_ricevuta: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -316,8 +316,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Data Scadenza</label>
 								<input
 									type="date"
-									value={editFornitura().data_scadenza}
-									onInput={(e) => setEditFornitura({ ...editFornitura(), data_scadenza: e.currentTarget.value })}
+									value={editScadenza().data_scadenza}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), data_scadenza: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -326,8 +326,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Nome</label>
 								<input
 									type="text"
-									value={editFornitura().nome}
-									onInput={(e) => setEditFornitura({ ...editFornitura(), nome: e.currentTarget.value })}
+									value={editScadenza().nome}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), nome: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -336,8 +336,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Rif Fattura (opzionale)</label>
 								<input
 									type="text"
-									value={editFornitura().riferimento}
-									onInput={(e) => setEditFornitura({ ...editFornitura(), riferimento: e.currentTarget.value })}
+									value={editScadenza().riferimento}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), riferimento: e.currentTarget.value })}
 									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
@@ -346,7 +346,7 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 								<label class="block text-sm font-medium mb-1">Importo</label>
 								<input
 									type="text"
-									value={editFornitura().importo}
+									value={editScadenza().importo}
 									onInput={(e) => {
 										let input = e.currentTarget.value;
 
@@ -358,8 +358,8 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 											input = input.replace(/(?!^)-/g, '');
 										}
 
-										setEditFornitura({
-											...editFornitura(),
+										setEditScadenza({
+											...editScadenza(),
 											importo: input,
 										});
 									}}
@@ -384,4 +384,4 @@ const Forniture = ({ companyId, forniture, setForniture, isLandscape }) => {
 	);
 };
 
-export default Forniture;
+export default Scadenze;

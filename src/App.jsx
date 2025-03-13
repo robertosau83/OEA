@@ -2,7 +2,7 @@ import { createSignal, onMount, createEffect, onCleanup } from 'solid-js';
 import Chiusure from './components/Chiusure.jsx';
 import Cashflow from './components/Cashflow.jsx';
 import EstrattoCC from './components/EstrattoCC.jsx';
-import Forniture from './components/Forniture.jsx';
+import Scadenze from './components/Scadenze.jsx';
 import Quadratura_CASH from './components/Quadratura_CASH.jsx';
 import Statistiche from './components/Statistiche.jsx';
 import Budget from './components/Budget.jsx';
@@ -16,7 +16,7 @@ const App = ({ companyId, onLogout }) => {
 	const [cashflow, setCashflow] = createSignal([]);
 	const [cash, setCash] = createSignal([]);
 	const [cc, setCC] = createSignal([]);
-	const [forniture, setForniture] = createSignal([]);
+	const [scadenze, setScadenze] = createSignal([]);
 	const [budget, setBudget] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
 	const [isMenuOpen, setIsMenuOpen] = createSignal(false);
@@ -29,7 +29,7 @@ const App = ({ companyId, onLogout }) => {
 
 	// Esegui il caricamento dei dati quando il componente viene montato
 	onMount(async () => {
-		await loadDataFromDB(setChiusure, setCash, setCC, setForniture, setBudget);
+		await loadDataFromDB(setChiusure, setCash, setCC, setScadenze, setBudget);
 		setIsLoading(false);
 	});
 
@@ -65,7 +65,7 @@ const App = ({ companyId, onLogout }) => {
 		cc, setCC,
 		chiusureConSpese, setChiusureConSpese,
 		cashflow, setCashflow,
-		forniture, setForniture,
+		scadenze, setScadenze,
 		budget, setBudget,
 	};
 
@@ -79,8 +79,8 @@ const App = ({ companyId, onLogout }) => {
 		if (currentBtmBarComponentName() === "EstrattoCC") {
 			return <EstrattoCC {...sharedProps} />;
 		}
-		if (currentBtmBarComponentName() === "Forniture") {
-			return <Forniture {...sharedProps} />;
+		if (currentBtmBarComponentName() === "Scadenze") {
+			return <Scadenze {...sharedProps} />;
 		}
 		if (currentBtmBarComponentName() === "Quadratura_CASH") {
 			return <Quadratura_CASH {...sharedProps} />;
@@ -138,14 +138,14 @@ const App = ({ companyId, onLogout }) => {
 
 							<button
 								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
-									${currentBtmBarComponentName() === "Forniture" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									${currentBtmBarComponentName() === "Scadenze" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
 									`}
 								onClick={() => {
-									setCurrentBtmBarComponentName("Forniture");
+									setCurrentBtmBarComponentName("Scadenze");
 									setIsMenuOpen(false);
 								}}
 							>
-								Forniture
+								Scadenze
 							</button>
 
 							<button

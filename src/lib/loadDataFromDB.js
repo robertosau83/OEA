@@ -1,6 +1,6 @@
 import { supabase } from "../lib/supabaseClient.js"; // Assicurati che il percorso sia corretto
 
-const loadDataFromDB = async (setChiusure, setCash, setCC, setForniture, setBudget) => {
+const loadDataFromDB = async (setChiusure, setCash, setCC, setScadenze, setBudget) => {
   try {
 
     // Fetch chiusure dalla tabella chiusure
@@ -28,16 +28,16 @@ const loadDataFromDB = async (setChiusure, setCash, setCC, setForniture, setBudg
 
     setCC(ccData || []);
 
-	 // Fetch movimenti dalla tabella forniture
-    const { data: fornitureData, error: fornitureError } = await supabase
-      .from('forniture')
+	 // Fetch movimenti dalla tabella scadenze
+    const { data: scadenzeData, error: scadenzeError } = await supabase
+      .from('scadenze')
       .select('*')
 		.order('data_scadenza', { ascending: true }); // Ordina per 'data_scadenza' in ordine decrescente
-    if (fornitureError) throw fornitureError;
+    if (scadenzeError) throw scadenzeError;
 
-    setForniture(fornitureData || []);
+    setScadenze(scadenzeData || []);
  
-	 // Fetch movimenti dalla tabella forniture
+	 // Fetch movimenti dalla tabella budget
     const { data: budgetData, error: budgetError } = await supabase
       .from('budget')
       .select('*')
