@@ -316,6 +316,23 @@ const Statistiche = (props) => {
 			.reduce((sum, f) => sum + f.importo, 0);
 	});
 
+	// Modifica nel memo upcomingScadenzeByMonth: imposta "today" all'inizio della giornata
+	const scadenzeTotaliPerMese = createMemo(() => {
+		const grouped = new Map();
+		scadenze()
+			.filter(s => s.status === "NOT_PAYED")
+			.forEach(s => {
+				const date = new Date(s.data_scadenza);
+				const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+				const importo = parseFloat(s.importo);
+				if (!grouped.has(key)) grouped.set(key, 0);
+				grouped.set(key, grouped.get(key) + importo);
+			});
+		return Array.from(grouped.entries())
+			.map(([month, totale]) => ({ month, totale }))
+			.sort((a, b) => a.month.localeCompare(b.month));
+	});
+
 	// Calcolo del massimo valore Y arrotondato
 	const maxYValue = createMemo(() => {
 		const rawMaxYValue = Math.max(...filteredData().map(item => item.total), 0) * 1.1;
@@ -493,8 +510,6 @@ const Statistiche = (props) => {
 
 	const incomeByType = createMemo(() => {
 		const rawData = cashflow();
-
-
 
 		// Filtriamo i dati in base alla tag selezionata
 		let filteredData = [];
@@ -911,7 +926,6 @@ const Statistiche = (props) => {
 		colors: ["#F44336", "#FFEB3B"] // Rosso per le spese, giallo per il budget
 	}));
 
-
 	onMount(() => {
 		const chart1 = new ApexCharts(document.querySelector("#chart"), chartOptions());
 		chart1.render();
@@ -971,19 +985,19 @@ const Statistiche = (props) => {
 						{/* Totale Entrate */}
 						<li class="flex justify-between border-b text-gray-600">
 							<span>Entrate</span>
-							<span class="text-green-600">{summaryData().totalEntrate.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+							<span class="text-green-600">{summaryData().totalEntrate.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 						</li>
 
 						{/* Totale Uscite */}
 						<li class="flex justify-between border-b text-gray-600">
 							<span>Uscite</span>
-							<span class="text-red-600">{summaryData().totalUscite.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+							<span class="text-red-600">{summaryData().totalUscite.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 						</li>
 
 						{/* Differenza Entrate - Uscite */}
 						<li class={`flex justify-between font-semibold ${summaryData().saldoEntrateUscite > 0 ? "text-green-600" : "text-red-600"}`}>
 							<span></span>
-							<span>{summaryData().saldoEntrateUscite.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+							<span>{summaryData().saldoEntrateUscite.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 						</li>
 					</div>
 
@@ -991,19 +1005,19 @@ const Statistiche = (props) => {
 						{/* Totale CASH */}
 						<li class={`flex justify-between border-b text-gray-600`}>
 							<span>Patrimonio CASH</span>
-							<span class={`${summaryData().totalCash > 0 ? "text-green-600" : "text-red-600"}`}>{summaryData().totalCash.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+							<span class={`${summaryData().totalCash > 0 ? "text-green-600" : "text-red-600"}`}>{summaryData().totalCash.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 						</li>
 
 						{/* Totale CC */}
 						<li class={`flex justify-between border-b text-gray-600`}>
 							<span>Patrimonio CC</span>
-							<span class={`${summaryData().totalCC > 0 ? "text-green-600" : "text-red-600"}`}>{summaryData().totalCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+							<span class={`${summaryData().totalCC > 0 ? "text-green-600" : "text-red-600"}`}>{summaryData().totalCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 						</li>
 
 						{/* Totale generale */}
 						<li class={`flex justify-between font-semibold ${summaryData().saldoCashCC > 0 ? "text-green-600" : "text-red-600"}`}>
 							<span></span>
-							<span>{summaryData().saldoCashCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+							<span>{summaryData().saldoCashCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 						</li>
 
 					</div>
@@ -1013,12 +1027,30 @@ const Statistiche = (props) => {
 						{selectedTag() === "Da inizio" && (
 							<li class={`flex justify-between border-b text-gray-600`}>
 								<span>Scadenze</span>
-								<span class="text-red-600 font-semibold">{scadenzeDaPagare().toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+								<span class={`font-semibold ${scadenzeDaPagare() > 0 ? "text-green-600" : "text-red-600"}`}>{scadenzeDaPagare().toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 							</li>
 						)}
 					</div>
 
 
+				</div>
+
+				{/* Card per Totali Scadenze per Mese */}
+				<div class="border rounded shadow-lg bg-white p-4 h-[400px] flex flex-col"
+					style="flex: 1 1 auto; min-width: 300px;">
+					<h3 class="text-center text-lg font-semibold mb-3">Scadenze per Mese</h3>
+					<div class="flex-grow overflow-y-auto text-sm">
+						{scadenzeTotaliPerMese().map(({ month, totale }) => {
+							const date = new Date(`${month}-01`);
+							const formattedMonth = date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+							return (
+								<div key={month} class="flex justify-between border-b mt-1">
+									<span>{formattedMonth}</span>
+									<span class={`font-semibold ${totale > 0 ? "text-green-600" : "text-red-600"}`}>{totale.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+								</div>
+							);
+						})}
+					</div>
 				</div>
 
 				{/* Card con la lista delle entrate */}
@@ -1032,7 +1064,7 @@ const Statistiche = (props) => {
 							<li class="flex justify-between border-b">
 								<span>{income.tipo}</span>
 								<span class="font-semibold text-green-600">
-									{income.total.toLocaleString("it-IT", { minimumFractionDigits: 2 })}€
+									{income.total.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €
 								</span>
 							</li>
 						))}
@@ -1041,7 +1073,7 @@ const Statistiche = (props) => {
 					{/* Totale fisso in basso */}
 					<div class="border-t mt-2 pt-2 flex justify-between text-lg font-bold text-green-700">
 						<span>{incomeByType().at(-1).tipo}</span>
-						<span>{incomeByType().at(-1).total.toLocaleString("it-IT", { minimumFractionDigits: 2 })}€</span>
+						<span>{incomeByType().at(-1).total.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
 					</div>
 				</div>
 
@@ -1081,7 +1113,7 @@ const Statistiche = (props) => {
 							<li class="flex justify-between border-b">
 								<span>{expense.tipo}</span>
 								<span class="font-semibold text-red-600">
-									{expense.total.toLocaleString("it-IT", { minimumFractionDigits: 2 })}€
+									{expense.total.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €
 								</span>
 							</li>
 						))}
@@ -1090,7 +1122,7 @@ const Statistiche = (props) => {
 					{/* Totale fisso in basso */}
 					<div class="border-t mt-2 pt-2 flex justify-between text-lg font-bold text-red-700">
 						<span>{expensesByType().at(-1).tipo}</span>
-						<span>{expensesByType().at(-1).total.toLocaleString("it-IT", { minimumFractionDigits: 2 })}€</span>
+						<span>{expensesByType().at(-1).total.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
 					</div>
 				</div>
 

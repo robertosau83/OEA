@@ -8,7 +8,7 @@ import Statistiche from './components/Statistiche.jsx';
 import Budget from './components/Budget.jsx';
 import loadDataFromDB from "./lib/loadDataFromDB.js";
 import composeLocalStates from "./lib/composeLocalStates.js";
- 
+
 const App = ({ companyId, onLogout }) => {
 	const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
 	const [isLoading, setIsLoading] = createSignal(true);
@@ -124,42 +124,7 @@ const App = ({ companyId, onLogout }) => {
 								{companyId === "70cd0446-5fb9-474c-95fa-b11cc38e69e2" && (<div class="ml-2 font-semibold">Sboccia</div>)}
 							</div>
 
-							<button
-								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
-									${currentBtmBarComponentName() === "EstrattoCC" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
-									`}
-								onClick={() => {
-									setCurrentBtmBarComponentName("EstrattoCC");
-									setIsMenuOpen(false);
-								}}
-							>
-								Estratto CC
-							</button>
-
-							<button
-								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
-									${currentBtmBarComponentName() === "Scadenze" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
-									`}
-								onClick={() => {
-									setCurrentBtmBarComponentName("Scadenze");
-									setIsMenuOpen(false);
-								}}
-							>
-								Scadenze
-							</button>
-
-							<button
-								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
-									${currentBtmBarComponentName() === "Quadratura_CASH" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
-									`}
-								onClick={() => {
-									setCurrentBtmBarComponentName("Quadratura_CASH");
-									setIsMenuOpen(false);
-								}}
-							>
-								Allineamento CASH
-							</button>
-
+							{/* Statistiche  */}
 							<button
 								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
 									${currentBtmBarComponentName() === "Statistiche" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
@@ -172,6 +137,46 @@ const App = ({ companyId, onLogout }) => {
 								Statistiche
 							</button>
 
+							{/* Scadenze */}
+							<button
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "Scadenze" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
+								onClick={() => {
+									setCurrentBtmBarComponentName("Scadenze");
+									setIsMenuOpen(false);
+								}}
+							>
+								Scadenze
+							</button>
+
+							{/* estratto CC */}
+							<button
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "EstrattoCC" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
+								onClick={() => {
+									setCurrentBtmBarComponentName("EstrattoCC");
+									setIsMenuOpen(false);
+								}}
+							>
+								Estratto CC
+							</button>
+
+							{/* Allineamento CASH */}
+							<button
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "Quadratura_CASH" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
+								onClick={() => {
+									setCurrentBtmBarComponentName("Quadratura_CASH");
+									setIsMenuOpen(false);
+								}}
+							>
+								Allineamento CASH
+							</button>
+
+							{/* Budget */}
 							<button
 								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
 									${currentBtmBarComponentName() === "Budget" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
