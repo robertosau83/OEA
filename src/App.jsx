@@ -4,6 +4,7 @@ import Cashflow from './components/Cashflow.jsx';
 import EstrattoCC from './components/EstrattoCC.jsx';
 import Scadenze from './components/Scadenze.jsx';
 import Quadratura_CASH from './components/Quadratura_CASH.jsx';
+import Quadratura_CC from './components/Quadratura_CC.jsx';
 import Statistiche from './components/Statistiche.jsx';
 import Budget from './components/Budget.jsx';
 import loadDataFromDB from "./lib/loadDataFromDB.js";
@@ -84,6 +85,9 @@ const App = ({ companyId, onLogout }) => {
 		}
 		if (currentBtmBarComponentName() === "Quadratura_CASH") {
 			return <Quadratura_CASH {...sharedProps} />;
+		}
+		if (currentBtmBarComponentName() === "Quadratura_CC") {
+			return <Quadratura_CC {...sharedProps} />;
 		}
 		if (currentBtmBarComponentName() === "Statistiche") {
 			return <Statistiche {...sharedProps} />;
@@ -174,6 +178,19 @@ const App = ({ companyId, onLogout }) => {
 								}}
 							>
 								Allineamento CASH
+							</button>
+
+							{/* Allineamento CC */}
+							<button
+								class={`w-full text-left px-2 py-2 text-gray-700 hover:bg-gray-100
+									${currentBtmBarComponentName() === "Quadratura_CC" ? 'text-blue-600 border-l-2 border-blue-600 bg-blue-100' : ''}
+									`}
+								onClick={() => {
+									setCurrentBtmBarComponentName("Quadratura_CC");
+									setIsMenuOpen(false);
+								}}
+							>
+								Allineamento CC
 							</button>
 
 							{/* Budget */}

@@ -257,6 +257,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 				}))
 				.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
+			console.log(movementsWithPrg);
 			// Costante per il database: conversione delle date a ISO
 			// const movementsForDB = movementsWithPrg.map((movement) => ({
 			// 	...movement,
@@ -322,6 +323,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 				data_operazione: convertDateToISO(movement.data_operazione),
 				data_valuta: convertDateToISO(movement.data_valuta),
 				prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
+				company_id: companyId,
 			}))
 			.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
@@ -383,7 +385,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 						</button>
 					</div>
 
-					{isLandscape() && (
+					{isLandscape() && companyId === "f5f41f26-2831-49d3-8a0c-ecc6d2a128c7" && (
 						<div>
 							<input
 								type="file"
@@ -498,13 +500,13 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 											})}
 										</td>
 										<td
-											class="border-b border-gray-200 px-1 py-1 text-center cursor-pointer underline text-blue-600"
+											class={`border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}
 											onClick={() => {
 												setSelectedRow(row);
 												setShowPopup(true);
 											}}
 										>
-											{row.tipo}
+											{row.tipo.trim() === "" ? "Tipo mancante!" : row.tipo}
 										</td>
 									</tr>
 								))}
