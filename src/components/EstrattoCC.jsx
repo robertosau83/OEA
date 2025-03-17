@@ -21,17 +21,10 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 	const [selectedRow, setSelectedRow] = createSignal(null);
 	const [firstOpDate, setFirstOpDate] = createSignal("");
 	const [lastOpDate, setLastOpDate] = createSignal("");
-	// const [isLandscape, setIsLandscape] = createSignal(false);
 
 	// Esegui il caricamento automatico dei dati dal database all'avvio del componente
 	onMount(() => {
 		getFirstAndLastOpDate();
-		//console.log(firstOpDate(), lastOpDate());
-		//console.log(cc());
-		// const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
-		// updateOrientation();
-		// window.addEventListener("resize", updateOrientation);
-		// onCleanup(() => window.removeEventListener("resize", updateOrientation));
 	});
 
 	const getFirstAndLastOpDate = () => {
@@ -187,13 +180,6 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 				continue;
 			}
 
-			// if (isDate(text) && !currentRow.data_valuta) {
-			// 	// Secondo campo: data valuta
-			// 	currentRow.data_valuta = text;
-			// 	i++;
-			// 	continue;
-			// }
-
 			// provo qui la correzione per i campi data_valuta="-"
 			if (!currentRow.data_valuta) {
 				// Secondo campo: data valuta
@@ -233,7 +219,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 
 		setImportedMovCC(rows); // Imposta lo stato con le righe elaborate
 		processImportedMovements();
-		console.log(importedMovCC());
+		//console.log(importedMovCC());
 	};
 
 	const processImportedMovements = async () => {
@@ -257,13 +243,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 				}))
 				.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
-			console.log(movementsWithPrg);
-			// Costante per il database: conversione delle date a ISO
-			// const movementsForDB = movementsWithPrg.map((movement) => ({
-			// 	...movement,
-			// 	data_operazione: convertDateToISO(movement.data_operazione),
-			// 	data_valuta: convertDateToISO(movement.data_valuta),
-			// }));
+			//console.log(movementsWithPrg);
 
 			try {
 				// Inserisci nel database e ottieni i dati inseriti
@@ -326,13 +306,6 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 				company_id: companyId,
 			}))
 			.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
-
-		// Costante per il database: conversione delle date a ISO
-		// const movementsForDB = movementsWithPrg.map((movement) => ({
-		// 	...movement,
-		// 	data_operazione: convertDateToISO(movement.data_operazione),
-		// 	data_valuta: convertDateToISO(movement.data_valuta),
-		// }));
 
 		try {
 			// Inserisci nel database e ottieni i dati inseriti

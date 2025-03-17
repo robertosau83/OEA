@@ -422,7 +422,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 												maximumFractionDigits: 0,
 											}).format(Math.round(total))} €
 											{!selectedTag() && (
-												<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+												<div class={`flex items-center justify-end w-[80px] text-xs italic font-light ${diffColor}`}>
 													({diffFormatted})
 												</div>
 											)}
@@ -442,7 +442,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									)} €
 								</span>
 								{!selectedTag() && (
-									<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+									<div class={`flex items-center justify-end w-[80px] text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
 										groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
 										? 'text-green-600'
 										: 'text-red-600'
@@ -525,7 +525,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 												maximumFractionDigits: 0,
 											}).format(Math.round(total))} €
 											{!selectedTag() && (
-												<div class={`flex items-center justify-end w-[70px] text-xs italic font-light ${diffColor}`}>
+												<div class={`flex items-center justify-end w-[80px] text-xs italic font-light ${diffColor}`}>
 													({diffFormatted})
 												</div>
 											)}
@@ -547,7 +547,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									)} €
 								</span>
 								{!selectedTag() && (
-									<div class={`flex items-center justify-end w-[70px] text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
+									<div class={`flex items-center justify-end w-[80px] text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
 										sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
 										? 'text-green-600'
 										: 'text-red-600'
