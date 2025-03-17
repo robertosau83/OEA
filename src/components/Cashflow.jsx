@@ -476,7 +476,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 												{new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(total))} €
 											</span>
 											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
-												<span class={`flex items-center justify-end w-[80px] text-xs italic font-light ${diffColor}`}>
+												<span class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
 													({diffFormatted})
 												</span>
 											)}
@@ -501,7 +501,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											}).format(totalExpense)} €
 										</span>
 										{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
-											<span class={`flex items-center justify-end w-[80px] text-xs italic ${overallDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
+											<span class={`flex items-center justify-end w-[90px] text-xs italic ${overallDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
 												({overallDiff >= 0 ? '+' : ''}{new Intl.NumberFormat('it-IT', {
 													style: 'decimal',
 													maximumFractionDigits: 0,
@@ -569,7 +569,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 												{new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(total))} €
 											</span>
 											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
-												<span class={`ml-2 flex items-center justify-end w-[80px] text-xs italic font-light ${diffColor}`}>
+												<span class={`ml-2 flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
 													({diffFormatted})
 												</span>
 											)}
@@ -613,7 +613,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 										{/* Se siamo in "uscite" e non c’è filtro su CC/CASH, mostra la differenza rispetto al budget */}
 										{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && (
 											<span
-												class={`flex items-center justify-end w-[80px] text-xs italic ${sumOfDiff >= 0 ? "text-green-600" : "text-red-600"
+												class={`flex items-center justify-end w-[90px] text-xs italic ${sumOfDiff >= 0 ? "text-green-600" : "text-red-600"
 													}`}
 											>
 												(
