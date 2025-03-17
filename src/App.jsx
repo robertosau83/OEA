@@ -30,6 +30,7 @@ const App = ({ companyId, onLogout }) => {
 
 	// Esegui il caricamento dei dati quando il componente viene montato
 	onMount(async () => {
+		//console.log("App.jsx onMount");
 		await loadDataFromDB(setChiusure, setCash, setCC, setScadenze, setBudget);
 		setIsLoading(false);
 	});

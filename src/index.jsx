@@ -52,22 +52,36 @@ const Main = () => {
 		if (data.session) {
 			setSession(data.session);
 			fetchCompanyId(data.session.user.id); // 🔹 Recuperiamo il company_id PRIMA di renderizzare App
+			//console.log("index.jsx: Recupera la sessione all'avvio");
 		} else {
 			setIsLoading(false); // Se non c'è una sessione, niente da recuperare
+			//console.log("index.jsx: NO Recupera la sessione all'avvio");
 		}
 	});
 
 	// Gestisce i cambi di autenticazione
-	supabase.auth.onAuthStateChange(async (_event, session) => {
-		setSession(session);
-		if (session?.user) {
-			setIsLoading(true); // 🔹 Blocchiamo il rendering finché company_id non è pronto
-			fetchCompanyId(session.user.id);
+	supabase.auth.onAuthStateChange(async (_event, newSession) => {
+		//console.log("index.jsx: onAuthStateChange triggerato", _event, newSession);
+
+		// Evita di eseguire il codice se la sessione non è effettivamente cambiata
+		if (newSession?.user?.id === session()?.user?.id) {
+			//console.log("index.jsx: La sessione è identica, non aggiorno nulla");
+			return;
+		}
+
+		setSession(newSession);
+
+		if (newSession?.user) {
+			setIsLoading(true); // Blocca il rendering finché company_id non è pronto
+			fetchCompanyId(newSession.user.id); // ❌ Rimosso `await`
+			//console.log("index.jsx: Sessione cambiata, recupero company_id");
 		} else {
 			setCompanyId(null);
 			setIsLoading(false);
+			//console.log("index.jsx: Nessun utente, resetto stato");
 		}
 	});
+
 
 	const handleLogout = async () => {
 		const { error } = await supabase.auth.signOut();
