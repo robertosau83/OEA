@@ -127,6 +127,7 @@ const App = ({ companyId, onLogout }) => {
 								<img src="/wiseflow 192.png" alt="Logo Piccolo" class="h-10" />
 								{companyId === "f5f41f26-2831-49d3-8a0c-ecc6d2a128c7" && (<div class="ml-2 font-semibold">El Santo</div>)}
 								{companyId === "70cd0446-5fb9-474c-95fa-b11cc38e69e2" && (<div class="ml-2 font-semibold">Sboccia</div>)}
+								{companyId === "1b13a736-8c1f-4612-8e0f-1e4d5a140269" && (<div class="ml-2 font-semibold">Example</div>)}
 							</div>
 
 							{/* Statistiche  */}

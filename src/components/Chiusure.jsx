@@ -94,6 +94,58 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 		return computedBudget().find(b => b.anno_rif === parseInt(year) && b.mese_rif === parseInt(month));
 	};
 
+	//verifica se l'anno passato come parametro ha tutte le istanze mensili con confronto di budget
+	const inputYearHasCompleteBudget = (year) => {
+		// Estrai i mesi unici presenti in chiusureConSpese per l'anno specificato
+		const monthsInChiusure = new Set(
+			chiusureConSpese()
+				.filter(entry => new Date(entry.data_competenza).getFullYear() === parseInt(year))
+				.map(entry => new Date(entry.data_competenza).getMonth() + 1) // Ottieni il mese (1-12)
+		);
+
+		// Verifica che per ogni mese presente in chiusureConSpese ci sia un corrispondente in budget
+		return [...monthsInChiusure].every(month =>
+			computedBudget().some(b => b.anno_rif === parseInt(year) && b.mese_rif === month)
+		);
+	};
+
+	//verifica se tutti gli anni presenti sono completi a livello di budget
+	const everyYearHasCompleteBudget = () => {
+		// Estrai gli anni unici presenti in chiusureConSpese
+		const yearsInChiusure = new Set(
+			chiusureConSpese().map(entry => new Date(entry.data_competenza).getFullYear())
+		);
+
+		// Controlla se per ogni anno in chiusureConSpese il budget è completo
+		return [...yearsInChiusure].every(year => inputYearHasCompleteBudget(year));
+	};
+
+	//verifica se l'anno passato come parametro ha almeno 1 mese con confronto di budget
+	const inputYearHasAtLeastOneMonthBudget = (year) => {
+		// Estrai i mesi presenti in chiusureConSpese per l'anno specificato
+		const monthsInChiusure = new Set(
+			chiusureConSpese()
+				.filter(entry => new Date(entry.data_competenza).getFullYear() === parseInt(year))
+				.map(entry => new Date(entry.data_competenza).getMonth() + 1) // Ottieni il mese (1-12)
+		);
+
+		// Controlla se almeno un mese ha un corrispondente in budget
+		return [...monthsInChiusure].some(month =>
+			computedBudget().some(b => b.anno_rif === parseInt(year) && b.mese_rif === month)
+		);
+	};
+
+	//verifica se esiste almeno 1 anno con budget completo per ogni suo mese
+	const thereIsAtLeastOneYearWithCompleteBudget = () => {
+		// Estrai gli anni unici presenti in chiusureConSpese
+		const yearsInChiusure = new Set(
+			chiusureConSpese().map(entry => new Date(entry.data_competenza).getFullYear())
+		);
+
+		// Controlla se almeno un anno ha un budget completo
+		return [...yearsInChiusure].some(year => inputYearHasCompleteBudget(year));
+	};
+
 	// Raggruppa gli incassi per anno e calcola la somma totale
 	const groupByYear = () => {
 		const grouped = {};
@@ -382,7 +434,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 					<h2 class="flex-none flex items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
 						Chiusure annuali
 					</h2>
-					{!selectedTag() && (
+					{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
 						<div class="flex-none flex items-center justify-end px-4">
 							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
 								Var BDG
@@ -392,7 +444,9 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByYear().map(([year, total]) => {
 							const budgetYearEntry = groupBudgetByYear().find(([yr]) => yr == year);
+							//console.log(groupBudgetByYear());
 							const budgetTotal = budgetYearEntry ? budgetYearEntry[1] : 0;
+							//console.log(budgetTotal);
 							const diff = total - budgetTotal;
 							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
 							const diffFormatted =
@@ -421,9 +475,9 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 												style: 'decimal',
 												maximumFractionDigits: 0,
 											}).format(Math.round(total))} €
-											{!selectedTag() && (
+											{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
 												<div class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
-													({diffFormatted})
+													{inputYearHasCompleteBudget(year) && `(${diffFormatted})`}
 												</div>
 											)}
 										</div>
@@ -441,24 +495,28 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 										groupByYear().reduce((sum, [, total]) => sum + total, 0)
 									)} €
 								</span>
-								{!selectedTag() && (
-									<div class={`flex items-center justify-end w-[90px] text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-										groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-										? 'text-green-600'
-										: 'text-red-600'
-										}`}>
-										(
-										{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-											groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-											? '+'
-											: ''}
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(
-											groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-											groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
-										)} €)
+								{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
+									<div class="flex items-center justify-end w-[90px]">
+										{everyYearHasCompleteBudget() && (
+											<div class={`text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+												groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+												? 'text-green-600'
+												: 'text-red-600'
+												}`}>
+												(
+												{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+													groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+													? '+'
+													: ''}
+												{new Intl.NumberFormat('it-IT', {
+													style: 'decimal',
+													maximumFractionDigits: 0,
+												}).format(
+													groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+													groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
+												)} €)
+											</div>
+										)}
 									</div>
 								)}
 							</div>
@@ -485,7 +543,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 						<div class="w-[40px]"></div>
 					</div>
 
-					{!selectedTag() && (
+					{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
 						<div class="flex-none flex items-center justify-end px-4">
 							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
 								Var BDG
@@ -496,6 +554,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByMonth().map(({ formattedMonth, total, key }) => {
 							const budgetRecord = findBudgetForKey(key);
+							//console.log(findBudgetForKey(key));
 							const budgetValue = budgetRecord ? budgetRecord.incassi_puntuale : 0;
 							const diff = total - budgetValue;
 							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
@@ -524,9 +583,9 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 												style: 'decimal',
 												maximumFractionDigits: 0,
 											}).format(Math.round(total))} €
-											{!selectedTag() && (
+											{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
 												<div class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
-													({diffFormatted})
+													{findBudgetForKey(key) && `(${diffFormatted})`}
 												</div>
 											)}
 										</div>
@@ -546,26 +605,31 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 										groupByMonth().reduce((sum, { total }) => sum + total, 0)
 									)} €
 								</span>
-								{!selectedTag() && (
-									<div class={`flex items-center justify-end w-[90px] text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
-										sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
-										? 'text-green-600'
-										: 'text-red-600'
-										}`}>
-										(
-										{groupByMonth().reduce((sum, { total, key }) =>
-											sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
-											? '+'
-											: ''}
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(
-											groupByMonth().reduce((sum, { total, key }) =>
-												sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
-										)} €)
+								{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
+									<div class="flex items-center justify-end w-[90px]">
+										{inputYearHasCompleteBudget(selectedYear()) && (
+											<div class={`text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
+												sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+												? 'text-green-600'
+												: 'text-red-600'
+												}`}>
+												(
+												{groupByMonth().reduce((sum, { total, key }) =>
+													sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+													? '+'
+													: ''}
+												{new Intl.NumberFormat('it-IT', {
+													style: 'decimal',
+													maximumFractionDigits: 0,
+												}).format(
+													groupByMonth().reduce((sum, { total, key }) =>
+														sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
+												)} €)
+											</div>
+										)}
 									</div>
 								)}
+
 							</div>
 						</li>
 					</ul>
