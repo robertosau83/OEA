@@ -473,13 +473,13 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 											})}
 										</td>
 										<td
-											class={`border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}
+											class={`border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${!row.tipo || row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}
 											onClick={() => {
 												setSelectedRow(row);
 												setShowPopup(true);
 											}}
 										>
-											{row.tipo.trim() === "" ? "Tipo mancante!" : row.tipo}
+											{!row.tipo || row.tipo.trim() === "" ? "Tipo mancante!" : row.tipo}
 										</td>
 									</tr>
 								))}
