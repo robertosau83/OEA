@@ -10,13 +10,14 @@ import Budget from './components/Budget.jsx';
 import loadDataFromDB from "./lib/loadDataFromDB.js";
 import composeLocalStates from "./lib/composeLocalStates.js";
 
-const App = ({ companyId, onLogout }) => {
+const App = ({ companyId, companyName, nickName, bancaImportPDF, onLogout }) => {
 	const [currentBtmBarComponentName, setCurrentBtmBarComponentName] = createSignal("Chiusure");
 	const [isLoading, setIsLoading] = createSignal(true);
 	const [chiusure, setChiusure] = createSignal([]);
 	const [cashflow, setCashflow] = createSignal([]);
 	const [cash, setCash] = createSignal([]);
 	const [cc, setCC] = createSignal([]);
+	const [ccJson, setCCJson] = createSignal([]);
 	const [scadenze, setScadenze] = createSignal([]);
 	const [budget, setBudget] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
@@ -30,8 +31,8 @@ const App = ({ companyId, onLogout }) => {
 
 	// Esegui il caricamento dei dati quando il componente viene montato
 	onMount(async () => {
-		//console.log("App.jsx onMount");
-		await loadDataFromDB(setChiusure, setCash, setCC, setScadenze, setBudget);
+		//console.log(companyId, companyName, nickName, bancaImportPDF);
+		await loadDataFromDB(setChiusure, setCash, setCC, setCCJson, setScadenze, setBudget);
 		setIsLoading(false);
 	});
 
@@ -60,11 +61,14 @@ const App = ({ companyId, onLogout }) => {
 	};
 
 	const sharedProps = {
-		companyId,
+		companyId, companyName,
+		nickName,
+		bancaImportPDF,
 		isLandscape,
 		chiusure, setChiusure,
 		cash, setCash,
 		cc, setCC,
+		ccJson, setCCJson,
 		chiusureConSpese, setChiusureConSpese,
 		cashflow, setCashflow,
 		scadenze, setScadenze,
@@ -123,11 +127,15 @@ const App = ({ companyId, onLogout }) => {
 					>
 						<div class="p-2">
 							{/* <h2 class="text-lg font-semibold mb-4">Menù</h2> */}
-							<div class="flex items-center justify-start mb-4">
+							<div class="flex items-center justify-start pb-2 border-b">
 								<img src="/wiseflow 192.png" alt="Logo Piccolo" class="h-10" />
-								{companyId === "f5f41f26-2831-49d3-8a0c-ecc6d2a128c7" && (<div class="ml-2 font-semibold">El Santo</div>)}
+								<div class="flex flex-col justify-center ml-2 text-sm">
+									<div>{nickName}</div>
+									<div class="text-gray-600">{companyName}</div>
+								</div>
+								{/* {companyId === "f5f41f26-2831-49d3-8a0c-ecc6d2a128c7" && (<div class="ml-2 font-semibold">El Santo</div>)}
 								{companyId === "70cd0446-5fb9-474c-95fa-b11cc38e69e2" && (<div class="ml-2 font-semibold">Sboccia</div>)}
-								{companyId === "1b13a736-8c1f-4612-8e0f-1e4d5a140269" && (<div class="ml-2 font-semibold">Example</div>)}
+								{companyId === "1b13a736-8c1f-4612-8e0f-1e4d5a140269" && (<div class="ml-2 font-semibold">Example</div>)} */}
 							</div>
 
 							{/* Statistiche  */}

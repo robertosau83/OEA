@@ -1,14 +1,15 @@
 import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
 import * as pdfjsLib from "pdfjs-dist";
 import { supabase } from "../lib/supabaseClient"; // Assicurati che il client Supabase sia configurato
-import decodeTipo from "../lib/decodeTipo"; // Importa la funzione decodeTipo
+import { processPDFContent_BancaSella } from "../lib/pdfParsers/BancaSella";
+//import decodeTipo from "../lib/decodeTipo"; // Importa la funzione decodeTipo
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 	"pdfjs-dist/build/pdf.worker.min.mjs",
 	import.meta.url
 ).toString();
 
-const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
+const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 	const [fileName, setFileName] = createSignal(null);
 	const [importedMovCC, setImportedMovCC] = createSignal([]);
 	const [startDate, setStartDate] = createSignal("");
@@ -21,25 +22,29 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 	const [selectedRow, setSelectedRow] = createSignal(null);
 	const [firstOpDate, setFirstOpDate] = createSignal("");
 	const [lastOpDate, setLastOpDate] = createSignal("");
+	const [visibleCount, setVisibleCount] = createSignal(50);
 
 	// Esegui il caricamento automatico dei dati dal database all'avvio del componente
 	onMount(() => {
+		//console.log(cc());
+		console.log(bancaImportPDF);
+		filterMovements();
 		getFirstAndLastOpDate();
 	});
 
 	const getFirstAndLastOpDate = () => {
-		if (!cc().length) {
+		if (!filteredMovCC().length) {
 			setFirstOpDate("");
 			setLastOpDate("");
 			return;
 		}
 
 		// Inizializza con il primo elemento dell'array
-		let minDate = cc()[0].data_operazione;
-		let maxDate = cc()[0].data_operazione;
+		let minDate = filteredMovCC()[0].data_operazione;
+		let maxDate = filteredMovCC()[0].data_operazione;
 
 		// Itera su cc() per trovare le date minime e massime
-		cc().forEach((item) => {
+		filteredMovCC().forEach((item) => {
 			// Confronto diretto in formato ISO è valido
 			if (item.data_operazione < minDate) {
 				minDate = item.data_operazione;
@@ -56,6 +61,12 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 	const filterMovements = () => {
 		let filtered = cc();
 
+		const hasFilter =
+			startDate() ||
+			endDate() ||
+			showWithoutType() ||
+			movementFilter() !== "all";
+
 		if (startDate()) {
 			filtered = filtered.filter((row) => row.data_operazione >= startDate());
 		}
@@ -65,12 +76,17 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 		if (showWithoutType()) {
 			filtered = filtered.filter((row) => row.tipo === "");
 		}
-
-		// Aggiungi il filtro per importi:
 		if (movementFilter() === "inEntrata") {
 			filtered = filtered.filter((row) => row.importo > 0);
 		} else if (movementFilter() === "inUscita") {
 			filtered = filtered.filter((row) => row.importo < 0);
+		}
+
+		//console.log(filtered, visibleCount());
+
+		// Se non ci sono filtri → mostra solo fino a visibleCount()
+		if (!hasFilter) {
+			filtered = filtered.slice(0, visibleCount());
 		}
 
 		setFilteredMovCC(filtered);
@@ -82,7 +98,9 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 		startDate();
 		endDate();
 		showWithoutType();
+		visibleCount(); // 👈 lo aggiungiamo qui
 		filterMovements();
+		getFirstAndLastOpDate();
 	});
 
 	const convertDateToISO = (date) => {
@@ -104,24 +122,29 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 				"Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."];
 	};
 
-	const updateTipo = async (id, tipo) => {
+	const updateTipo = async (prg, tipo) => {
 		try {
+
+			//console.log(prg, tipo, cc());
+
+			// Crea nuova lista aggiornata
+			const updatedMovements = cc().map((item) =>
+				item.prg === prg ? { ...item, tipo } : item
+			);
+
+			//console.log(updatedMovements);
+
+			// Invia tutto il JSON aggiornato
 			const { error } = await supabase
-				.from("CC")
-				.update({ tipo })
-				.eq("id", id);
+				.from("CCjson")
+				.update({ movimenti: updatedMovements })
+				.eq("company_id", companyId);
 
 			if (error) throw error;
 
-			// Aggiorna lo stato locale
-			setCC(cc().map((item) =>
-				item.id === id ? { ...item, tipo } : item
-			));
-
-			setFilteredMovCC(filteredMovCC().map((item) =>
-				item.id === id ? { ...item, tipo } : item
-			));
-
+			setCC(updatedMovements);
+			//setFilteredMovCC(updatedMovements); // aggiorna filtro corrente
+			filterMovements();
 			setShowPopup(false);
 		} catch (err) {
 			console.error("Errore aggiornando il tipo:", err.message);
@@ -130,6 +153,13 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 
 	//Funzione per caricare il PDF dal disco
 	const handleFileUpload = async (event) => {
+
+		setStartDate("");
+		setEndDate("");
+		setMovementFilter("all"); 
+		setShowWithoutType(false);
+		setShowSearch(false);
+
 		const file = event.target.files[0];
 		if (file) {
 			setFileName(file.name);
@@ -149,8 +179,13 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 					allTextContent = allTextContent.concat(textContent.items);
 				}
 
-				// Passa l'array completo al prossimo step di elaborazione
-				processPDFContent(allTextContent);
+				// FUNZIONE PER PROCESSARE IL PDF A SECONDA DELLA BANCA
+				if (bancaImportPDF === "Banca Sella") {
+					const rows = processPDFContent_BancaSella(allTextContent);
+					setImportedMovCC(rows);
+				}
+
+				processImportedMovements();
 			};
 
 			fileReader.readAsArrayBuffer(file);
@@ -158,69 +193,69 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 	};
 
 	// Funzione per processare il contenuto del PDF
-	const processPDFContent = (allTextContent) => {
-		const rows = []; // Array per memorizzare le righe
-		let currentRow = []; // Array temporaneo per costruire la riga corrente
+	// const processPDFContent = (allTextContent) => {
+	// 	const rows = []; // Array per memorizzare le righe
+	// 	let currentRow = []; // Array temporaneo per costruire la riga corrente
 
-		const isDate = (str) => /^\d{2}\/\d{2}\/\d{4}$/.test(str); // Controlla se è una data
-		const isDecimal = (str) => /^[+-]?\d+(\.\d{1,2}|,\d{1,2})$/.test(str); // Controlla se è un numero decimale
-		const isCurrency = (str) => str === "EUR"; // Controlla se è "EUR"
+	// 	const isDate = (str) => /^\d{2}\/\d{2}\/\d{4}$/.test(str); // Controlla se è una data
+	// 	const isDecimal = (str) => /^[+-]?\d+(\.\d{1,2}|,\d{1,2})$/.test(str); // Controlla se è un numero decimale
+	// 	const isCurrency = (str) => str === "EUR"; // Controlla se è "EUR"
 
-		console.log(allTextContent);
+	// 	//console.log(allTextContent);
 
-		let i = 0;
-		while (i < allTextContent.length) {
-			const text = allTextContent[i].str;
+	// 	let i = 0;
+	// 	while (i < allTextContent.length) {
+	// 		const text = allTextContent[i].str;
 
-			if (isDate(text) && !currentRow.data_operazione) {
-				// Primo campo: data operazione
-				currentRow.codice_identificativo = parseInt(allTextContent[i - 2]?.str || ""); // Codice identificativo (2 elementi prima)
-				currentRow.data_operazione = text;
-				i++;
-				continue;
-			}
+	// 		if (isDate(text) && !currentRow.data_operazione) {
+	// 			// Primo campo: data operazione
+	// 			currentRow.codice_identificativo = parseInt(allTextContent[i - 2]?.str || ""); // Codice identificativo (2 elementi prima)
+	// 			currentRow.data_operazione = text;
+	// 			i++;
+	// 			continue;
+	// 		}
 
-			// provo qui la correzione per i campi data_valuta="-"
-			if (!currentRow.data_valuta) {
-				// Secondo campo: data valuta
-				if (isDate(text)) currentRow.data_valuta = text;
-				else if (text === "-") currentRow.data_valuta = currentRow.data_operazione;
-				i++;
-				continue;
-			}
+	// 		// provo qui la correzione per i campi data_valuta="-"
+	// 		if (!currentRow.data_valuta) {
+	// 			// Secondo campo: data valuta
+	// 			if (isDate(text)) currentRow.data_valuta = text;
+	// 			else if (text === "-") currentRow.data_valuta = currentRow.data_operazione;
+	// 			i++;
+	// 			continue;
+	// 		}
 
-			if (!isCurrency(text) && !isDecimal(text.replace(/\./g, "")) && text.trim() !== "" && currentRow.data_operazione && currentRow.data_valuta) {
-				if (!currentRow.descrizione) {
-					currentRow.descrizione = text;
-					//console.log(currentRow.descrizione);
-					i++;
-					continue;
-				} else {
-					// Se già esiste una descrizione, aggiungiamo il testo a quella esistente
-					currentRow.descrizione += ` ${text}`;
-					i++;
-					continue;
-				}
+	// 		if (!isCurrency(text) && !isDecimal(text.replace(/\./g, "")) && text.trim() !== "" && currentRow.data_operazione && currentRow.data_valuta) {
+	// 			if (!currentRow.descrizione) {
+	// 				currentRow.descrizione = text;
+	// 				//console.log(currentRow.descrizione);
+	// 				i++;
+	// 				continue;
+	// 			} else {
+	// 				// Se già esiste una descrizione, aggiungiamo il testo a quella esistente
+	// 				currentRow.descrizione += ` ${text}`;
+	// 				i++;
+	// 				continue;
+	// 			}
 
-			}
+	// 		}
 
-			if (isDecimal(text.replace(/\./g, "")) && !currentRow.importo && currentRow.data_operazione && currentRow.data_valuta) {
-				//console.log(text);
-				currentRow.importo = parseFloat(text.replace(/\./g, "").replace(",", ".")); // Converti stringa a numero
-				currentRow.tipo = decodeTipo(currentRow.importo, currentRow.descrizione); // Usa la funzione decodeTipo
-				rows.push(currentRow); // Aggiungi l'oggetto alla lista
-				currentRow = {}; // Reset per la prossima riga
-				i++;
-				continue;
-			}
+	// 		if (isDecimal(text.replace(/\./g, "")) && !currentRow.importo && currentRow.data_operazione && currentRow.data_valuta) {
+	// 			//console.log(text);
+	// 			currentRow.importo = parseFloat(text.replace(/\./g, "").replace(",", ".")); // Converti stringa a numero
+	// 			currentRow.tipo = decodeTipo(currentRow.importo, currentRow.descrizione); // Usa la funzione decodeTipo
+	// 			rows.push(currentRow); // Aggiungi l'oggetto alla lista
+	// 			currentRow = {}; // Reset per la prossima riga
+	// 			i++;
+	// 			continue;
+	// 		}
 
-			i++;
-		}
+	// 		i++;
+	// 	}
 
-		setImportedMovCC(rows); // Imposta lo stato con le righe elaborate
-		processImportedMovements();
-		//console.log(importedMovCC());
-	};
+	// 	setImportedMovCC(rows); // Imposta lo stato con le righe elaborate
+	// 	processImportedMovements();
+	// 	//console.log(importedMovCC());
+	// };
 
 	const processImportedMovements = async () => {
 		if (!importedMovCC().length) return;
@@ -241,25 +276,30 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 					prg: maxPrg + arr.length - index, // Assegna i prg in ordine inverso
 					company_id: companyId, // 🔹 Assicura che ogni insert abbia il company_id corretto
 				}))
-				.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
-
-			//console.log(movementsWithPrg);
+				.reverse() // Inverti l'array finale per mantenere l'ordine corretto
+				.sort((a, b) => b.prg - a.prg);
 
 			try {
 				// Inserisci nel database e ottieni i dati inseriti
 				const { data, error } = await supabase
-					.from("CC")
-					.insert(movementsWithPrg)
-					.select("*"); // 👈 Ottiene i valori con ID e created_at
+					.from("CCjson")
+					.insert([
+						{
+							company_id: companyId,
+							movimenti: movementsWithPrg,
+						},
+					])
+					.select("*");
 
 				if (error) {
 					throw error;
 				}
 
-				console.log("Movimenti inseriti:", data);
+				console.log("Movimenti inseriti e creato nuovo record in CCjson nel DB:", data);
 
 				// Aggiorna lo stato locale cc con i nuovi movimenti
-				setCC(data.sort((a, b) => b.prg - a.prg)); // Ordina per prg decrescente
+				setCC(movementsWithPrg);
+
 				return; // Esci dalla funzione
 			} catch (err) {
 				console.error("Errore durante l'inserimento dei movimenti:", err.message);
@@ -267,7 +307,6 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 			}
 		}
 
-		//console.log(cc());
 		// Se cc non è vuoto, continua con l'elaborazione normale
 		const matchingIndex = importedMovCC().findIndex((imported) =>
 			cc().some(
@@ -307,12 +346,16 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 			}))
 			.reverse(); // Inverti l'array finale per mantenere l'ordine corretto
 
+		// Unisci i nuovi movimenti con quelli esistenti
+		const updatedMovements = [...movementsWithPrg, ...cc()].sort((a, b) => b.prg - a.prg);
+
 		try {
 			// Inserisci nel database e ottieni i dati inseriti
 			const { data, error } = await supabase
-				.from("CC")
-				.insert(movementsWithPrg)
-				.select("*"); // 👈 Ottiene i valori con ID e created_at
+				.from("CCjson")
+				.update({ movimenti: updatedMovements })
+				.eq("company_id", companyId)
+				.select("*");
 
 			if (error) {
 				throw error;
@@ -321,17 +364,12 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 			console.log("Nuovi movimenti inseriti:", data);
 			alert("Movimenti inseriti correttamente");
 
-			// Aggiorna lo stato locale `cc` con i nuovi movimenti
-			const updatedMovCC = [...data, ...cc()].sort(
-				(a, b) => b.prg - a.prg // Ordina in ordine decrescente di `prg`
-			);
+			setCC(updatedMovements);
 
-			setCC(updatedMovCC);
 		} catch (err) {
 			console.error("Errore durante l'inserimento dei nuovi movimenti:", err.message);
 		}
 	};
-
 
 	return (
 		<div class="flex flex-col h-full">
@@ -347,7 +385,6 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 					</span>
 				</div>
 
-
 				<div class="flex items-center justify-center gap-2 mr-2">
 					<div class="flex justify-center my-2">
 						<button
@@ -358,7 +395,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 						</button>
 					</div>
 
-					{isLandscape() && companyId === "f5f41f26-2831-49d3-8a0c-ecc6d2a128c7" && (
+					{isLandscape() && bancaImportPDF && (
 						<div>
 							<input
 								type="file"
@@ -369,6 +406,13 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 							/>
 							<label
 								for="file-upload"
+								onClick={() => {
+									setStartDate("");
+									setEndDate("");
+									setMovementFilter("all");
+									setShowWithoutType(false);
+									setShowSearch(false);
+								}}
 								class="cursor-pointer bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
 							>
 								Importa PDF
@@ -431,7 +475,6 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 			)}
 
 			{/* div per somma movimenti filtrati */}
-			{/* {filteredMovCC().length > 0 && ( */}
 			<div class="flex-none text-sm text-left text-gray-500 ml-2 mt-4">
 				Movimenti{" "}
 				<span class="font-semibold">{movementFilter() === "all" ? "" : `${movementFilter() === "inEntrata" ? "in entrata" : "in uscita"}`}</span>
@@ -445,10 +488,9 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 					})} €
 				</span>)
 			</div>
-			{/* )} */}
 
 			{/* tabella movimenti cc */}
-			<div class={`flex flex-col h-full mt-2 ${isLandscape() ? "text-[18px]" : "text-[10px]"} w-full`}>
+			<div class={`flex flex-col mt-2 h-full ${isLandscape() ? "text-[18px]" : "text-[10px]"} w-full`}>
 				{filteredMovCC().length > 0 ? (
 					// Container scrollabile con altezza fissa
 					<div class="flex-grow w-full overflow-y-auto pb-[300px]">
@@ -476,6 +518,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 											class={`border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${!row.tipo || row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}
 											onClick={() => {
 												setSelectedRow(row);
+												//console.log(selectedRow());
 												setShowPopup(true);
 											}}
 										>
@@ -485,6 +528,17 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 								))}
 							</tbody>
 						</table>
+						{/* Bottone fuori dal table */}
+						{!startDate() && !endDate() && !showWithoutType() && movementFilter() === "all" && filteredMovCC().length < cc().length && (
+							<div class="flex justify-center mt-8">
+								<button
+									onClick={() => setVisibleCount(visibleCount() + 50)}
+									class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow"
+								>
+									Esponi altri 50
+								</button>
+							</div>
+						)}
 					</div>
 				) : (
 					<div class="flex h-full items-center justify-center text-xl">
@@ -492,7 +546,6 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 					</div>
 				)}
 			</div>
-
 
 			{showPopup() && (
 				<div class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50 z-20"
@@ -510,7 +563,7 @@ const EstrattoCC = ({ companyId, cc, setCC, isLandscape }) => {
 								key={option}
 								class={`p-2 text-center cursor-pointer hover:bg-gray-200 
 									${selectedRow().tipo === option ? `${selectedRow().importo > 0 ? "bg-green-500 text-white" : "bg-red-500 text-white"}` : ""}`}
-								onClick={() => updateTipo(selectedRow().id, option)}
+								onClick={() => updateTipo(selectedRow().prg, option)}
 							>
 								{option}
 							</div>

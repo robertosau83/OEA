@@ -23,6 +23,9 @@ if ("serviceWorker" in navigator) {
 const Main = () => {
 	const [session, setSession] = createSignal(null);
 	const [companyId, setCompanyId] = createSignal(null);
+	const [companyName, setCompanyName] = createSignal(null);
+	const [nickName, setNickname] = createSignal(null);
+	const [bancaImportPDF, setBancaImportPDF] = createSignal(null);
 	const [isLoading, setIsLoading] = createSignal(true); // 🔹 Stato per il caricamento
 
 	// Funzione per recuperare il company_id
@@ -34,14 +37,28 @@ const Main = () => {
 
 		const { data: companyData, error } = await supabase
 			.from("users_companies")
-			.select("company_id")
+			.select("*")
 			.eq("user_id", userId)
 			.single();
 
 		if (!error) {
 			setCompanyId(companyData.company_id);
+			setNickname(companyData.name);
 		} else {
 			console.error("Errore nel recupero del company_id:", error);
+		}
+
+		const { data: companiesData, companiesError } = await supabase
+			.from("companies")
+			.select("*")
+			.eq("id", companyId())
+			.single();
+
+		if (!companiesError) {
+			setCompanyName(companiesData.name)
+			setBancaImportPDF(companiesData.banca_import_pdf)
+		} else {
+			console.error("Errore nel recupero del company_id:", companiesError);
 		}
 
 		setIsLoading(false); // 🔹 Ora possiamo renderizzare l'app
@@ -77,6 +94,9 @@ const Main = () => {
 			//console.log("index.jsx: Sessione cambiata, recupero company_id");
 		} else {
 			setCompanyId(null);
+			setCompanyName(null);
+			setNickname(null);
+			setBancaImportPDF(null);
 			setIsLoading(false);
 			//console.log("index.jsx: Nessun utente, resetto stato");
 		}
@@ -90,6 +110,9 @@ const Main = () => {
 		}
 		setSession(null);
 		setCompanyId(null);
+		setCompanyName(null);
+		setNickname(null);
+		setBancaImportPDF(null);
 		setIsLoading(false);
 	};
 
@@ -100,7 +123,7 @@ const Main = () => {
 					<p class="text-lg font-semibold">Caricamento...</p>
 				</div>
 			) : session() ? (
-				<App companyId={companyId()} onLogout={handleLogout} />
+				<App companyId={companyId()} companyName={companyName()} nickName={nickName()} bancaImportPDF={bancaImportPDF()} onLogout={handleLogout} />
 			) : (
 				<Auth setSession={setSession} />
 			)}
