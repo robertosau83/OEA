@@ -981,6 +981,7 @@ const Statistiche = (props) => {
 					style="flex: 1 1 auto; min-width: 300px;">
 					<h3 class="text-center text-lg font-semibold mb-3">Riepilogo</h3>
 
+					{/* entrate - uscite */}
 					<div>
 						{/* Totale Entrate */}
 						<li class="flex justify-between border-b text-gray-600">
@@ -1001,6 +1002,7 @@ const Statistiche = (props) => {
 						</li>
 					</div>
 
+					{/* patrim. CASH - patrim. CC */}
 					<div class="mt-4">
 						{/* Totale CASH */}
 						<li class={`flex justify-between border-b text-gray-600`}>
@@ -1019,6 +1021,32 @@ const Statistiche = (props) => {
 							<span></span>
 							<span>{summaryData().saldoCashCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
 						</li>
+
+					</div>
+
+					{/* margine netto percentuale */}
+					<div class="mt-4">
+
+						{/* margin netto % */}
+						<li class={`flex justify-between border-b text-gray-600`}>
+							<span>Margine netto %</span>
+							<span class={`font-semibold ${summaryData().saldoEntrateUscite / summaryData().totalEntrate > 0 ? "text-green-600" : "text-red-600"}`}>{((summaryData().saldoEntrateUscite / summaryData().totalEntrate) * 100).toLocaleString("it-IT", { maximumFractionDigits: 0 })} %</span>
+						</li>
+
+						{/* Frase esplicativa */}
+						{summaryData().saldoEntrateUscite / summaryData().totalEntrate > 0 ? (
+							<div class="text-xs text-gray-400 text-center">
+								<span>Hai guadagnato </span>
+								<span>{Math.abs((summaryData().saldoEntrateUscite / summaryData().totalEntrate) * 100).toLocaleString("it-IT", { maximumFractionDigits: 0 })} centesimi </span>
+								<div>netti su ogni euro incassato</div>
+							</div>
+						) : (
+							<div class="text-xs text-gray-400 text-center">
+								<span>Per ogni euro che hai incassato</span>
+								<div>ne hai spesi circa {Math.abs(1 - (summaryData().saldoEntrateUscite / summaryData().totalEntrate)).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} </div>
+							</div>
+						)}
+
 
 					</div>
 
