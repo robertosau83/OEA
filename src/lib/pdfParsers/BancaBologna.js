@@ -81,7 +81,7 @@ const decodeTipo = (importo, descrizione) => {
 		return "Satispay";
 	}
 
-	if (importo > 0 && descrizione.includes("INCASSO TRAMITE P.O.S. ACCR. TRANSATO")) {
+	if (importo > 0 && (descrizione.includes("INCASSO TRAMITE P.O.S. ACCR. TRANSATO") || (descrizione.includes("WORLDLINE MERCHANT SERVICES ITALIA")))) {
 		return "Incassi POS";
 	}
 

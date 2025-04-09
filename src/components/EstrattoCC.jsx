@@ -331,16 +331,16 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 				const sameDescrizione = imported.descrizione === existing.descrizione;
 				const sameImporto = imported.importo === existing.importo;
 
-				if (existing.data_operazione === "2025-04-01") {
-					console.log(existing);
-					console.log(imported);
+				// if (existing.data_operazione === "2025-03-17") {
+				// 	console.log(existing);
+				// 	console.log(imported);
 
 					if (sameCodice && sameDataOp && sameDataValuta && sameDescrizione && sameImporto) {
 						console.log(`✅ Match trovato con movimento esistente! (importedIndex: ${importedIndex})`);
 						return true;
 					}
 
-				}
+				//}
 			}
 			return false;
 		});
