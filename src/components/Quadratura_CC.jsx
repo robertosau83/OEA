@@ -55,31 +55,32 @@ const Quadratura_CC = ({ companyId, cashflow, cc, setCC }) => {
 		const newPrg = maxPrg + 1; // Incrementiamo di 1
 
 		// Inserisci nel database (utilizzando supabase)
-		const newMovement = {
+		const nuovoMovimento = {
 			descrizione: "Allineamento CC reali / CC effettivi",
 			importo: roundedDifference,
 			tipo: "Allineamento",
-			prg: newPrg,  // Assegniamo il nuovo prg calcolato
+			prg: newPrg,
 			data_operazione,
 			data_valuta: data_operazione,
 			company_id: companyId,
 		};
 
-		const { error, data } = await supabase
-			.from("CC")
-			.insert([newMovement])
-			.select('*')
-			.single();
+		const nuovoElenco = [nuovoMovimento, ...cc()].sort((a, b) => b.prg - a.prg);
 
-		if (error) {
-			alert("Errore durante l'inserimento dell'importo di allineamento: " + error.message);
-			return;
+		try {
+			const { error } = await supabase
+				.from("CCjson")
+				.update({ movimenti: nuovoElenco })
+				.eq("company_id", companyId);
+
+			if (error) throw error;
+
+			setCC(nuovoElenco);
+			setShowConfirmPopup(false);
+			setCCEffettivi("");
+		} catch (err) {
+			alert("Errore durante il salvataggio su CCjson: " + err.message);
 		}
-
-		// Aggiorna lo stato locale: aggiungi la nuova riga alla lista cc
-		setCC([data, ...cc()]);
-		setShowConfirmPopup(false);
-		setCCEffettivi("");
 	};
 
 	return (

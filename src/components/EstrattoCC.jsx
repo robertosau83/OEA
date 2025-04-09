@@ -2,6 +2,7 @@ import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
 import * as pdfjsLib from "pdfjs-dist";
 import { supabase } from "../lib/supabaseClient"; // Assicurati che il client Supabase sia configurato
 import { processPDFContent_BancaSella } from "../lib/pdfParsers/BancaSella";
+import { processPDFContent_BancaBologna } from "../lib/pdfParsers/BancaBologna";
 //import decodeTipo from "../lib/decodeTipo"; // Importa la funzione decodeTipo
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -116,10 +117,18 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 	};
 
 	const getOptions = (importo) => {
+		const positiveOptions = ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro..."];
+		const negativeOptions = [
+			"Acquisti attività", "Attrezzature / Manutenzione", "Commercialista",
+			"Dipendenti", "Eventi", "Fornitori", "Prelievi/Spese personali",
+			"Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."
+		];
+
+		const resetOption = ["Resetta tipo"];
+
 		return importo > 0
-			? ["Incassi POS", "Satispay", "Trasf CASH -> CC", "Deposito", "Altro..."]
-			: ["Acquisti attività", "Attrezzature / Manutenzione", "Commercialista", "Dipendenti", "Eventi", "Fornitori", "Prelievi/Spese personali",
-				"Spese bancarie", "Tasse", "Trasf CC -> CASH", "Utenze", "Altro..."];
+			? [...positiveOptions, ...resetOption]
+			: [...negativeOptions, ...resetOption];
 	};
 
 	const updateTipo = async (prg, tipo) => {
@@ -156,7 +165,7 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 
 		setStartDate("");
 		setEndDate("");
-		setMovementFilter("all"); 
+		setMovementFilter("all");
 		setShowWithoutType(false);
 		setShowSearch(false);
 
@@ -182,6 +191,12 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 				// FUNZIONE PER PROCESSARE IL PDF A SECONDA DELLA BANCA
 				if (bancaImportPDF === "Banca Sella") {
 					const rows = processPDFContent_BancaSella(allTextContent);
+					setImportedMovCC(rows);
+				}
+
+				// FUNZIONE PER PROCESSARE IL PDF A SECONDA DELLA BANCA
+				if (bancaImportPDF === "Banca di Bologna") {
+					const rows = processPDFContent_BancaBologna(allTextContent);
 					setImportedMovCC(rows);
 				}
 
@@ -308,16 +323,28 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 		}
 
 		// Se cc non è vuoto, continua con l'elaborazione normale
-		const matchingIndex = importedMovCC().findIndex((imported) =>
-			cc().some(
-				(existing) =>
-					imported.codice_identificativo === existing.codice_identificativo &&
-					convertDateToISO(imported.data_operazione) === existing.data_operazione &&
-					convertDateToISO(imported.data_valuta) === existing.data_valuta &&
-					imported.descrizione === existing.descrizione &&
-					imported.importo === existing.importo
-			)
-		);
+		const matchingIndex = importedMovCC().findIndex((imported, importedIndex) => {
+			for (const existing of cc()) {
+				const sameCodice = imported.codice_identificativo === existing.codice_identificativo;
+				const sameDataOp = convertDateToISO(imported.data_operazione) === existing.data_operazione;
+				const sameDataValuta = convertDateToISO(imported.data_valuta) === existing.data_valuta;
+				const sameDescrizione = imported.descrizione === existing.descrizione;
+				const sameImporto = imported.importo === existing.importo;
+
+				if (existing.data_operazione === "2025-04-01") {
+					console.log(existing);
+					console.log(imported);
+
+					if (sameCodice && sameDataOp && sameDataValuta && sameDescrizione && sameImporto) {
+						console.log(`✅ Match trovato con movimento esistente! (importedIndex: ${importedIndex})`);
+						return true;
+					}
+
+				}
+			}
+			return false;
+		});
+
 
 		if (matchingIndex === -1) {
 			alert("Nessuna corrispondenza trovata con i movimenti attuali.");
@@ -562,11 +589,16 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 							<div
 								key={option}
 								class={`p-2 text-center cursor-pointer hover:bg-gray-200 
-									${selectedRow().tipo === option ? `${selectedRow().importo > 0 ? "bg-green-500 text-white" : "bg-red-500 text-white"}` : ""}`}
-								onClick={() => updateTipo(selectedRow().prg, option)}
+								${option === "Resetta tipo"
+										? "text-red-800 italic"
+										: selectedRow().tipo === option
+											? `${selectedRow().importo > 0 ? "bg-green-500 text-white" : "bg-red-500 text-white"}`
+											: ""}`}
+								onClick={() => updateTipo(selectedRow().prg, option === "Resetta tipo" ? "" : option)}
 							>
 								{option}
 							</div>
+
 						))}
 
 					</div>
