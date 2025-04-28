@@ -409,16 +409,27 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 	};
 
 	// funzione di formattazione dei numeri 
-	const formatEuro = (value) => {
+	const formatEuro = (value, fixedDecimals = false) => {
 		if (value === null || value === undefined || isNaN(value)) {
 			console.warn("❗️Valore non valido in formatEuro:", value);
 			return "–";
 		}
-		return value.toLocaleString("it-IT", {
-			style: "decimal",
-			minimumFractionDigits: value % 1 === 0 ? 0 : 2,
-			maximumFractionDigits: 3,
-		});
+
+		// Arrotonda il valore
+		const roundedValue = fixedDecimals
+			? value.toFixed(2)
+			: Math.round(value).toString();
+
+		// Divide parte intera e decimale
+		const [intPart, decPart] = roundedValue.split('.');
+
+		// Aggiunge separatore migliaia manualmente
+		const intWithSeparators = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+		// Ritorna il formato corretto
+		return decPart !== undefined
+			? `${intWithSeparators},${decPart}`
+			: intWithSeparators;
 	};
 
 	return (
@@ -683,7 +694,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									<div class="flex justify-between">
 										<span>{new Date(entry.data_competenza).toLocaleDateString()}</span>
 										<span class="text-green-600">
-											{formatEuro(Math.round(entry.total))} €
+											{formatEuro(entry.total, false)} €
 										</span>
 									</div>
 								</li>
