@@ -408,6 +408,19 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 		}
 	};
 
+	// funzione di formattazione dei numeri 
+	const formatEuro = (value) => {
+		if (value === null || value === undefined || isNaN(value)) {
+			console.warn("❗️Valore non valido in formatEuro:", value);
+			return "–";
+		}
+		return value.toLocaleString("it-IT", {
+			style: "decimal",
+			minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+			maximumFractionDigits: 3,
+		});
+	};
+
 	return (
 		<div class="flex flex-col h-full px-2 pt-2">
 
@@ -637,7 +650,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 			)}
 
 
-			{/* View degli incassi giornalieri */}
+			{/* View degli incassi giorno per giorno */}
 			{view() === 'day' && (
 				<div class="flex flex-col h-full">
 					{/* Intestazione fissa */}
@@ -670,10 +683,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									<div class="flex justify-between">
 										<span>{new Date(entry.data_competenza).toLocaleDateString()}</span>
 										<span class="text-green-600">
-											{new Intl.NumberFormat('it-IT', {
-												style: 'decimal',
-												maximumFractionDigits: 0,
-											}).format(Math.round(entry.total))} €
+											{formatEuro(Math.round(entry.total))} €
 										</span>
 									</div>
 								</li>
