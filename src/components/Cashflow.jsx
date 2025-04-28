@@ -31,6 +31,30 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 	const [selectedGr2Tag, setSelectedGr2Tag] = createSignal(''); // Stato per il filtro Entrate/Uscite
 	const [filteredCashflow, setFilteredCashflow] = createSignal([]);
 
+	// funzione di formattazione dei numeri 
+	const formatEuro = (value, fixedDecimals = false) => {
+		if (value === null || value === undefined || isNaN(value)) {
+			console.warn("❗️Valore non valido in formatEuro:", value);
+			return "–";
+		}
+
+		// Arrotonda il valore
+		const roundedValue = fixedDecimals
+			? value.toFixed(2)
+			: Math.round(value).toString();
+
+		// Divide parte intera e decimale
+		const [intPart, decPart] = roundedValue.split('.');
+
+		// Aggiunge separatore migliaia manualmente
+		const intWithSeparators = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+		// Ritorna il formato corretto
+		return decPart !== undefined
+			? `${intWithSeparators},${decPart}`
+			: intWithSeparators;
+	};
+
 	// Calcola spese_puntuali per una singola istanza di budget
 	const computeSpesePuntuali = (b) => {
 		const currentDate = new Date();
@@ -510,8 +534,8 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
 							const diffFormatted =
 								diff >= 0
-									? `+${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`
-									: `${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`;
+									? `+${formatEuro(diff)} €`
+									: `${formatEuro(diff)} €`;
 
 							return (
 								<li
@@ -525,7 +549,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 										<span>{year}</span>
 										<div class="flex items-center">
 											<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-												{new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(total))} €
+												{formatEuro(total)} €
 											</span>
 											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() && (
 												<span class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
@@ -547,19 +571,13 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								<li class="py-2 px-4 bg-gray-100 font-semibold">
 									<div class="flex justify-end items-center">
 										<span class={`${totalExpense > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-											{new Intl.NumberFormat('it-IT', {
-												style: 'decimal',
-												maximumFractionDigits: 0,
-											}).format(totalExpense)} €
+											{formatEuro(totalExpense)} €
 										</span>
 										{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() && (
 											<div class="flex items-center justify-end w-[90px]">
 												{everyYearHasCompleteBudget() && (
 													<span class={`text-xs italic ${overallDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
-														({overallDiff >= 0 ? '+' : ''}{new Intl.NumberFormat('it-IT', {
-															style: 'decimal',
-															maximumFractionDigits: 0,
-														}).format(overallDiff)} €)
+														({overallDiff >= 0 ? '+' : ''}{formatEuro(overallDiff)} €)
 													</span>
 												)}
 											</div>
@@ -606,8 +624,8 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
 							const diffFormatted =
 								diff >= 0
-									? `+${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`
-									: `${new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(diff))} €`;
+									? `+${formatEuro(diff)} €`
+									: `${formatEuro(diff)} €`;
 
 							return (
 								<li
@@ -622,7 +640,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 										<span>{formattedMonth}</span>
 										<div class="flex items-center">
 											<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-												{new Intl.NumberFormat('it-IT', { style: 'decimal', maximumFractionDigits: 0 }).format(Math.round(total))} €
+												{formatEuro(total)} €
 											</span>
 											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
 												<span class={`ml-2 flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
@@ -660,10 +678,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											class={`${sumOfTotals > 0 ? "text-green-800" : "text-red-800"
 												} font-bold`}
 										>
-											{new Intl.NumberFormat("it-IT", {
-												style: "decimal",
-												maximumFractionDigits: 0,
-											}).format(sumOfTotals)} €
+											{formatEuro(sumOfTotals)} €
 										</span>
 
 										{/* Se siamo in "uscite" e non c’è filtro su CC/CASH, mostra la differenza rispetto al budget */}
@@ -673,10 +688,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 													<div class={`text-xs italic ${sumOfDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
 														(
 														{sumOfDiff >= 0 ? "+" : ""}
-														{new Intl.NumberFormat("it-IT", {
-															style: "decimal",
-															maximumFractionDigits: 0,
-														}).format(sumOfDiff)}{" "}
+														{formatEuro(sumOfDiff)}{" "}
 														€)
 													</div>
 												)}
@@ -720,10 +732,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								<div class="flex justify-between">
 									<span>{new Date(date).toLocaleDateString()}</span>
 									<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(Math.round(total))} €
+										{formatEuro(total)} €
 									</span>
 								</div>
 							</li>
@@ -733,12 +742,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 						<li class="py-2 px-4 bg-gray-100 font-semibold">
 							<div class="flex justify-end">
 								<span class={`${groupByDate().reduce((sum, [, { total }]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
-										groupByDate().reduce((sum, [, { total }]) => sum + total, 0)
-									)} €
+									{formatEuro(groupByDate().reduce((sum, [, { total }]) => sum + total, 0))} €
 								</span>
 							</div>
 						</li>
@@ -774,14 +778,10 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 										Movimenti CASH
 										<span class="text-blue-800 ml-2">(</span>
 										<span class={`${getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
-											{new Intl.NumberFormat('it-IT', {
-												style: 'decimal',
-												maximumFractionDigits: 0,
-											}).format(
-												getCashMovements()
-													.filter((entry) => !isExcluded(entry))
-													.reduce((sum, entry) => sum + entry.importo, 0)
-											)} €
+											{formatEuro(getCashMovements()
+												.filter((entry) => !isExcluded(entry))
+												.reduce((sum, entry) => sum + entry.importo, 0)
+												, true)} €
 										</span>
 										<span class="text-blue-800">)</span>
 									</h3>
@@ -800,11 +800,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 												<td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
 												<td class="w-full text-[10px] px-2 py-1">{entry.descrizione || '-'}</td>
 												<td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
-													{new Intl.NumberFormat('it-IT', {
-														style: 'decimal',
-														minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-														maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-													}).format(entry.importo)} €
+													{formatEuro(entry.importo, true)} €
 												</td>
 											</tr>
 										))}
@@ -821,14 +817,10 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 										Movimenti CC
 										<span class="text-blue-800 ml-2">(</span>
 										<span class={`${getCCMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
-											{new Intl.NumberFormat('it-IT', {
-												style: 'decimal',
-												maximumFractionDigits: 0,
-											}).format(
-												getCCMovements()
-													.filter((entry) => !isExcluded(entry))
-													.reduce((sum, entry) => sum + entry.importo, 0)
-											)} €
+											{formatEuro(getCCMovements()
+												.filter((entry) => !isExcluded(entry))
+												.reduce((sum, entry) => sum + entry.importo, 0)
+											, true)} €
 										</span>
 										<span class="text-blue-800">)</span>
 									</h3>
@@ -845,11 +837,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 												<td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
 												<td class="w-full text-[10px] px-2 py-1 line-clamp-1">{entry.descrizione || '-'}</td>
 												<td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
-													{new Intl.NumberFormat('it-IT', {
-														style: 'decimal',
-														minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-														maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-													}).format(entry.importo)} €
+													{formatEuro(entry.importo, true)} €
 												</td>
 											</tr>
 										))}
@@ -863,12 +851,9 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								<span class={
 									`${getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) +
 										getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
+									{formatEuro(
 										getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) + getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0)
-									)} €
+									, true)} €
 								</span>
 							</div>
 						)}
@@ -910,11 +895,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 						<div class="mb-4">
 							<div class="font-semibold">Importo</div>{' '}
 							<div class={`${selectedMovement().importo > 0 ? "text-green-600" : "text-red-600"}`}>
-								{new Intl.NumberFormat('it-IT', {
-									style: 'decimal',
-									minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-									maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-								}).format(selectedMovement().importo)} €
+								{formatEuro(selectedMovement().importo, true)} €
 							</div>
 						</div>
 						<div class="mb-4">

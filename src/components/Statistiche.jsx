@@ -36,7 +36,7 @@ const Statistiche = (props) => {
 			? `${intWithSeparators},${decPart}`
 			: intWithSeparators;
 	};
-	
+
 	// Funzione per raggruppare i dati giornalmente o mensilmente
 	const groupData = (data, mode) => {
 		const groupedData = new Map();
@@ -393,7 +393,7 @@ const Statistiche = (props) => {
 		},
 		yaxis: {
 			labels: {
-				formatter: (val) => val.toLocaleString("it-IT", { maximumFractionDigits: 0 })
+				formatter: (val) => formatEuro(val)
 			},
 			title: { text: "" }
 		},
@@ -449,7 +449,7 @@ const Statistiche = (props) => {
 		},
 		yaxis: {
 			labels: {
-				formatter: (val) => val.toLocaleString("it-IT", { maximumFractionDigits: 0 })
+				formatter: (val) => formatEuro(val)
 			},
 			title: { text: "" }
 		},
@@ -870,7 +870,7 @@ const Statistiche = (props) => {
 		},
 		yaxis: {
 			labels: {
-				formatter: (val) => val.toLocaleString("it-IT", { maximumFractionDigits: 0 })
+				formatter: (val) => formatEuro(val)
 			},
 			title: { text: "" }
 		},
@@ -928,7 +928,7 @@ const Statistiche = (props) => {
 		},
 		yaxis: {
 			labels: {
-				formatter: (val) => val.toLocaleString("it-IT", { maximumFractionDigits: 0 })
+				formatter: (val) => formatEuro(val)
 			},
 			title: { text: "" }
 		},
@@ -1010,19 +1010,19 @@ const Statistiche = (props) => {
 						{/* Totale Entrate */}
 						<li class="flex justify-between border-b text-gray-600">
 							<span>Entrate</span>
-							<span class="text-green-600">{summaryData().totalEntrate.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+							<span class="text-green-600">{formatEuro(summaryData().totalEntrate)} €</span>
 						</li>
 
 						{/* Totale Uscite */}
 						<li class="flex justify-between border-b text-gray-600">
 							<span>Uscite</span>
-							<span class="text-red-600">{summaryData().totalUscite.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+							<span class="text-red-600">{formatEuro(summaryData().totalUscite)} €</span>
 						</li>
 
 						{/* Differenza Entrate - Uscite */}
 						<li class={`flex justify-between font-semibold ${summaryData().saldoEntrateUscite > 0 ? "text-green-600" : "text-red-600"}`}>
 							<span></span>
-							<span>{summaryData().saldoEntrateUscite.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+							<span>{formatEuro(summaryData().saldoEntrateUscite)} €</span>
 						</li>
 					</div>
 
@@ -1031,19 +1031,19 @@ const Statistiche = (props) => {
 						{/* Totale CASH */}
 						<li class={`flex justify-between border-b text-gray-600`}>
 							<span>Patrimonio CASH</span>
-							<span class={`${summaryData().totalCash > 0 ? "text-green-600" : "text-red-600"}`}>{summaryData().totalCash.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+							<span class={`${summaryData().totalCash > 0 ? "text-green-600" : "text-red-600"}`}>{formatEuro(summaryData().totalCash)} €</span>
 						</li>
 
 						{/* Totale CC */}
 						<li class={`flex justify-between border-b text-gray-600`}>
 							<span>Patrimonio CC</span>
-							<span class={`${summaryData().totalCC > 0 ? "text-green-600" : "text-red-600"}`}>{summaryData().totalCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+							<span class={`${summaryData().totalCC > 0 ? "text-green-600" : "text-red-600"}`}>{formatEuro(summaryData().totalCC)} €</span>
 						</li>
 
 						{/* Totale generale */}
 						<li class={`flex justify-between font-semibold ${summaryData().saldoCashCC > 0 ? "text-green-600" : "text-red-600"}`}>
 							<span></span>
-							<span>{summaryData().saldoCashCC.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+							<span>{formatEuro(summaryData().saldoCashCC)} €</span>
 						</li>
 
 					</div>
@@ -1054,20 +1054,20 @@ const Statistiche = (props) => {
 						{/* margin netto % */}
 						<li class={`flex justify-between border-b text-gray-600`}>
 							<span>Margine netto %</span>
-							<span class={`font-semibold ${summaryData().saldoEntrateUscite / summaryData().totalEntrate > 0 ? "text-green-600" : "text-red-600"}`}>{((summaryData().saldoEntrateUscite / summaryData().totalEntrate) * 100).toLocaleString("it-IT", { maximumFractionDigits: 0 })} %</span>
+							<span class={`font-semibold ${summaryData().saldoEntrateUscite / summaryData().totalEntrate > 0 ? "text-green-600" : "text-red-600"}`}>{formatEuro(((summaryData().saldoEntrateUscite / summaryData().totalEntrate) * 100))} %</span>
 						</li>
 
 						{/* Frase esplicativa */}
 						{summaryData().saldoEntrateUscite / summaryData().totalEntrate > 0 ? (
 							<div class="text-xs text-gray-400 text-center">
 								<span>Hai guadagnato </span>
-								<span>{Math.abs((summaryData().saldoEntrateUscite / summaryData().totalEntrate) * 100).toLocaleString("it-IT", { maximumFractionDigits: 0 })} centesimi </span>
+								<span>{formatEuro(Math.abs((summaryData().saldoEntrateUscite / summaryData().totalEntrate) * 100))} centesimi </span>
 								<div>netti su ogni euro incassato</div>
 							</div>
 						) : (
 							<div class="text-xs text-gray-400 text-center">
 								<span>Per ogni euro che hai incassato</span>
-								<div>ne hai spesi circa {Math.abs(1 - (summaryData().saldoEntrateUscite / summaryData().totalEntrate)).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} </div>
+								<div>ne hai spesi circa {formatEuro(Math.abs(1 - (summaryData().saldoEntrateUscite / summaryData().totalEntrate)), true)} </div>
 							</div>
 						)}
 
@@ -1079,7 +1079,7 @@ const Statistiche = (props) => {
 						{selectedTag() === "Da inizio" && (
 							<li class={`flex justify-between border-b text-gray-600`}>
 								<span>Scadenze</span>
-								<span class={`font-semibold ${scadenzeDaPagare() > 0 ? "text-green-600" : "text-red-600"}`}>{scadenzeDaPagare().toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+								<span class={`font-semibold ${scadenzeDaPagare() > 0 ? "text-green-600" : "text-red-600"}`}>{formatEuro(scadenzeDaPagare())} €</span>
 							</li>
 						)}
 					</div>
@@ -1098,7 +1098,7 @@ const Statistiche = (props) => {
 							return (
 								<div key={month} class="flex justify-between border-b mt-1">
 									<span>{formattedMonth}</span>
-									<span class={`font-semibold ${totale > 0 ? "text-green-600" : "text-red-600"}`}>{totale.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €</span>
+									<span class={`font-semibold ${totale > 0 ? "text-green-600" : "text-red-600"}`}>{formatEuro(totale)} €</span>
 								</div>
 							);
 						})}
@@ -1116,7 +1116,7 @@ const Statistiche = (props) => {
 							<li class="flex justify-between border-b">
 								<span>{income.tipo}</span>
 								<span class="font-semibold text-green-600">
-									{income.total.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €
+									{formatEuro(income.total)} €
 								</span>
 							</li>
 						))}
@@ -1125,7 +1125,7 @@ const Statistiche = (props) => {
 					{/* Totale fisso in basso */}
 					<div class="border-t mt-2 pt-2 flex justify-between text-lg font-bold text-green-700">
 						<span>{incomeByType().at(-1).tipo}</span>
-						<span>{incomeByType().at(-1).total.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+						<span>{formatEuro(incomeByType().at(-1).total)}€</span>
 					</div>
 				</div>
 
@@ -1165,7 +1165,7 @@ const Statistiche = (props) => {
 							<li class="flex justify-between border-b">
 								<span>{expense.tipo}</span>
 								<span class="font-semibold text-red-600">
-									{expense.total.toLocaleString("it-IT", { maximumFractionDigits: 0 })} €
+									{formatEuro(expense.total)} €
 								</span>
 							</li>
 						))}
@@ -1174,7 +1174,7 @@ const Statistiche = (props) => {
 					{/* Totale fisso in basso */}
 					<div class="border-t mt-2 pt-2 flex justify-between text-lg font-bold text-red-700">
 						<span>{expensesByType().at(-1).tipo}</span>
-						<span>{expensesByType().at(-1).total.toLocaleString("it-IT", { maximumFractionDigits: 0 })}€</span>
+						<span>{formatEuro(expensesByType().at(-1).total)}€</span>
 					</div>
 				</div>
 
@@ -1197,10 +1197,10 @@ const Statistiche = (props) => {
 							<li key={key} class="flex justify-between items-center py-1 border-b">
 								<span class="w-1/4">{label}</span> {/* es. 03/2025 */}
 								<span class="w-1/4 text-right">
-									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(incassi)} €
+									{formatEuro(incassi)} €
 								</span>
 								<span class="w-1/4 text-right">
-									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(budget)} €
+									{formatEuro(budget)} €
 								</span>
 								<span class={`w-1/4 text-right font-semibold ${variazionePercentuale >= 0 ? "text-green-600" : "text-red-600"}`}>
 									{variazionePercentuale.toFixed(1)}%
@@ -1216,10 +1216,10 @@ const Statistiche = (props) => {
 								<li class="flex justify-between items-center py-1 font-bold">
 									<span class="w-1/4">Totale</span>
 									<span class="w-1/4 text-right">
-										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalIncassi)} €
+										{formatEuro(totalIncassi)} €
 									</span>
 									<span class="w-1/4 text-right">
-										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalBudget)} €
+										{formatEuro(totalBudget)} €
 									</span>
 									<span class={`w-1/4 text-right ${globalVariation >= 0 ? "text-green-600" : "text-red-600"}`}>
 										{globalVariation.toFixed(1)}%
@@ -1255,10 +1255,10 @@ const Statistiche = (props) => {
 							<li key={key} class="flex justify-between items-center py-1 border-b">
 								<span class="w-1/4">{label}</span>
 								<span class="w-1/4 text-right">
-									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(expense)} €
+									{formatEuro(expense)} €
 								</span>
 								<span class="w-1/4 text-right">
-									{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(plannedExpense)} €
+									{formatEuro(plannedExpense)} €
 								</span>
 								<span class={`w-1/4 text-right font-semibold ${variationPercent > 0 ? "text-red-600" : "text-green-600"}`}>
 									{variationPercent.toFixed(1)}%
@@ -1274,10 +1274,10 @@ const Statistiche = (props) => {
 								<li class="flex justify-between items-center py-1 font-bold">
 									<span class="w-1/4">Totale</span>
 									<span class="w-1/4 text-right">
-										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalExpense)} €
+										{formatEuro(totalExpense)} €
 									</span>
 									<span class="w-1/4 text-right">
-										{new Intl.NumberFormat("it-IT", { style: "decimal", maximumFractionDigits: 0 }).format(totalPlannedExpense)} €
+										{formatEuro(totalPlannedExpense)} €
 									</span>
 									<span class={`w-1/4 text-right ${globalVariationExpense > 0 ? "text-red-600" : "text-green-600"}`}>
 										{globalVariationExpense.toFixed(1)}%

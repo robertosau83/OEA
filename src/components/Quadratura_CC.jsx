@@ -16,6 +16,30 @@ const Quadratura_CC = ({ companyId, cashflow, cc, setCC }) => {
 		return `${day}/${month}/${year.slice(-2)}`; // Prende solo le ultime due cifre dell'anno
 	};
 
+	// funzione di formattazione dei numeri 
+	const formatEuro = (value, fixedDecimals = false) => {
+		if (value === null || value === undefined || isNaN(value)) {
+			console.warn("❗️Valore non valido in formatEuro:", value);
+			return "–";
+		}
+
+		// Arrotonda il valore
+		const roundedValue = fixedDecimals
+			? value.toFixed(2)
+			: Math.round(value).toString();
+
+		// Divide parte intera e decimale
+		const [intPart, decPart] = roundedValue.split('.');
+
+		// Aggiunge separatore migliaia manualmente
+		const intWithSeparators = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+		// Ritorna il formato corretto
+		return decPart !== undefined
+			? `${intWithSeparators},${decPart}`
+			: intWithSeparators;
+	};
+
 	// Calcola la sommatoria dei movimenti di cashflow con origin "CC"
 	const totalTeorici = () => {
 		return cashflow()?.reduce((acc, item) => {
@@ -106,10 +130,7 @@ const Quadratura_CC = ({ companyId, cashflow, cc, setCC }) => {
 					<span class={`${cutoffDate() ? "font-semibold" : ""}`}>{cutoffDate() ? `${formatDate(cutoffDate())}` : " attuali"}</span>
 				</label>
 				<div class={`mt-1 text-2xl font-semibold ${totalTeorici() > 0 ? "text-green-700" : "text-red-700"}`}>
-					{totalTeorici().toLocaleString("it-IT", {
-						minimumFractionDigits: 2,
-						maximumFractionDigits: 2,
-					})} €
+					{formatEuro(totalTeorici(), true)} €
 				</div>
 			</div>
 
@@ -172,18 +193,18 @@ const Quadratura_CC = ({ companyId, cashflow, cc, setCC }) => {
 						<p class="mb-4 text-gray-700 text-center">
 							Stai dichiarando che in data{" "}
 							<span class="font-semibold">{cutoffDate() ? formatDate(cutoffDate()) : "odierna"}</span> la saldo del CC non {cutoffDate() ? "era " : "è "}
-							<span class="font-semibold">{totalTeorici().toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>,
+							<span class="font-semibold">{formatEuro(totalTeorici(), true)} €</span>,
 							ma {cutoffDate() ? "era " : "è "} invece{" "}
-							<span class="font-semibold">{parseFloat(ccEffettivi().replace(',', '.')).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span>.
+							<span class="font-semibold">{formatEuro(parseFloat(ccEffettivi().replace(',', '.')), true)} €</span>.
 						</p>
 						<p class="mb-8 text-gray-700 text-center">
 							Verrà quindi inserito un movimento di allineamento di
 							<span class="font-semibold">{parseFloat(ccEffettivi().replace(',', '.')) - totalTeorici() > 0 ? " +" : " "}
-								{(parseFloat(ccEffettivi().replace(',', '.')) - totalTeorici()).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
+								{formatEuro(parseFloat(ccEffettivi().replace(',', '.')) - totalTeorici(), true)} €
 							</span>
-							{" "}nel cashflow, in modo che il saldo del CC in data{" "}
+							{" "}nei movimenti CC, in modo che il saldo del CC in data{" "}
 							<span class="font-semibold">{cutoffDate() ? formatDate(cutoffDate()) : "odierna"}</span> risulterà di{" "}
-							<span class="font-semibold">{parseFloat(ccEffettivi().replace(',', '.')).toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</span> come da te richiesto.
+							<span class="font-semibold whitespace-nowrap">{formatEuro(parseFloat(ccEffettivi().replace(',', '.')), true)} €</span> come da te richiesto.
 						</p>
 						<div class="flex items-center justify-center gap-2">
 							<button

@@ -32,6 +32,30 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
     }
   };
 
+  // funzione di formattazione dei numeri 
+	const formatEuro = (value, fixedDecimals = false) => {
+		if (value === null || value === undefined || isNaN(value)) {
+			console.warn("❗️Valore non valido in formatEuro:", value);
+			return "–";
+		}
+
+		// Arrotonda il valore
+		const roundedValue = fixedDecimals
+			? value.toFixed(2)
+			: Math.round(value).toString();
+
+		// Divide parte intera e decimale
+		const [intPart, decPart] = roundedValue.split('.');
+
+		// Aggiunge separatore migliaia manualmente
+		const intWithSeparators = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+		// Ritorna il formato corretto
+		return decPart !== undefined
+			? `${intWithSeparators},${decPart}`
+			: intWithSeparators;
+	};
+
   const addNewScadenza = async () => {
     // Verifica che tutti i campi obbligatori siano compilati
     if (!newScadenza().data_scadenza || !newScadenza().data_ricevuta || !newScadenza().nome || !newScadenza().importo) {
@@ -159,11 +183,8 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
                 {new Date(f.data_scadenza).toLocaleDateString('it-IT')}
               </div>
               <div class="text-center px-2 w-[35%]">{f.nome}</div>
-              <div class="text-right pr-3 w-[20%]">
-                {new Intl.NumberFormat('it-IT', {
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 2
-                }).format(f.importo)} €
+              <div class="text-right pr-3 w-[20%] whitespace-nowrap">
+                {formatEuro(f.importo)} €
               </div>
               <div class="text-center w-[15%] h-full">
                 <input

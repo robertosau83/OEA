@@ -33,6 +33,30 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 		getFirstAndLastOpDate();
 	});
 
+	// funzione di formattazione dei numeri 
+	const formatEuro = (value, fixedDecimals = false) => {
+		if (value === null || value === undefined || isNaN(value)) {
+			console.warn("❗️Valore non valido in formatEuro:", value);
+			return "–";
+		}
+
+		// Arrotonda il valore
+		const roundedValue = fixedDecimals
+			? value.toFixed(2)
+			: Math.round(value).toString();
+
+		// Divide parte intera e decimale
+		const [intPart, decPart] = roundedValue.split('.');
+
+		// Aggiunge separatore migliaia manualmente
+		const intWithSeparators = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+		// Ritorna il formato corretto
+		return decPart !== undefined
+			? `${intWithSeparators},${decPart}`
+			: intWithSeparators;
+	};
+
 	const getFirstAndLastOpDate = () => {
 		if (!filteredMovCC().length) {
 			setFirstOpDate("");
@@ -340,10 +364,10 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 				// 	console.log(existing.descrizione);
 
 
-					if (sameCodice && sameDataOp && sameDataValuta && (bancaImportPDF === "Banca di Bologna" || sameDescrizione) && sameImporto) {
-						console.log(`✅ Match trovato con movimento esistente! (importedIndex: ${importedIndex})`);
-						return true;
-					}
+				if (sameCodice && sameDataOp && sameDataValuta && (bancaImportPDF === "Banca di Bologna" || sameDescrizione) && sameImporto) {
+					console.log(`✅ Match trovato con movimento esistente! (importedIndex: ${importedIndex})`);
+					return true;
+				}
 
 				// }
 			}
@@ -410,10 +434,7 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 			<div class="flex-none flex items-center justify-between h-[50px]">
 				<div class="flex pl-2 text-lg font-semibold">
 					<div>Saldo CC al {formatDate(lastOpDate())}:</div>
-					<span class="ml-2 text-green-800"> {cc().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
-						minimumFractionDigits: 2,
-						maximumFractionDigits: 2,
-					})} €
+					<span class="ml-2 text-green-800"> {formatEuro(cc().reduce((acc, row) => acc + parseFloat(row.importo), 0), true)} €
 					</span>
 				</div>
 
@@ -514,10 +535,7 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 				<span class="font-semibold">{startDate() ? formatDate(startDate()) : formatDate(firstOpDate())}</span> al{" "}
 				<span class="font-semibold">{endDate() ? formatDate(endDate()) : formatDate(lastOpDate())}</span> (
 				<span class={`${filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0) > 0 ? "text-green-600" : "text-red-600"}`}>
-					{filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0).toLocaleString("it-IT", {
-						minimumFractionDigits: 2,
-						maximumFractionDigits: 2,
-					})} €
+					{formatEuro(filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0), true)} €
 				</span>)
 			</div>
 
@@ -541,10 +559,7 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 										<td class="border-b border-gray-200 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
 										<td class="border-b border-gray-200 px-1 py-1 break-words">{row.descrizione}</td>
 										<td class="border-b border-gray-200 px-1 py-1 text-right">
-											{row.importo.toLocaleString("it-IT", {
-												minimumFractionDigits: 0,
-												maximumFractionDigits: 2,
-											})}
+											{formatEuro(row.importo, true)}
 										</td>
 										<td
 											class={`border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${!row.tipo || row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}

@@ -20,9 +20,28 @@ const Budget = ({ companyId, budget, setBudget }) => {
 	const getMonthYearText = (mese, anno) => `${monthNames[mese - 1]} ${anno}`;
 
 	// Formatta un numero in formato italiano con separatore delle migliaia (nessun decimale)
-	const formatNumber = (num) => {
-		if (num === null || num === undefined || num === "") return "";
-		return Number(num).toLocaleString('it-IT', { maximumFractionDigits: 0 });
+	// funzione di formattazione dei numeri 
+	const formatEuro = (value, fixedDecimals = false) => {
+		if (value === null || value === undefined || isNaN(value)) {
+			console.warn("❗️Valore non valido in formatEuro:", value);
+			return "–";
+		}
+
+		// Arrotonda il valore
+		const roundedValue = fixedDecimals
+			? value.toFixed(2)
+			: Math.round(value).toString();
+
+		// Divide parte intera e decimale
+		const [intPart, decPart] = roundedValue.split('.');
+
+		// Aggiunge separatore migliaia manualmente
+		const intWithSeparators = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+		// Ritorna il formato corretto
+		return decPart !== undefined
+			? `${intWithSeparators},${decPart}`
+			: intWithSeparators;
 	};
 
 	onMount(() => {
@@ -200,7 +219,7 @@ const Budget = ({ companyId, budget, setBudget }) => {
 												type="text"
 												value={editing()[b.id]?.incassi !== undefined
 													? editing()[b.id].incassi
-													: formatNumber(b.incassi)}
+													: formatEuro(b.incassi)}
 												onInput={(e) => handleEditChange(b.id, 'incassi', e.target.value)}
 												onBlur={() => handleSave(b.id)}
 												class="w-full pl-2 h-[40px] text-base rounded-lg text-right pr-2"
@@ -211,7 +230,7 @@ const Budget = ({ companyId, budget, setBudget }) => {
 												type="text"
 												value={editing()[b.id]?.spese !== undefined
 													? editing()[b.id].spese
-													: formatNumber(b.spese)}
+													: formatEuro(b.spese)}
 												onInput={(e) => handleEditChange(b.id, 'spese', e.target.value)}
 												onBlur={() => handleSave(b.id)}
 												class="w-full pl-2 h-[40px] min-w-[50px] text-base rounded-lg text-right pr-2"

@@ -61,15 +61,6 @@ const Auth = ({ setSession }) => {
 				Sign In
 			</button>
 
-			{/* 🔹 Bottone per login con Google */}
-			{/* <button
-        onClick={signInWithGoogle}
-        class="bg-red-500 text-white px-4 py-2 mt-4 flex items-center gap-2"
-      >
-        <img src="/google-icon.svg" alt="Google" class="w-5 h-5" />
-        Sign in with Google
-      </button> */}
-
 			{error() && <p class="text-red-500 mt-2">{error()}</p>}
 		</div>
 	);

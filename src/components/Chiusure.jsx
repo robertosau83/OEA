@@ -328,9 +328,11 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 	//Apre il popup per l'edit di un incasso
 	const openEditPopup = () => {
 		const selectedIncasso = getDailyDetails();
+		//console.log(selectedIncasso);
 		if (!selectedIncasso) return;
 
 		setEditChiusura({
+			data_competenza: selectedIncasso.data_competenza,
 			battuti_cassa: selectedIncasso.battuti_cassa
 				? selectedIncasso.battuti_cassa.toString().replace('.', ',')
 				: '',
@@ -352,61 +354,62 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 		const selectedIncasso = getDailyDetails();
 		if (!selectedIncasso) return;
 
-		// Verifica e converte i campi numerici
 		const fieldsToCheck = ['battuti_cassa', 'carte', 'satispay', 'contanti_cassa'];
 		const convertedValues = {};
 
 		for (const field of fieldsToCheck) {
 			const value = editChiusura()[field];
-
-			// Se il campo è vuoto, imposta a 0
 			if (value === '') {
 				convertedValues[field] = 0;
 				continue;
 			}
-
-			// Sostituisci eventuale "," con "."
 			const sanitizedValue = value.replace(',', '.');
-
-			// Prova a convertire in numero
 			const numericValue = parseFloat(sanitizedValue);
-
 			if (isNaN(numericValue)) {
 				alert(`Il valore inserito per "${field}" non è valido. Inserisci un numero valido.`);
-				return; // Blocca l'inserimento
+				return;
 			}
-
-			convertedValues[field] = numericValue; // Salva il valore convertito
+			convertedValues[field] = numericValue;
 		}
 
-		// Crea un nuovo oggetto incasso con i campi convertiti
+		const newDate = editChiusura().data_competenza;
+
+		// Se la data è cambiata, controlla che non esista già un altro incasso
+		if (newDate !== selectedIncasso.data_competenza) {
+			const existing = chiusure().find(entry => entry.data_competenza === newDate);
+			if (existing) {
+				alert(`Esiste già un incasso per la data ${new Date(newDate).toLocaleDateString('it-IT')}.`);
+				return;
+			}
+		}
+
 		const incassoToInsert = {
-			...editChiusura(),
 			...convertedValues,
-			company_id: companyId, // 🔹 Assicura che ogni insert abbia il company_id corretto
+			data_competenza: newDate,
+			company_id: companyId,
 		};
 
 		const { error } = await supabase
 			.from('chiusure')
 			.update(incassoToInsert)
-			.eq('data_competenza', selectedIncasso.data_competenza);
+			.eq('id', selectedIncasso.id); // QUI aggiorniamo per ID!
 
 		if (error) {
 			console.error("Errore durante l'aggiornamento dell'incasso:", error.message);
 		} else {
 			console.log('Incasso aggiornato con successo');
-			//Aggiorna lo stato locale
 			setChiusure((prev) =>
 				prev.map((entry) =>
-					entry.data_competenza === selectedIncasso.data_competenza
+					entry.id === selectedIncasso.id
 						? { ...entry, ...incassoToInsert }
 						: entry
 				)
 			);
-			//await aggregateIncassiWithSpese();
-			setShowEditPopup(false); // Chiudi il popup
+			setSelectedDay(newDate);
+			setShowEditPopup(false);
 		}
 	};
+
 
 	// funzione di formattazione dei numeri 
 	const formatEuro = (value, fixedDecimals = false) => {
@@ -480,7 +483,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 							return (
 								<li
-									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									class="py-2 px-4 border-b cursor-pointer bg-white mb-2 rounded-lg shadow-md"
 									onClick={() => {
 										setSelectedYear(year);
 										setView('month');
@@ -942,9 +945,14 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<label class="block text-sm font-medium mb-1">Data Competenza</label>
 								<input
 									type="date"
-									value={selectedDay()}
-									disabled
-									class="w-full border rounded px-3 py-2 bg-gray-200 cursor-not-allowed"
+									value={editChiusura().data_competenza || ''}
+									onInput={(e) =>
+										setEditChiusura({
+											...editChiusura(),
+											data_competenza: e.currentTarget.value,
+										})
+									}
+									class="w-full border rounded px-3 py-2"
 								/>
 							</div>
 
