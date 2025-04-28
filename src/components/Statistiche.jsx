@@ -13,6 +13,30 @@ const Statistiche = (props) => {
 	const last12Months = new Date(today);
 	last12Months.setFullYear(last12Months.getFullYear() - 1);
 
+	// funzione di formattazione dei numeri 
+	const formatEuro = (value, fixedDecimals = false) => {
+		if (value === null || value === undefined || isNaN(value)) {
+			console.warn("❗️Valore non valido in formatEuro:", value);
+			return "–";
+		}
+
+		// Arrotonda il valore
+		const roundedValue = fixedDecimals
+			? value.toFixed(2)
+			: Math.round(value).toString();
+
+		// Divide parte intera e decimale
+		const [intPart, decPart] = roundedValue.split('.');
+
+		// Aggiunge separatore migliaia manualmente
+		const intWithSeparators = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+		// Ritorna il formato corretto
+		return decPart !== undefined
+			? `${intWithSeparators},${decPart}`
+			: intWithSeparators;
+	};
+	
 	// Funzione per raggruppare i dati giornalmente o mensilmente
 	const groupData = (data, mode) => {
 		const groupedData = new Map();

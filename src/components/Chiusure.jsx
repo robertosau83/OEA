@@ -475,14 +475,8 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
 							const diffFormatted =
 								diff >= 0
-									? `+${new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(Math.round(diff))} €`
-									: `${new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(Math.round(diff))} €`;
+									? `+${formatEuro(diff)} €`
+									: `${formatEuro(diff)} €`;
 
 							return (
 								<li
@@ -495,10 +489,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									<div class="flex justify-between items-center">
 										<span>{year}</span>
 										<div class="flex text-green-600">
-											{new Intl.NumberFormat('it-IT', {
-												style: 'decimal',
-												maximumFractionDigits: 0,
-											}).format(Math.round(total))} €
+											{formatEuro(total)} €
 											{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
 												<div class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
 													{inputYearHasCompleteBudget(year) && `(${diffFormatted})`}
@@ -512,12 +503,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 						<li class="py-2 px-4 bg-gray-100 font-semibold">
 							<div class="flex justify-end items-center">
 								<span class="text-green-800 font-bold">
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
-										groupByYear().reduce((sum, [, total]) => sum + total, 0)
-									)} €
+									{formatEuro(groupByYear().reduce((sum, [, total]) => sum + total, 0))} €
 								</span>
 								{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
 									<div class="flex items-center justify-end w-[90px]">
@@ -532,10 +518,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 													groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
 													? '+'
 													: ''}
-												{new Intl.NumberFormat('it-IT', {
-													style: 'decimal',
-													maximumFractionDigits: 0,
-												}).format(
+												{formatEuro(
 													groupByYear().reduce((sum, [, total]) => sum + total, 0) -
 													groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
 												)} €)
@@ -584,14 +567,8 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
 							const diffFormatted =
 								diff >= 0
-									? `+${new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(Math.round(diff))} €`
-									: `${new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(Math.round(diff))} €`;
+									? `+${formatEuro(diff)} €`
+									: `${formatEuro(diff)} €`;
 							return (
 								<li
 									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
@@ -603,10 +580,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									<div class="flex justify-between items-center">
 										<span>{formattedMonth}</span>
 										<div class="flex text-green-600">
-											{new Intl.NumberFormat('it-IT', {
-												style: 'decimal',
-												maximumFractionDigits: 0,
-											}).format(Math.round(total))} €
+											{formatEuro(total)} €
 											{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
 												<div class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
 													{findBudgetForKey(key) && `(${diffFormatted})`}
@@ -622,12 +596,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 						<li class="py-2 px-4 bg-gray-100 font-semibold">
 							<div class="flex justify-end items-center">
 								<span class="text-green-800 font-bold">
-									{new Intl.NumberFormat('it-IT', {
-										style: 'decimal',
-										maximumFractionDigits: 0,
-									}).format(
-										groupByMonth().reduce((sum, { total }) => sum + total, 0)
-									)} €
+									{formatEuro(groupByMonth().reduce((sum, { total }) => sum + total, 0))} €
 								</span>
 								{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
 									<div class="flex items-center justify-end w-[90px]">
@@ -642,10 +611,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 													sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
 													? '+'
 													: ''}
-												{new Intl.NumberFormat('it-IT', {
-													style: 'decimal',
-													maximumFractionDigits: 0,
-												}).format(
+												{formatEuro(
 													groupByMonth().reduce((sum, { total, key }) =>
 														sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
 												)} €)
@@ -704,10 +670,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<li class="py-2 px-4 bg-gray-100 font-semibold">
 								<div class="flex justify-end">
 									<span class="text-green-800 font-bold">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											maximumFractionDigits: 0,
-										}).format(calculateTotalByTag(filterByDay()))} €
+										{formatEuro(calculateTotalByTag(filterByDay()))} €
 									</span>
 								</div>
 							</li>
@@ -740,11 +703,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex text-sm justify-between py-1 px-4 border-b bg-gray-100">
 									<span class="">Battuti cassa</span>
 									<span class="text-green-600">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format(getDailyDetails()?.battuti_cassa || 0)} €
+										{formatEuro(getDailyDetails()?.battuti_cassa || 0, true)} €
 									</span>
 								</div>
 
@@ -752,11 +711,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex text-sm justify-between py-1 px-4 border-b">
 									<span>Contanti in cassa (netto spese)</span>
 									<span class="text-green-600">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format(getDailyDetails()?.contanti_cassa_netto_spese_serata || 0)} €
+										{formatEuro(getDailyDetails()?.contanti_cassa_netto_spese_serata || 0, true)} €
 									</span>
 								</div>
 
@@ -764,11 +719,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex text-sm text-red-500 justify-between py-1 px-4 border-b bg-yellow-50">
 									<span>Spese serata</span>
 									<span class="text-red-500">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format(getDailyDetails()?.spese_serata || 0)} €
+										{formatEuro(getDailyDetails()?.spese_serata || 0, true)} €
 									</span>
 								</div>
 
@@ -776,11 +727,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex justify-between py-1 px-4 border-b">
 									<span class="">Contanti in cassa (lordo spese)</span>
 									<span class="text-green-600 font-semibold">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format(getDailyDetails()?.contanti_cassa_lordo_spese_serata || 0)} €
+										{formatEuro(getDailyDetails()?.contanti_cassa_lordo_spese_serata || 0, true)} €
 									</span>
 								</div>
 
@@ -788,11 +735,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex justify-between py-1 px-4 border-b">
 									<span>Carte</span>
 									<span class="text-green-600 font-semibold">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format(getDailyDetails()?.carte || 0)} €
+										{formatEuro(getDailyDetails()?.carte || 0, true)} €
 									</span>
 								</div>
 
@@ -800,11 +743,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex justify-between py-1 px-4 border-b">
 									<span class="">Satispay</span>
 									<span class="text-green-600 font-semibold">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format(getDailyDetails()?.satispay || 0)} €
+										{formatEuro(getDailyDetails()?.satispay || 0, true)} €
 									</span>
 								</div>
 
@@ -812,11 +751,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex justify-between py-2 px-4">
 									<span class=""></span>
 									<span class="text-green-800 font-bold">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format((getDailyDetails()?.chiusura_lorda_reale || 0))} €
+										{formatEuro(getDailyDetails()?.chiusura_lorda_reale || 0, true)} €
 									</span>
 								</div>
 
@@ -824,11 +759,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								<div class="flex text-sm justify-between py-1 px-4 border-b">
 									<span class="">Gap</span>
 									<span class="text-green-600">
-										{new Intl.NumberFormat('it-IT', {
-											style: 'decimal',
-											minimumFractionDigits: 0, // Mostra 0 decimali se non presenti
-											maximumFractionDigits: 2, // Mostra fino a 2 decimali se presenti
-										}).format(getDailyDetails()?.gap || 0)} €
+										{formatEuro(getDailyDetails()?.gap || 0, true)} €
 									</span>
 								</div>
 
