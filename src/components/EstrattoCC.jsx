@@ -430,168 +430,174 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 	return (
 		<div class="flex flex-col h-full">
 
-			{/* saldo cc e bottone importa pdf */}
-			<div class="flex-none flex items-center justify-between h-[50px]">
-				<div class="flex pl-2 text-lg font-semibold">
-					<div>Saldo CC al {formatDate(lastOpDate())}:</div>
-					<span class="ml-2 text-green-800"> {formatEuro(cc().reduce((acc, row) => acc + parseFloat(row.importo), 0), true)} €
-					</span>
-				</div>
-
-				<div class="flex items-center justify-center gap-2 mr-2">
-					<div class="flex justify-center my-2">
-						<button
-							onClick={() => setShowSearch(!showSearch())}
-							class="bg-gray-300 p-2 rounded-full"
-						>
-							🔍
-						</button>
+			<div class="flex-none mb-2">
+				{/* saldo cc e bottone importa pdf */}
+				<div class="flex-none flex items-center justify-between h-[50px]">
+					<div class="flex pl-2 text-lg font-semibold">
+						<div>Saldo CC al {formatDate(lastOpDate())}:</div>
+						<span class="ml-2 text-green-800"> {formatEuro(cc().reduce((acc, row) => acc + parseFloat(row.importo), 0), true)} €
+						</span>
 					</div>
 
-					{isLandscape() && bancaImportPDF && (
-						<div>
-							<input
-								type="file"
-								accept=".pdf"
-								onChange={handleFileUpload}
-								class="hidden"
-								id="file-upload"
-							/>
-							<label
-								for="file-upload"
-								onClick={() => {
-									setStartDate("");
-									setEndDate("");
-									setMovementFilter("all");
-									setShowWithoutType(false);
-									setShowSearch(false);
-								}}
-								class="cursor-pointer bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600"
+					<div class="flex items-center justify-center gap-2 mr-2">
+						<div class="flex justify-center my-2">
+							<button
+								onClick={() => setShowSearch(!showSearch())}
+								class="bg-gray-100 p-2 border rounded-full"
 							>
-								Importa PDF
-							</label>
+								🔍
+							</button>
+						</div>
+
+						{isLandscape() && bancaImportPDF && (
+							<div>
+								<input
+									type="file"
+									accept=".pdf"
+									onChange={handleFileUpload}
+									class="hidden"
+									id="file-upload"
+								/>
+								<label
+									for="file-upload"
+									onClick={() => {
+										setStartDate("");
+										setEndDate("");
+										setMovementFilter("all");
+										setShowWithoutType(false);
+										setShowSearch(false);
+									}}
+									class="cursor-pointer bg-blue-800 text-white py-2 px-4 rounded-lg"
+								>
+									Importa PDF
+								</label>
+							</div>
+						)}
+					</div>
+
+				</div>
+
+				{/* Zona di ricerca */}
+				{showSearch() && (
+					<div class="flex-none border-y py-4">
+						<div class="flex w-full items-center justify-center gap-3">
+							<div class="flex flex-col">
+								<label for="start-date" class="mb-1 text-sm">Data Inizio</label>
+								<input
+									id="start-date"
+									type="date"
+									value={startDate()}
+									onInput={(e) => setStartDate(e.target.value)}
+									class="border px-2 py-1 rounded"
+								/>
+							</div>
+							<div class="flex flex-col">
+								<label for="end-date" class="mb-1 text-sm">Data Fine</label>
+								<input
+									id="end-date"
+									type="date"
+									value={endDate()}
+									onInput={(e) => setEndDate(e.target.value)}
+									class="border px-2 py-1 rounded"
+								/>
+							</div>
+						</div>
+						<label class="flex w-full items-center justify-center py-2 gap-2">
+							<input
+								type="checkbox"
+								checked={showWithoutType()}
+								onChange={() => setShowWithoutType(!showWithoutType())}
+							/>
+							<span>Visualizza solo movimenti senza Tipo</span>
+						</label>
+						{/* Bottoni per il filtro in entrata/uscita */}
+						<div class="flex gap-1 mt-2 justify-center text-sm">
+							<button
+								onClick={() => setMovementFilter(movementFilter() === "inEntrata" ? "all" : "inEntrata")}
+								class={`px-4 py-2 w-[100px] rounded-l-full shadow-lg ${movementFilter() === 'inEntrata' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+							>
+								In Entrata
+							</button>
+							<button
+								onClick={() => setMovementFilter(movementFilter() === "inUscita" ? "all" : "inUscita")}
+								class={`px-4 py-2 w-[100px] rounded-r-full shadow-lg ${movementFilter() === 'inUscita' ? 'bg-red-200 text-red-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+							>
+								In Uscita
+							</button>
+						</div>
+					</div>
+				)}
+
+				{/* div per somma movimenti filtrati */}
+				<div class="flex-none text-sm text-left text-gray-500 ml-2 mt-4">
+					Movimenti{" "}
+					<span class="font-semibold">{movementFilter() === "all" ? "" : `${movementFilter() === "inEntrata" ? "in entrata" : "in uscita"}`}</span>
+					<span class="font-semibold">{showWithoutType() ? " (senza Tipo)" : ""}</span> dal{" "}
+					<span class="font-semibold">{startDate() ? formatDate(startDate()) : formatDate(firstOpDate())}</span> al{" "}
+					<span class="font-semibold">{endDate() ? formatDate(endDate()) : formatDate(lastOpDate())}</span> (
+					<span class={`${filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0) > 0 ? "text-green-600" : "text-red-600"}`}>
+						{formatEuro(filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0), true)} €
+					</span>)
+				</div>
+			</div>
+
+			<div class="flex-grow overflow-y-auto">
+
+				{/* tabella movimenti cc */}
+				<div class={`flex flex-col h-full ${isLandscape() ? "text-[18px]" : "text-[10px]"} w-full`}>
+					{filteredMovCC().length > 0 ? (
+						// Container scrollabile con altezza fissa
+						<div class="flex-grow w-full pb-[100px]">
+							<table class="table-fixed w-full border-separate border-spacing-y-2 px-2">
+								<thead class="bg-white sticky top-0 z-10">
+									<tr>
+										<th class="px-1 py-1 w-[15%]">Data Op</th>
+										<th class="px-1 py-1 w-[50%]">Descrizione</th>
+										<th class="px-1 py-1 w-[15%]">Importo</th>
+										<th class="px-1 py-1 w-[20%]">Tipo</th>
+									</tr>
+								</thead>
+								<tbody>
+									{filteredMovCC().map((row) => (
+										<tr class={`${row.importo > 0 ? "bg-green-50" : "bg-red-50"} h-10`} key={row.id}>
+											<td class="rounded-l-lg border-b border-gray-200 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
+											<td class="border-b border-gray-200 px-1 py-1 break-words">{row.descrizione}</td>
+											<td class="border-b border-gray-200 px-1 py-1 text-right">
+												{formatEuro(row.importo, true)}
+											</td>
+											<td
+												class={`rounded-r-lg border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${!row.tipo || row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}
+												onClick={() => {
+													setSelectedRow(row);
+													//console.log(selectedRow());
+													setShowPopup(true);
+												}}
+											>
+												{!row.tipo || row.tipo.trim() === "" ? "Tipo mancante!" : row.tipo}
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+							{/* Bottone fuori dal table */}
+							{!startDate() && !endDate() && !showWithoutType() && movementFilter() === "all" && filteredMovCC().length < cc().length && (
+								<div class="flex justify-center mt-8">
+									<button
+										onClick={() => setVisibleCount(visibleCount() + 50)}
+										class="bg-blue-800 text-white px-4 py-2 rounded-lg shadow"
+									>
+										Esponi altri 50
+									</button>
+								</div>
+							)}
+						</div>
+					) : (
+						<div class="flex h-full items-center justify-center text-xl">
+							Nuessun movimento corrispondente ai termini della ricerca
 						</div>
 					)}
 				</div>
 
-			</div>
-
-			{/* Zona di ricerca */}
-			{showSearch() && (
-				<div class="flex-none border-y py-4">
-					<div class="flex w-full items-center justify-center gap-3">
-						<div class="flex flex-col">
-							<label for="start-date" class="mb-1 text-sm">Data Inizio</label>
-							<input
-								id="start-date"
-								type="date"
-								value={startDate()}
-								onInput={(e) => setStartDate(e.target.value)}
-								class="border px-2 py-1 rounded"
-							/>
-						</div>
-						<div class="flex flex-col">
-							<label for="end-date" class="mb-1 text-sm">Data Fine</label>
-							<input
-								id="end-date"
-								type="date"
-								value={endDate()}
-								onInput={(e) => setEndDate(e.target.value)}
-								class="border px-2 py-1 rounded"
-							/>
-						</div>
-					</div>
-					<label class="flex w-full items-center justify-center py-2 gap-2">
-						<input
-							type="checkbox"
-							checked={showWithoutType()}
-							onChange={() => setShowWithoutType(!showWithoutType())}
-						/>
-						<span>Visualizza solo movimenti senza Tipo</span>
-					</label>
-					{/* Bottoni per il filtro in entrata/uscita */}
-					<div class="flex gap-1 mt-2 justify-center text-sm">
-						<button
-							onClick={() => setMovementFilter(movementFilter() === "inEntrata" ? "all" : "inEntrata")}
-							class={`px-4 py-2 w-[100px] rounded-l-full shadow-lg ${movementFilter() === 'inEntrata' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
-						>
-							In Entrata
-						</button>
-						<button
-							onClick={() => setMovementFilter(movementFilter() === "inUscita" ? "all" : "inUscita")}
-							class={`px-4 py-2 w-[100px] rounded-r-full shadow-lg ${movementFilter() === 'inUscita' ? 'bg-red-200 text-red-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
-						>
-							In Uscita
-						</button>
-					</div>
-				</div>
-			)}
-
-			{/* div per somma movimenti filtrati */}
-			<div class="flex-none text-sm text-left text-gray-500 ml-2 mt-4">
-				Movimenti{" "}
-				<span class="font-semibold">{movementFilter() === "all" ? "" : `${movementFilter() === "inEntrata" ? "in entrata" : "in uscita"}`}</span>
-				<span class="font-semibold">{showWithoutType() ? " (senza Tipo)" : ""}</span> dal{" "}
-				<span class="font-semibold">{startDate() ? formatDate(startDate()) : formatDate(firstOpDate())}</span> al{" "}
-				<span class="font-semibold">{endDate() ? formatDate(endDate()) : formatDate(lastOpDate())}</span> (
-				<span class={`${filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0) > 0 ? "text-green-600" : "text-red-600"}`}>
-					{formatEuro(filteredMovCC().reduce((acc, row) => acc + parseFloat(row.importo), 0), true)} €
-				</span>)
-			</div>
-
-			{/* tabella movimenti cc */}
-			<div class={`flex flex-col mt-2 h-full ${isLandscape() ? "text-[18px]" : "text-[10px]"} w-full`}>
-				{filteredMovCC().length > 0 ? (
-					// Container scrollabile con altezza fissa
-					<div class="flex-grow w-full overflow-y-auto pb-[300px]">
-						<table class="table-fixed w-full">
-							<thead class="bg-gray-100 sticky top-0 z-10">
-								<tr>
-									<th class="px-1 py-1 w-[15%]">Data Op</th>
-									<th class="px-1 py-1 w-[50%]">Descrizione</th>
-									<th class="px-1 py-1 w-[15%]">Importo</th>
-									<th class="px-1 py-1 w-[20%]">Tipo</th>
-								</tr>
-							</thead>
-							<tbody>
-								{filteredMovCC().map((row) => (
-									<tr class={`${row.importo > 0 ? "bg-green-50" : "bg-red-50"} h-10`} key={row.id}>
-										<td class="border-b border-gray-200 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
-										<td class="border-b border-gray-200 px-1 py-1 break-words">{row.descrizione}</td>
-										<td class="border-b border-gray-200 px-1 py-1 text-right">
-											{formatEuro(row.importo, true)}
-										</td>
-										<td
-											class={`border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${!row.tipo || row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}
-											onClick={() => {
-												setSelectedRow(row);
-												//console.log(selectedRow());
-												setShowPopup(true);
-											}}
-										>
-											{!row.tipo || row.tipo.trim() === "" ? "Tipo mancante!" : row.tipo}
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-						{/* Bottone fuori dal table */}
-						{!startDate() && !endDate() && !showWithoutType() && movementFilter() === "all" && filteredMovCC().length < cc().length && (
-							<div class="flex justify-center mt-8">
-								<button
-									onClick={() => setVisibleCount(visibleCount() + 50)}
-									class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg shadow"
-								>
-									Esponi altri 50
-								</button>
-							</div>
-						)}
-					</div>
-				) : (
-					<div class="flex h-full items-center justify-center text-xl">
-						Nuessun movimento corrispondente ai termini della ricerca
-					</div>
-				)}
 			</div>
 
 			{showPopup() && (

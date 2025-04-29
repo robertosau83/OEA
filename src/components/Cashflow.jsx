@@ -474,133 +474,193 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 	return (
 		<div class="flex flex-col h-full px-2 pb-2">
 
-			{/* Tag selezionabili */}
-			{view() !== 'singleDetail' && (
-				<div class="fixed flex items-center justify-center top-[138px] left-0 gap-8 w-full">
-					{/* Primo gruppo di tag (CC / CASH) */}
-					<div class="flex justify-center gap-1">
-						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md border ${selectedGr1Tag() === "CC" ? "bg-blue-800 text-white" : "bg-white text-gray-700"}`}
-							onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CC" ? "" : "CC")}
-						>
-							CC
-						</button>
-						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md border ${selectedGr1Tag() === "CASH" ? "bg-blue-800 text-white" : "bg-white text-gray-700"}`}
-							onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CASH" ? "" : "CASH")}
-						>
-							CASH
-						</button>
-					</div>
-
-					{/* Secondo gruppo di tag (Entrate / Uscite) */}
-					<div class="flex justify-center gap-1">
-						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md border ${selectedGr2Tag() === "entrate" ? "bg-green-800 text-white" : "bg-white text-gray-700"}`}
-							onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "entrate" ? "" : "entrate")}
-						>
-							Entrate
-						</button>
-						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md border ${selectedGr2Tag() === "uscite" ? "bg-red-800 text-white" : "bg-white text-gray-700"}`}
-							onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "uscite" ? "" : "uscite")}
-						>
-							Uscite
-						</button>
-					</div>
-				</div>
-			)}
-
-			{/* View delle spese per anno */}
-			{view() === 'year' && (
-				<div class="flex flex-col h-full">
-					<h2 class="flex flex-none text-gray-600 items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
+			{/* Intestazioni e tags - NON scrollabili */}
+			<div class="flex-none">
+				{view() === 'year' && (
+					<h2 class="flex flex-none text-gray-600 items-center justify-center h-[55px] text-lg font-semibold mt-2">
 						Cashflow annuale
 					</h2>
+				)}
 
-					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() ? (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
-							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
-								Var BDG
+				{view() === 'month' && (
+					<div class="flex flex-col">
+						<div class="flex flex-none justify-between h-[55px] mt-2">
+							<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('year')}>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">CashFlow Mensile</div>
+								<div class="text-center">{selectedYear()}</div>
 							</div>
+							<div class="w-[40px]"></div>
 						</div>
-					) : (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+					</div>
+				)}
+
+				{view() === 'day' && (
+					<div class="flex flex-col">
+						<div class="flex flex-none justify-between h-[55px] mt-2">
+							<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('month')}>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">Cashflow giornaliero</div>
+								<div class="text-center">{selectedMonth()}</div>
+							</div>
+							<div class="w-[40px]"></div>
 						</div>
-					)}
+					</div>
+				)}
 
-					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByYear().map(([year, total]) => {
-							// Recupera il budget delle spese per l'anno corrente
-							const budgetYearEntry = groupBudgetByYearForSpese().find(([yr]) => yr == year);
-							const budgetTotal = budgetYearEntry ? budgetYearEntry[1] : 0;
-							// Poiché le spese sono valori negativi, usiamo il valore assoluto per il confronto
-							const diff = budgetTotal - Math.abs(total);
-							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
-							const diffFormatted =
-								diff >= 0
-									? `+${formatEuro(diff)} €`
-									: `${formatEuro(diff)} €`;
+				{view() === 'details' && (
+					<div class="flex flex-col">
 
-							return (
-								<li
-									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md font-bold"
-									onClick={() => {
-										setSelectedYear(year);
-										setView('month');
-									}}
-								>
-									<div class="flex justify-between items-center">
-										<span>{year}</span>
-										<div class="flex items-center">
-											<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-												{formatEuro(total)} €
-											</span>
-											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-												<span class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
-													{inputYearHasCompleteBudget(year) && `(${diffFormatted})`}
+						<div class="flex flex-none justify-between h-[55px] mt-2">
+							<button
+								class="w-[40px] font-bold text-black rounded"
+								onClick={() => setView('day')}
+							>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">Dettaglio Cashflow</div>
+								<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
+							</div>
+							<div class="w-[40px]"></div>
+						</div>
+					</div>
+				)}
+
+				{/* Tag selezionabili */}
+				{view() !== 'singleDetail' && (
+					<div class="flex items-center justify-center gap-8 w-full mt-4 mb-4">
+						{/* Primo gruppo di tag (CC / CASH) */}
+						<div class="flex justify-center gap-1">
+							<button
+								class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md border ${selectedGr1Tag() === "CC" ? "bg-blue-800 text-white" : "bg-white text-gray-700"}`}
+								onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CC" ? "" : "CC")}
+							>
+								CC
+							</button>
+							<button
+								class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md border ${selectedGr1Tag() === "CASH" ? "bg-blue-800 text-white" : "bg-white text-gray-700"}`}
+								onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CASH" ? "" : "CASH")}
+							>
+								CASH
+							</button>
+						</div>
+
+						{/* Secondo gruppo di tag (Entrate / Uscite) */}
+						<div class="flex justify-center gap-1">
+							<button
+								class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md border ${selectedGr2Tag() === "entrate" ? "bg-green-800 text-white" : "bg-white text-gray-700"}`}
+								onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "entrate" ? "" : "entrate")}
+							>
+								Entrate
+							</button>
+							<button
+								class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md border ${selectedGr2Tag() === "uscite" ? "bg-red-800 text-white" : "bg-white text-gray-700"}`}
+								onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "uscite" ? "" : "uscite")}
+							>
+								Uscite
+							</button>
+						</div>
+					</div>
+				)}
+
+			</div>
+
+			{/* Contenuto scrollabile */}
+			<div class="flex-grow overflow-y-auto">
+
+				{/* View delle spese per anno */}
+				{view() === 'year' && (
+					<div class="flex flex-col h-full">
+						{/* <h2 class="flex flex-none text-gray-600 items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
+						Cashflow annuale
+					</h2> */}
+
+						{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() ? (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+								<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+									Var BDG
+								</div>
+							</div>
+						) : (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+							</div>
+						)}
+
+						<ul class="flex-grow overflow-y-auto pb-40">
+							{groupByYear().map(([year, total]) => {
+								// Recupera il budget delle spese per l'anno corrente
+								const budgetYearEntry = groupBudgetByYearForSpese().find(([yr]) => yr == year);
+								const budgetTotal = budgetYearEntry ? budgetYearEntry[1] : 0;
+								// Poiché le spese sono valori negativi, usiamo il valore assoluto per il confronto
+								const diff = budgetTotal - Math.abs(total);
+								const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+								const diffFormatted =
+									diff >= 0
+										? `+${formatEuro(diff)} €`
+										: `${formatEuro(diff)} €`;
+
+								return (
+									<li
+										class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md font-bold"
+										onClick={() => {
+											setSelectedYear(year);
+											setView('month');
+										}}
+									>
+										<div class="flex justify-between items-center">
+											<span>{year}</span>
+											<div class="flex items-center">
+												<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
+													{formatEuro(total)} €
 												</span>
-											)}
-										</div>
-									</div>
-								</li>
-							);
-						})}
-
-						{/* Totale complessivo di tutti gli anni */}
-						{(() => {
-							const totalExpense = groupByYear().reduce((sum, [, total]) => sum + total, 0);
-							const totalBudget = groupBudgetByYearForSpese().reduce((sum, [, bTotal]) => sum + bTotal, 0);
-							const overallDiff = totalBudget + totalExpense;
-							return (
-								<li class="py-2 px-4 font-semibold">
-									<div class="flex justify-end items-center">
-										<span class={`${totalExpense > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-											{formatEuro(totalExpense)} €
-										</span>
-										{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-											<div class="flex items-center justify-end w-[90px]">
-												{everyYearHasCompleteBudget() && (
-													<span class={`text-xs italic ${overallDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
-														({overallDiff >= 0 ? '+' : ''}{formatEuro(overallDiff)} €)
+												{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() && (
+													<span class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
+														{inputYearHasCompleteBudget(year) && `(${diffFormatted})`}
 													</span>
 												)}
 											</div>
-										)}
-									</div>
-								</li>
-							);
-						})()}
-					</ul>
-				</div>
-			)}
+										</div>
+									</li>
+								);
+							})}
 
+							{/* Totale complessivo di tutti gli anni */}
+							{(() => {
+								const totalExpense = groupByYear().reduce((sum, [, total]) => sum + total, 0);
+								const totalBudget = groupBudgetByYearForSpese().reduce((sum, [, bTotal]) => sum + bTotal, 0);
+								const overallDiff = totalBudget + totalExpense;
+								return (
+									<li class="py-2 px-4 font-semibold">
+										<div class="flex justify-end items-center">
+											<span class={`${totalExpense > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
+												{formatEuro(totalExpense)} €
+											</span>
+											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() && (
+												<div class="flex items-center justify-end w-[90px]">
+													{everyYearHasCompleteBudget() && (
+														<span class={`text-xs italic ${overallDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
+															({overallDiff >= 0 ? '+' : ''}{formatEuro(overallDiff)} €)
+														</span>
+													)}
+												</div>
+											)}
+										</div>
+									</li>
+								);
+							})()}
+						</ul>
+					</div>
+				)}
 
-
-			{/* View delle spese per mese */}
-			{view() === 'month' && (
-				<div class="flex flex-col h-full">
-					<div class="flex flex-none justify-between h-[55px] mb-16 mt-2">
+				{/* View delle spese per mese */}
+				{view() === 'month' && (
+					<div class="flex flex-col h-full">
+						{/* <div class="flex flex-none justify-between h-[55px] mb-16 mt-2">
 						<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('year')}>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
@@ -609,117 +669,116 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							<div class="text-center">{selectedYear()}</div>
 						</div>
 						<div class="w-[40px]"></div>
-					</div>
+					</div> */}
 
-					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) ? (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
-							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
-								Var BDG
+						{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) ? (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+								<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+									Var BDG
+								</div>
 							</div>
-						</div>
-					) : (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
-						</div>
-					)}
+						) : (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+							</div>
+						)}
 
-					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByMonth().map(({ formattedMonth, total, key }) => {
-							// Usa formattedMonth, total e key qui
-							// Ad esempio:
-							const budgetRecord = findBudgetForKey(key);
-							//console.log("bbbb",budgetRecord);
-							const budgetValue = budgetRecord ? budgetRecord.total : 0;
-							//console.log("aaaa",budgetValue);
-							const diff = budgetValue - Math.abs(total);
-							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
-							const diffFormatted =
-								diff >= 0
-									? `+${formatEuro(diff)} €`
-									: `${formatEuro(diff)} €`;
+						<ul class="flex-grow overflow-y-auto pb-40">
+							{groupByMonth().map(({ formattedMonth, total, key }) => {
+								// Usa formattedMonth, total e key qui
+								// Ad esempio:
+								const budgetRecord = findBudgetForKey(key);
+								//console.log("bbbb",budgetRecord);
+								const budgetValue = budgetRecord ? budgetRecord.total : 0;
+								//console.log("aaaa",budgetValue);
+								const diff = budgetValue - Math.abs(total);
+								const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+								const diffFormatted =
+									diff >= 0
+										? `+${formatEuro(diff)} €`
+										: `${formatEuro(diff)} €`;
 
-							return (
-								<li
-									key={key}
-									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md font-semibold"
-									onClick={() => {
-										setSelectedMonth(formattedMonth);
-										setView('day');
-									}}
-								>
-									<div class="flex justify-between items-center">
-										<span>{formattedMonth}</span>
-										<div class="flex items-center">
-											<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-												{formatEuro(total)} €
-											</span>
-											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
-												<span class={`ml-2 flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
-													{findBudgetForKey(key) && `(${diffFormatted})`}
+								return (
+									<li
+										key={key}
+										class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md font-semibold"
+										onClick={() => {
+											setSelectedMonth(formattedMonth);
+											setView('day');
+										}}
+									>
+										<div class="flex justify-between items-center">
+											<span>{formattedMonth}</span>
+											<div class="flex items-center">
+												<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
+													{formatEuro(total)} €
 												</span>
-											)}
-										</div>
-									</div>
-								</li>
-							);
-						})}
-
-
-						{/* Totale complessivo di tutti i mesi */}
-						{(() => {
-							// 1) Otteniamo l'array dei mesi
-							const months = groupByMonth(); // [{ formattedMonth, total, key }, ...]
-							// 2) Somma delle spese effettive (i movimenti in "month")
-							const sumOfTotals = months.reduce((acc, { total }) => acc + total, 0);
-							// 3) Somma del budget spese puntuali per questi mesi
-							const sumOfBudget = months.reduce((acc, { key }) => {
-								const spesePuntuale = findBudgetForKey(key)?.total || 0;
-								return acc + spesePuntuale;
-							}, 0);
-
-							// 4) Differenza complessiva (stessa logica usata nelle singole righe: total - spese_puntuale)
-							//    ma sommata su tutti i mesi
-							const sumOfDiff = sumOfTotals + sumOfBudget;
-
-							return (
-								<li class="py-2 px-4 font-semibold">
-									<div class="flex justify-end items-center gap-2">
-										{/* Mostra la somma effettiva di tutti i movimenti (negativa se sono spese) */}
-										<span
-											class={`${sumOfTotals > 0 ? "text-green-800" : "text-red-800"
-												} font-bold`}
-										>
-											{formatEuro(sumOfTotals)} €
-										</span>
-
-										{/* Se siamo in "uscite" e non c’è filtro su CC/CASH, mostra la differenza rispetto al budget */}
-										{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
-											<div class="flex items-center justify-end w-[90px]">
-												{inputYearHasCompleteBudget(selectedYear()) && (
-													<div class={`text-xs italic ${sumOfDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
-														(
-														{sumOfDiff >= 0 ? "+" : ""}
-														{formatEuro(sumOfDiff)}{" "}
-														€)
-													</div>
+												{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
+													<span class={`ml-2 flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
+														{findBudgetForKey(key) && `(${diffFormatted})`}
+													</span>
 												)}
 											</div>
-										)}
-									</div>
-								</li>
-							);
-						})()}
+										</div>
+									</li>
+								);
+							})}
 
 
-					</ul>
-				</div>
-			)}
+							{/* Totale complessivo di tutti i mesi */}
+							{(() => {
+								// 1) Otteniamo l'array dei mesi
+								const months = groupByMonth(); // [{ formattedMonth, total, key }, ...]
+								// 2) Somma delle spese effettive (i movimenti in "month")
+								const sumOfTotals = months.reduce((acc, { total }) => acc + total, 0);
+								// 3) Somma del budget spese puntuali per questi mesi
+								const sumOfBudget = months.reduce((acc, { key }) => {
+									const spesePuntuale = findBudgetForKey(key)?.total || 0;
+									return acc + spesePuntuale;
+								}, 0);
+
+								// 4) Differenza complessiva (stessa logica usata nelle singole righe: total - spese_puntuale)
+								//    ma sommata su tutti i mesi
+								const sumOfDiff = sumOfTotals + sumOfBudget;
+
+								return (
+									<li class="py-2 px-4 font-semibold">
+										<div class="flex justify-end items-center gap-2">
+											{/* Mostra la somma effettiva di tutti i movimenti (negativa se sono spese) */}
+											<span
+												class={`${sumOfTotals > 0 ? "text-green-800" : "text-red-800"
+													} font-bold`}
+											>
+												{formatEuro(sumOfTotals)} €
+											</span>
+
+											{/* Se siamo in "uscite" e non c’è filtro su CC/CASH, mostra la differenza rispetto al budget */}
+											{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
+												<div class="flex items-center justify-end w-[90px]">
+													{inputYearHasCompleteBudget(selectedYear()) && (
+														<div class={`text-xs italic ${sumOfDiff >= 0 ? "text-green-600" : "text-red-600"}`}>
+															(
+															{sumOfDiff >= 0 ? "+" : ""}
+															{formatEuro(sumOfDiff)}{" "}
+															€)
+														</div>
+													)}
+												</div>
+											)}
+										</div>
+									</li>
+								);
+							})()}
 
 
-			{/* View delle spese giornaliere */}
-			{view() === 'day' && (
-				<div class="flex flex-col h-full">
+						</ul>
+					</div>
+				)}
 
-					<div class="flex flex-none justify-between h-[55px] mb-[79px] mt-2">
+				{/* View delle spese giornaliere */}
+				{view() === 'day' && (
+					<div class="flex flex-col h-full">
+
+						{/* <div class="flex flex-none justify-between h-[55px] mb-[79px] mt-2">
 						<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('month')}>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
@@ -728,237 +787,238 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							<div class="text-center">{selectedMonth()}</div>
 						</div>
 						<div class="w-[40px]"></div>
-					</div>
+					</div> */}
 
-					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByDate().map(([date, { total, spese }]) => (
-							<li
-								class="mx-2 py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
-								onClick={() => {
-									setSelectedDay(date);
-									setView('details');
-								}}
-							>
-								<div class="flex justify-between">
-									<span>{new Date(date).toLocaleDateString()}</span>
-									<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
-										{formatEuro(total)} €
+						<ul class="flex-grow overflow-y-auto pb-40 mt-[15px]">
+							{groupByDate().map(([date, { total, spese }]) => (
+								<li
+									class="mx-2 py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
+									onClick={() => {
+										setSelectedDay(date);
+										setView('details');
+									}}
+								>
+									<div class="flex justify-between">
+										<span>{new Date(date).toLocaleDateString()}</span>
+										<span class={`${total > 0 ? "text-green-600" : "text-red-600"}`}>
+											{formatEuro(total)} €
+										</span>
+									</div>
+								</li>
+							))}
+
+							{/* Totale complessivo del mese selezionato */}
+							<li class="py-2 px-4 font-semibold">
+								<div class="flex justify-end">
+									<span class={`${groupByDate().reduce((sum, [, { total }]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
+										{formatEuro(groupByDate().reduce((sum, [, { total }]) => sum + total, 0))} €
 									</span>
 								</div>
 							</li>
-						))}
+						</ul>
 
-						{/* Totale complessivo del mese selezionato */}
-						<li class="py-2 px-4 font-semibold">
-							<div class="flex justify-end">
-								<span class={`${groupByDate().reduce((sum, [, { total }]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-									{formatEuro(groupByDate().reduce((sum, [, { total }]) => sum + total, 0))} €
-								</span>
-							</div>
-						</li>
-					</ul>
-
-				</div>
-			)}
-
-			{/* View di dettaglio per un giorno */}
-			{view() === 'details' && (
-				<div class="flex flex-col h-full">
-
-					<div class="flex flex-none justify-between h-[55px] mb-[79px] mt-2">
-						<button
-							class="w-[40px] font-bold text-black rounded"
-							onClick={() => setView('day')}
-						>
-							<img src="/back.svg" alt="back" class="w-full h-auto" />
-						</button>
-						<div class="text-gray-600">
-							<div class="text-lg text-center font-semibold">Dettaglio Cashflow</div>
-							<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
-						</div>
-						<div class="w-[40px]"></div>
 					</div>
+				)}
 
-					<div class="flex-grow overflow-y-auto pb-40">
-						{/* Sezione "CASH" */}
-						{getCashMovements().length > 0 && (
-							<div>
-								<div class="flex items-center mb-2">
-									<h3 class="flex font-semibold text-blue-800">
-										Movimenti CASH
-										<span class="text-blue-800 ml-2">(</span>
-										<span class={`${getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
-											{formatEuro(getCashMovements()
-												.filter((entry) => !isExcluded(entry))
-												.reduce((sum, entry) => sum + entry.importo, 0)
-												, true)} €
-										</span>
-										<span class="text-blue-800">)</span>
-									</h3>
+				{/* View di dettaglio per un giorno */}
+				{view() === 'details' && (
+					<div class="flex flex-col h-full">
+
+						{/* <div class="flex flex-none justify-between h-[55px] mb-[79px] mt-2">
+							<button
+								class="w-[40px] font-bold text-black rounded"
+								onClick={() => setView('day')}
+							>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">Dettaglio Cashflow</div>
+								<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
+							</div>
+							<div class="w-[40px]"></div>
+						</div> */}
+
+						<div class="flex-grow overflow-y-auto pb-40">
+							{/* Sezione "CASH" */}
+							{getCashMovements().length > 0 && (
+								<div>
+									<div class="flex items-center mb-2">
+										<h3 class="flex font-semibold text-blue-800">
+											Movimenti CASH
+											<span class="text-blue-800 ml-2">(</span>
+											<span class={`${getCashMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
+												{formatEuro(getCashMovements()
+													.filter((entry) => !isExcluded(entry))
+													.reduce((sum, entry) => sum + entry.importo, 0)
+													, true)} €
+											</span>
+											<span class="text-blue-800">)</span>
+										</h3>
+									</div>
+
+									<table class="w-full text-sm text-gray-700">
+										<tbody>
+											{getCashMovements().map((entry) => (
+												<tr class={`flex items-center justify-center border-b cursor-pointer h-[40px] ${isExcluded(entry) ? "italic opacity-50" : ""}`}
+													onClick={() => {
+														setSelectedMovement(entry); // Salva la spesa selezionata
+														//console.log(selectedMovement());
+														setSelectedMovementId(entry.id);
+														setView('singleDetail'); // Passa alla view "singleDetail"
+													}}>
+													<td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
+													<td class="w-full text-[10px] px-2 py-1">{entry.descrizione || '-'}</td>
+													<td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
+														{formatEuro(entry.importo, true)} €
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
 								</div>
+							)}
 
-								<table class="w-full text-sm text-gray-700">
-									<tbody>
-										{getCashMovements().map((entry) => (
-											<tr class={`flex items-center justify-center border-b h-[40px] ${isExcluded(entry) ? "italic opacity-50" : ""}`}
-												onClick={() => {
-													setSelectedMovement(entry); // Salva la spesa selezionata
-													//console.log(selectedMovement());
-													setSelectedMovementId(entry.id);
-													setView('singleDetail'); // Passa alla view "singleDetail"
-												}}>
-												<td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
-												<td class="w-full text-[10px] px-2 py-1">{entry.descrizione || '-'}</td>
-												<td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
-													{formatEuro(entry.importo, true)} €
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
-							</div>
-						)}
-
-						{/* Sezione "CC" */}
-						{getCCMovements().length > 0 && (
-							<div class="mt-6">
-								<div class="flex items-center mb-2">
-									<h3 class="flex font-semibold text-blue-800">
-										Movimenti CC
-										<span class="text-blue-800 ml-2">(</span>
-										<span class={`${getCCMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
-											{formatEuro(getCCMovements()
-												.filter((entry) => !isExcluded(entry))
-												.reduce((sum, entry) => sum + entry.importo, 0)
-												, true)} €
-										</span>
-										<span class="text-blue-800">)</span>
-									</h3>
+							{/* Sezione "CC" */}
+							{getCCMovements().length > 0 && (
+								<div class="mt-6">
+									<div class="flex items-center mb-2">
+										<h3 class="flex font-semibold text-blue-800">
+											Movimenti CC
+											<span class="text-blue-800 ml-2">(</span>
+											<span class={`${getCCMovements().reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-700" : "text-red-700"} font-semibold`}>
+												{formatEuro(getCCMovements()
+													.filter((entry) => !isExcluded(entry))
+													.reduce((sum, entry) => sum + entry.importo, 0)
+													, true)} €
+											</span>
+											<span class="text-blue-800">)</span>
+										</h3>
+									</div>
+									<table class="w-full text-sm text-gray-700">
+										<tbody>
+											{getCCMovements().map((entry) => (
+												<tr class={`flex items-center justify-center border-b h-[40px] cursor-pointer ${isExcluded(entry) ? "italic opacity-50" : ""}`}
+													onClick={() => {
+														setSelectedMovement(entry); // Salva la spesa selezionata
+														setSelectedMovementId(entry.id);
+														setView('singleDetail'); // Passa alla view "singleDetail"
+													}}>
+													<td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
+													<td class="w-full text-[10px] px-2 py-1 line-clamp-1">{entry.descrizione || '-'}</td>
+													<td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
+														{formatEuro(entry.importo, true)} €
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
 								</div>
-								<table class="w-full text-sm text-gray-700">
-									<tbody>
-										{getCCMovements().map((entry) => (
-											<tr class={`flex items-center justify-center border-b h-[40px] ${isExcluded(entry) ? "italic opacity-50" : ""}`}
-												onClick={() => {
-													setSelectedMovement(entry); // Salva la spesa selezionata
-													setSelectedMovementId(entry.id);
-													setView('singleDetail'); // Passa alla view "singleDetail"
-												}}>
-												<td class="text-black px-2 py-1 w-[40%] min-w-[40%]">{entry.tipo || '-'}</td>
-												<td class="w-full text-[10px] px-2 py-1 line-clamp-1">{entry.descrizione || '-'}</td>
-												<td class={`px-2 py-1 w-[25%] min-w-[80px] text-right ${entry.importo > 0 ? "text-green-600" : "text-red-600"} whitespace-nowrap`}>
-													{formatEuro(entry.importo, true)} €
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
-							</div>
-						)}
+							)}
 
-						{getCashMovements().length > 0 && getCCMovements().length > 0 && (
-							<div class="flex justify-end text-lg mr-2 mt-8">
-								<span class={
-									`${getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) +
-										getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
-									{formatEuro(
-										getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) + getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0)
-										, true)} €
-								</span>
-							</div>
-						)}
+							{getCashMovements().length > 0 && getCCMovements().length > 0 && (
+								<div class="flex justify-end text-lg mr-2 mt-8">
+									<span class={
+										`${getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) +
+											getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
+										{formatEuro(
+											getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) + getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0)
+											, true)} €
+									</span>
+								</div>
+							)}
+
+						</div>
 
 					</div>
+				)}
 
-				</div>
-			)}
+				{view() === 'singleDetail' && selectedMovement() && (
 
-			{view() === 'singleDetail' && selectedMovement() && (
+					<div class="flex flex-col h-full">
 
-				<div class="flex flex-col h-full">
-
-					<div class="flex flex-none justify-between h-[55px] mb-2 mt-2">
-						<button
-							class="w-[40px] font-bold text-black rounded"
-							onClick={() => setView('details')} // Torna alla view "details"
-						>
-							<img src="/back.svg" alt="back" class="w-full h-auto" />
-						</button>
-						<div class="text-gray-600">
-							<div class="text-lg text-center font-semibold">Dettaglio Movimento {selectedMovement().origin === "CC" ? "CC" : "CASH"}</div>
-							<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
+						<div class="flex flex-none justify-between h-[55px] mb-2 mt-2">
+							<button
+								class="w-[40px] font-bold text-black rounded"
+								onClick={() => setView('details')} // Torna alla view "details"
+							>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">Dettaglio Movimento {selectedMovement().origin === "CC" ? "CC" : "CASH"}</div>
+								<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
+							</div>
+							<div class="w-[40px]"></div>
 						</div>
-						<div class="w-[40px]"></div>
-					</div>
 
-					<div class="flex-grow px-2 pt-4 overflow-y-auto">
-						<div class="mb-4">
-							<div class="font-semibold">Tipo</div>
-							<div class="text-gray-700">{selectedMovement().tipo || '-'}</div>
-						</div>
-						{selectedMovement().origin === "CASH" && (
+						<div class="flex-grow px-2 pt-4 overflow-y-auto">
 							<div class="mb-4">
-								<div class="font-semibold">Metodo di pagamento</div>
-								<div class="text-gray-700">{selectedMovement().metodo_di_pagamento || '-'}</div>
+								<div class="font-semibold">Tipo</div>
+								<div class="text-gray-700">{selectedMovement().tipo || '-'}</div>
+							</div>
+							{selectedMovement().origin === "CASH" && (
+								<div class="mb-4">
+									<div class="font-semibold">Metodo di pagamento</div>
+									<div class="text-gray-700">{selectedMovement().metodo_di_pagamento || '-'}</div>
+								</div>
+							)}
+							<div class="mb-4">
+								<div class="font-semibold">Importo</div>{' '}
+								<div class={`${selectedMovement().importo > 0 ? "text-green-600" : "text-red-600"}`}>
+									{formatEuro(selectedMovement().importo, true)} €
+								</div>
+							</div>
+							<div class="mb-4">
+								<div class="font-semibold">Descrizione</div>
+								<div class="text-gray-700">{selectedMovement().descrizione || '-'}</div>
+							</div>
+						</div>
+
+						{/* Pulsanti di azione */}
+						{selectedMovement().origin === "CASH" && selectedMovement().tipo !== "Storno" && (
+							<div class="flex justify-around pt-4 pb-8 h-[56]">
+								{/* Bottone Cancella */}
+								<button
+									onClick={() => setShowDeletePopup(true)} // Mostra il popup di conferma
+									class="px-4 py-2 w-32 bg-red-700 text-white font-semibold rounded-lg shadow-lg shadow-gray-400 "
+								>
+									CANCELLA
+								</button>
+
+								{/* Bottone Modifica */}
+								<button
+									onClick={openEditPopup}
+									class="px-4 py-2 w-32 bg-yellow-500 text-white font-semibold rounded-lg shadow-lg shadow-gray-400 "
+								>
+									MODIFICA
+								</button>
 							</div>
 						)}
-						<div class="mb-4">
-							<div class="font-semibold">Importo</div>{' '}
-							<div class={`${selectedMovement().importo > 0 ? "text-green-600" : "text-red-600"}`}>
-								{formatEuro(selectedMovement().importo, true)} €
-							</div>
-						</div>
-						<div class="mb-4">
-							<div class="font-semibold">Descrizione</div>
-							<div class="text-gray-700">{selectedMovement().descrizione || '-'}</div>
-						</div>
+
 					</div>
+				)}
 
-					{/* Pulsanti di azione */}
-					{selectedMovement().origin === "CASH" && selectedMovement().tipo !== "Storno" && (
-						<div class="flex justify-around pt-4 pb-8 h-[56]">
-							{/* Bottone Cancella */}
-							<button
-								onClick={() => setShowDeletePopup(true)} // Mostra il popup di conferma
-								class="px-4 py-2 w-32 bg-red-700 text-white font-semibold rounded-lg shadow-lg shadow-gray-400 "
-							>
-								CANCELLA
-							</button>
-
-							{/* Bottone Modifica */}
-							<button
-								onClick={openEditPopup}
-								class="px-4 py-2 w-32 bg-yellow-500 text-white font-semibold rounded-lg shadow-lg shadow-gray-400 "
-							>
-								MODIFICA
-							</button>
-						</div>
-					)}
-
-				</div>
-			)}
-
-			{/* Bottone rotondo */}
-			{view() !== 'singleDetail' && (
-				<button
-					onClick={() => {
-						// Resetta i campi di newChiusura
-						setNewCashMovement({
-							data_operazione: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
-							tipo: '',
-							metodo_di_pagamento: '',
-							importo: '',
-							descrizione: '',
-						});
-						setNewMovementDirection(''); // reset della direzione
-						// Mostra il popup
-						setShowAddPopup(true);
-					}}
-					class="fixed bottom-6 right-6 w-16 h-16 bg-blue-800 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center"
-				>
-					<img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
-				</button>
-			)}
+				{/* Bottone rotondo */}
+				{view() !== 'singleDetail' && (
+					<button
+						onClick={() => {
+							// Resetta i campi di newChiusura
+							setNewCashMovement({
+								data_operazione: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
+								tipo: '',
+								metodo_di_pagamento: '',
+								importo: '',
+								descrizione: '',
+							});
+							setNewMovementDirection(''); // reset della direzione
+							// Mostra il popup
+							setShowAddPopup(true);
+						}}
+						class="fixed bottom-6 right-6 w-16 h-16 bg-blue-800 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center"
+					>
+						<img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
+					</button>
+				)}
+			</div>
 
 			{/* Popup per aggiungere una nuova spesa */}
 			{showAddPopup() && (
@@ -1190,8 +1250,8 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							<button
 								type="button"
 								class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${editMovementDirection() === 'entrata'
-										? 'bg-green-200 text-green-800 font-semibold'
-										: 'bg-white text-gray-700'
+									? 'bg-green-200 text-green-800 font-semibold'
+									: 'bg-white text-gray-700'
 									}`}
 								onClick={() => {
 									setEditMovementDirection('entrata');
@@ -1203,8 +1263,8 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							<button
 								type="button"
 								class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${editMovementDirection() === 'uscita'
-										? 'bg-red-200 text-red-800 font-semibold'
-										: 'bg-white text-gray-700'
+									? 'bg-red-200 text-red-800 font-semibold'
+									: 'bg-white text-gray-700'
 									}`}
 								onClick={() => {
 									setEditMovementDirection('uscita');
@@ -1321,10 +1381,10 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											setEditCashMovement({ ...editCashMovement(), importo: sanitizedInput });
 										}}
 										class={`rounded-lg px-3 py-1 text-center text-lg shadow-lg w-24 ${editMovementDirection() === 'entrata'
-												? 'text-green-600'
-												: editMovementDirection() === 'uscita'
-													? 'text-red-600'
-													: ''
+											? 'text-green-600'
+											: editMovementDirection() === 'uscita'
+												? 'text-red-600'
+												: ''
 											}`}
 									/>
 									<label class="flex items-center justify-end font-medium w-4">€</label>

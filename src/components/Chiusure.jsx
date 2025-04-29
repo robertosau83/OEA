@@ -438,117 +438,169 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 	return (
 		<div class="flex flex-col h-full px-2 bg-white">
 
-			{/* tags */}
-			{view() !== 'detail' && (
-				<div class="fixed flex items-center justify-center top-[138px] left-0 gap-1 w-full">
-					{['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
-						<button
-							key={tag}
-							class={`text-xs px-3 py-2 rounded-full shadow-md border ${selectedTag() === tag
-								? 'bg-green-800 text-white'
-								: 'bg-white text-gray-700'
-								}`}
-							onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
-						>
-							{tag}
-						</button>
-					))}
-				</div>
-			)}
+			{/* Intestazioni e tags - NON scrollabili */}
+			<div class="flex-none">
 
-			{view() === 'year' && (
-				<div class="flex flex-col h-full">
-					<h2 class="flex-none flex items-center text-gray-600 justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
+				{/* intestazioni di pagina */}
+				{view() === 'year' && (
+					<h2 class="flex-none flex items-center text-gray-600 justify-center h-[55px] text-lg font-semibold mt-2">
 						Chiusure annuali
 					</h2>
+				)}
 
-					{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() ? (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
-							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
-								Var BDG
+				{view() === 'month' && (
+					<div class="flex flex-col">
+						<div class="flex-none flex justify-between h-[55px] mt-2">
+							<button
+								class="w-[40px] font-bold text-black rounded"
+								onClick={() => setView('year')}
+							>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">Chiusure mensili</div>
+								<div class="text-center font-semibold">{selectedYear()}</div>
 							</div>
+							<div class="w-[40px]"></div>
 						</div>
-					) : (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+					</div>
+				)}
+
+				{view() === 'day' && (
+					<div class="flex flex-col">
+						{/* Intestazione fissa */}
+						<div class="flex-none flex justify-between items-center h-[55px] mt-2">
+							<button
+								class="w-[40px] font-bold text-black rounded"
+								onClick={() => setView('month')}
+							>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">Chiusure giornaliere</div>
+								<div class="text-center">{selectedMonth()}</div>
+							</div>
+							<div class="w-[40px]"></div>
 						</div>
-					)}
+					</div>
+				)}
 
-					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByYear().map(([year, total]) => {
-							const budgetYearEntry = groupBudgetByYear().find(([yr]) => yr == year);
-							//console.log(groupBudgetByYear());
-							const budgetTotal = budgetYearEntry ? budgetYearEntry[1] : 0;
-							//console.log(budgetTotal);
-							const diff = total - budgetTotal;
-							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
-							const diffFormatted =
-								diff >= 0
-									? `+${formatEuro(diff)} €`
-									: `${formatEuro(diff)} €`;
+				{/* tags */}
+				{view() !== 'detail' && (
+					<div class="flex items-center justify-center gap-1 w-full mt-4 mb-4">
+						{['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
+							<button
+								key={tag}
+								class={`text-xs px-3 py-2 rounded-full shadow-md border ${selectedTag() === tag
+									? 'bg-green-800 text-white'
+									: 'bg-white text-gray-700'
+									}`}
+								onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
+							>
+								{tag}
+							</button>
+						))}
+					</div>
+				)}
+			</div>
 
-							return (
-								<li
-									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
-									onClick={() => {
-										setSelectedYear(year);
-										setView('month');
-									}}
-								>
-									<div class="flex justify-between items-center font-bold">
-										<span>{year}</span>
-										<div class="flex text-green-600">
-											{formatEuro(total)} €
-											{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-												<div class={`flex items-center justify-end w-[90px] text-xs italic font-medium ${diffColor}`}>
-													{inputYearHasCompleteBudget(year) && `(${diffFormatted})`}
-												</div>
-											)}
-										</div>
-									</div>
-								</li>
-							);
-						})}
+			{/* Contenuto scrollabile */}
+			<div class="flex-grow overflow-y-auto">
 
-						{/* Totale complessivo per tutti gli anni */}
-						{groupByYear().length > 1 && (
-							<li class="py-2 px-4 font-semibold">
-								<div class="flex justify-end items-center">
-									<span class="text-green-800 font-bold">
-										{formatEuro(groupByYear().reduce((sum, [, total]) => sum + total, 0))} €
-									</span>
-									{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-										<div class="flex items-center justify-end w-[90px]">
-											{everyYearHasCompleteBudget() && (
-												<div class={`text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-													groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-													? 'text-green-600'
-													: 'text-red-600'
-													}`}>
-													(
-													{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-														groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-														? '+'
-														: ''}
-													{formatEuro(
-														groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-														groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
-													)} €)
-												</div>
-											)}
-										</div>
-									)}
+				{/* View degli incassi anno per anno */}
+				{view() === 'year' && (
+					<div class="flex flex-col h-full">
+						{/* <h2 class="flex-none flex items-center text-gray-600 justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
+						Chiusure annuali
+					</h2> */}
+
+						{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() ? (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+								<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+									Var BDG
 								</div>
-							</li>
+							</div>
+						) : (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+							</div>
 						)}
 
-					</ul>
-				</div>
-			)}
+						<ul class="flex-grow overflow-y-auto pb-40">
+							{groupByYear().map(([year, total]) => {
+								const budgetYearEntry = groupBudgetByYear().find(([yr]) => yr == year);
+								//console.log(groupBudgetByYear());
+								const budgetTotal = budgetYearEntry ? budgetYearEntry[1] : 0;
+								//console.log(budgetTotal);
+								const diff = total - budgetTotal;
+								const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+								const diffFormatted =
+									diff >= 0
+										? `+${formatEuro(diff)} €`
+										: `${formatEuro(diff)} €`;
 
-			{/* View degli incassi per mese */}
-			{view() === 'month' && (
-				<div class="flex flex-col h-full">
-					<div class="flex-none flex justify-between h-[55px] mb-16 mt-2">
+								return (
+									<li
+										class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
+										onClick={() => {
+											setSelectedYear(year);
+											setView('month');
+										}}
+									>
+										<div class="flex justify-between items-center font-bold">
+											<span>{year}</span>
+											<div class="flex text-green-600">
+												{formatEuro(total)} €
+												{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
+													<div class={`flex items-center justify-end w-[90px] text-xs italic font-medium ${diffColor}`}>
+														{inputYearHasCompleteBudget(year) && `(${diffFormatted})`}
+													</div>
+												)}
+											</div>
+										</div>
+									</li>
+								);
+							})}
+
+							{/* Totale complessivo per tutti gli anni */}
+							{groupByYear().length > 1 && (
+								<li class="py-2 px-4 font-semibold">
+									<div class="flex justify-end items-center">
+										<span class="text-green-800 font-bold">
+											{formatEuro(groupByYear().reduce((sum, [, total]) => sum + total, 0))} €
+										</span>
+										{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
+											<div class="flex items-center justify-end w-[90px]">
+												{everyYearHasCompleteBudget() && (
+													<div class={`text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+														groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+														? 'text-green-600'
+														: 'text-red-600'
+														}`}>
+														(
+														{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+															groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+															? '+'
+															: ''}
+														{formatEuro(
+															groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+															groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
+														)} €)
+													</div>
+												)}
+											</div>
+										)}
+									</div>
+								</li>
+							)}
+
+						</ul>
+					</div>
+				)}
+
+				{/* View degli incassi mese per mese */}
+				{view() === 'month' && (
+					<div class="flex flex-col h-full">
+						{/* <div class="flex-none flex justify-between h-[55px] mb-16 mt-2">
 						<button
 							class="w-[40px] font-bold text-black rounded"
 							onClick={() => setView('year')}
@@ -560,92 +612,92 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<div class="text-center font-semibold">{selectedYear()}</div>
 						</div>
 						<div class="w-[40px]"></div>
-					</div>
+					</div> */}
 
-					{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) ? (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
-							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
-								Var BDG
+						{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) ? (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+								<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
+									Var BDG
+								</div>
 							</div>
-						</div>
-					) : (
-						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
-						</div>
-					)}
+						) : (
+							<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+							</div>
+						)}
 
-					<ul class="flex-grow overflow-y-auto pb-40">
-						{groupByMonth().map(({ formattedMonth, total, key }) => {
-							const budgetRecord = findBudgetForKey(key);
-							//console.log(findBudgetForKey(key));
-							const budgetValue = budgetRecord ? budgetRecord.incassi_puntuale : 0;
-							const diff = total - budgetValue;
-							const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
-							const diffFormatted =
-								diff >= 0
-									? `+${formatEuro(diff)} €`
-									: `${formatEuro(diff)} €`;
-							return (
-								<li
-									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
-									onClick={() => {
-										setSelectedMonth(formattedMonth);
-										setView('day');
-									}}
-								>
-									<div class="flex justify-between items-center font-semibold">
-										<span>{formattedMonth}</span>
-										<div class="flex text-green-600">
-											{formatEuro(total)} €
-											{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
-												<div class={`flex items-center justify-end w-[90px] text-xs italic font-semibold ${diffColor}`}>
-													{findBudgetForKey(key) && `(${diffFormatted})`}
+						<ul class="flex-grow overflow-y-auto pb-40">
+							{groupByMonth().map(({ formattedMonth, total, key }) => {
+								const budgetRecord = findBudgetForKey(key);
+								//console.log(findBudgetForKey(key));
+								const budgetValue = budgetRecord ? budgetRecord.incassi_puntuale : 0;
+								const diff = total - budgetValue;
+								const diffColor = diff >= 0 ? "text-green-600" : "text-red-600";
+								const diffFormatted =
+									diff >= 0
+										? `+${formatEuro(diff)} €`
+										: `${formatEuro(diff)} €`;
+								return (
+									<li
+										class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
+										onClick={() => {
+											setSelectedMonth(formattedMonth);
+											setView('day');
+										}}
+									>
+										<div class="flex justify-between items-center font-semibold">
+											<span>{formattedMonth}</span>
+											<div class="flex text-green-600">
+												{formatEuro(total)} €
+												{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
+													<div class={`flex items-center justify-end w-[90px] text-xs italic font-semibold ${diffColor}`}>
+														{findBudgetForKey(key) && `(${diffFormatted})`}
+													</div>
+												)}
+											</div>
+										</div>
+									</li>
+								);
+							})}
+
+							{/* Totale complessivo di tutti i mesi */}
+							<li class="py-2 px-4 font-semibold">
+								<div class="flex justify-end items-center">
+									<span class="text-green-800 font-bold">
+										{formatEuro(groupByMonth().reduce((sum, { total }) => sum + total, 0))} €
+									</span>
+									{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
+										<div class="flex items-center justify-end w-[90px]">
+											{inputYearHasCompleteBudget(selectedYear()) && (
+												<div class={`text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
+													sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+													? 'text-green-600'
+													: 'text-red-600'
+													}`}>
+													(
+													{groupByMonth().reduce((sum, { total, key }) =>
+														sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
+														? '+'
+														: ''}
+													{formatEuro(
+														groupByMonth().reduce((sum, { total, key }) =>
+															sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
+													)} €)
 												</div>
 											)}
 										</div>
-									</div>
-								</li>
-							);
-						})}
+									)}
 
-						{/* Totale complessivo di tutti i mesi */}
-						<li class="py-2 px-4 font-semibold">
-							<div class="flex justify-end items-center">
-								<span class="text-green-800 font-bold">
-									{formatEuro(groupByMonth().reduce((sum, { total }) => sum + total, 0))} €
-								</span>
-								{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
-									<div class="flex items-center justify-end w-[90px]">
-										{inputYearHasCompleteBudget(selectedYear()) && (
-											<div class={`text-xs italic ${groupByMonth().reduce((sum, { total, key }) =>
-												sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
-												? 'text-green-600'
-												: 'text-red-600'
-												}`}>
-												(
-												{groupByMonth().reduce((sum, { total, key }) =>
-													sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0) >= 0
-													? '+'
-													: ''}
-												{formatEuro(
-													groupByMonth().reduce((sum, { total, key }) =>
-														sum + total - (findBudgetForKey(key)?.incassi_puntuale || 0), 0)
-												)} €)
-											</div>
-										)}
-									</div>
-								)}
+								</div>
+							</li>
+						</ul>
+					</div>
+				)}
 
-							</div>
-						</li>
-					</ul>
-				</div>
-			)}
-
-			{/* View degli incassi giorno per giorno */}
-			{view() === 'day' && (
-				<div class="flex flex-col h-full">
-					{/* Intestazione fissa */}
-					<div class="flex-none flex justify-between items-center h-[55px] mb-[79px] mt-2">
+				{/* View degli incassi giorno per giorno */}
+				{view() === 'day' && (
+					<div class="flex flex-col h-full">
+						{/* Intestazione fissa */}
+						{/* <div class="flex-none flex justify-between items-center h-[55px] mb-[79px] mt-2">
 						<button
 							class="w-[40px] font-bold text-black rounded"
 							onClick={() => setView('month')}
@@ -657,171 +709,173 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<div class="text-center">{selectedMonth()}</div>
 						</div>
 						<div class="w-[40px]"></div>
-					</div>
+					</div> */}
 
-					{/* Area scrollabile */}
-					<div class="flex-grow overflow-y-auto pb-40">
-						<ul>
-							{filterByDay().map((entry) => (
-								<li
-									key={entry.data_competenza}
-									class="mx-2 py-2 pr-4 pl-2 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
-									onClick={() => {
-										setSelectedDay(entry.data_competenza);
-										setView('detail');
-									}}
-								>
-									<div class="flex justify-between">
-										<span>{new Date(entry.data_competenza).toLocaleDateString()}</span>
-										<span class="text-green-600">
-											{formatEuro(entry.total, false)} €
+						{/* Area scrollabile */}
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+						</div>
+						<div class="flex-grow overflow-y-auto pb-40">
+							<ul>
+								{filterByDay().map((entry) => (
+									<li
+										key={entry.data_competenza}
+										class="mx-2 py-2 pr-4 pl-2 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
+										onClick={() => {
+											setSelectedDay(entry.data_competenza);
+											setView('detail');
+										}}
+									>
+										<div class="flex justify-between">
+											<span>{new Date(entry.data_competenza).toLocaleDateString()}</span>
+											<span class="text-green-600">
+												{formatEuro(entry.total, false)} €
+											</span>
+										</div>
+									</li>
+								))}
+
+								{/* Totale complessivo del mese selezionato */}
+								<li class="py-2 px-4 font-semibold">
+									<div class="flex justify-end">
+										<span class="text-green-800 font-bold">
+											{formatEuro(calculateTotalByTag(filterByDay()))} €
 										</span>
 									</div>
 								</li>
-							))}
-
-							{/* Totale complessivo del mese selezionato */}
-							<li class="py-2 px-4 font-semibold">
-								<div class="flex justify-end">
-									<span class="text-green-800 font-bold">
-										{formatEuro(calculateTotalByTag(filterByDay()))} €
-									</span>
-								</div>
-							</li>
-						</ul>
-					</div>
-				</div>
-			)}
-
-			{/* View di dettaglio per un giorno */}
-			{view() === 'detail' && (
-				<div class="flex flex-col h-full">
-					{/* Intestazione fissa */}
-					<div class="flex-none flex justify-between h-[55px] mb-2 mt-2">
-						<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('day')}>
-							<img src="/back.svg" alt="back" class="w-full h-auto" />
-						</button>
-						<div class="text-gray-600">
-							<div class="text-lg text-center font-semibold">Dettaglio Chiusura</div>
-							<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
+							</ul>
 						</div>
-						<div class="w-[40px]"></div>
 					</div>
+				)}
 
-					{/* Area scrollabile */}
-					<div class="flex-grow overflow-y-auto pt-2">
-						{getDailyDetails() && (
-							<div>
-
-								{/* Contanti in cassa (netto spese) */}
-								<div class="flex text-sm justify-between py-1 px-4 border-b">
-									<span>Contanti in cassa (netto spese)</span>
-									<span class="text-green-600">
-										{formatEuro(getDailyDetails()?.contanti_cassa_netto_spese_serata || 0, true)} €
-									</span>
-								</div>
-
-								{/* Spese serata */}
-								<div class="flex text-sm text-red-500 justify-between py-1 px-4 border-b bg-yellow-50">
-									<span>Spese serata</span>
-									<span class="text-red-500">
-										{formatEuro(getDailyDetails()?.spese_serata || 0, true)} €
-									</span>
-								</div>
-
-								{/* Contanti in cassa (lordo spese) */}
-								<div class="flex justify-between py-1 px-4 border-b font-semibold">
-									<span class="">Contanti in cassa (lordo spese)</span>
-									<span class="text-green-600">
-										{formatEuro(getDailyDetails()?.contanti_cassa_lordo_spese_serata || 0, true)} €
-									</span>
-								</div>
-
-								{/* Carte */}
-								<div class="flex justify-between py-1 px-4 border-b font-semibold">
-									<span>Carte</span>
-									<span class="text-green-600">
-										{formatEuro(getDailyDetails()?.carte || 0, true)} €
-									</span>
-								</div>
-
-								{/* Satispay */}
-								<div class="flex justify-between py-1 px-4 border-b font-semibold">
-									<span class="">Satispay</span>
-									<span class="text-green-600">
-										{formatEuro(getDailyDetails()?.satispay || 0, true)} €
-									</span>
-								</div>
-
-								{/* Totale Incasso reale giornaliero */}
-								<div class="flex justify-between py-2 px-4">
-									<span class=""></span>
-									<span class="text-green-800 font-bold">
-										{formatEuro(getDailyDetails()?.chiusura_lorda_reale || 0, true)} €
-									</span>
-								</div>
-
-								{/* Battuti cassa */}
-								<div class="flex text-sm justify-between py-1 px-4 border-b mt-8">
-									<span class="">Battuti cassa</span>
-									<span class="text-green-600">
-										{formatEuro(getDailyDetails()?.battuti_cassa || 0, true)} €
-									</span>
-								</div>
-
-								{/* NB */}
-								<div class="flex text-sm justify-between py-1 px-4 border-b">
-									<span class="">Gap</span>
-									<span class="text-green-600">
-										{formatEuro(getDailyDetails()?.gap || 0, true)} €
-									</span>
-								</div>
-
+				{/* View di dettaglio per un giorno */}
+				{view() === 'detail' && (
+					<div class="flex flex-col h-full">
+						{/* Intestazione fissa */}
+						<div class="flex-none flex justify-between h-[55px] mb-2 mt-2">
+							<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('day')}>
+								<img src="/back.svg" alt="back" class="w-full h-auto" />
+							</button>
+							<div class="text-gray-600">
+								<div class="text-lg text-center font-semibold">Dettaglio Chiusura</div>
+								<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
 							</div>
-						)}
+							<div class="w-[40px]"></div>
+						</div>
+
+						{/* Area scrollabile */}
+						<div class="flex-grow overflow-y-auto pt-2">
+							{getDailyDetails() && (
+								<div>
+
+									{/* Contanti in cassa (netto spese) */}
+									<div class="flex text-sm justify-between py-1 px-4 border-b">
+										<span>Contanti in cassa (netto spese)</span>
+										<span class="text-green-600">
+											{formatEuro(getDailyDetails()?.contanti_cassa_netto_spese_serata || 0, true)} €
+										</span>
+									</div>
+
+									{/* Spese serata */}
+									<div class="flex text-sm text-red-500 justify-between py-1 px-4 border-b bg-yellow-50">
+										<span>Spese serata</span>
+										<span class="text-red-500">
+											{formatEuro(getDailyDetails()?.spese_serata || 0, true)} €
+										</span>
+									</div>
+
+									{/* Contanti in cassa (lordo spese) */}
+									<div class="flex justify-between py-1 px-4 border-b font-semibold">
+										<span class="">Contanti in cassa (lordo spese)</span>
+										<span class="text-green-600">
+											{formatEuro(getDailyDetails()?.contanti_cassa_lordo_spese_serata || 0, true)} €
+										</span>
+									</div>
+
+									{/* Carte */}
+									<div class="flex justify-between py-1 px-4 border-b font-semibold">
+										<span>Carte</span>
+										<span class="text-green-600">
+											{formatEuro(getDailyDetails()?.carte || 0, true)} €
+										</span>
+									</div>
+
+									{/* Satispay */}
+									<div class="flex justify-between py-1 px-4 border-b font-semibold">
+										<span class="">Satispay</span>
+										<span class="text-green-600">
+											{formatEuro(getDailyDetails()?.satispay || 0, true)} €
+										</span>
+									</div>
+
+									{/* Totale Incasso reale giornaliero */}
+									<div class="flex justify-between py-2 px-4">
+										<span class=""></span>
+										<span class="text-green-800 font-bold">
+											{formatEuro(getDailyDetails()?.chiusura_lorda_reale || 0, true)} €
+										</span>
+									</div>
+
+									{/* Battuti cassa */}
+									<div class="flex text-sm justify-between py-1 px-4 border-b mt-8">
+										<span class="">Battuti cassa</span>
+										<span class="text-green-600">
+											{formatEuro(getDailyDetails()?.battuti_cassa || 0, true)} €
+										</span>
+									</div>
+
+									{/* NB */}
+									<div class="flex text-sm justify-between py-1 px-4 border-b">
+										<span class="">Gap</span>
+										<span class="text-green-600">
+											{formatEuro(getDailyDetails()?.gap || 0, true)} €
+										</span>
+									</div>
+
+								</div>
+							)}
+
+						</div>
+
+						{/* Pulsanti di azione */}
+						<div class="flex justify-around pt-4 pb-8 h-[56]">
+							<button
+								onClick={() => setShowDeletePopup(true)}
+								class="px-4 py-2 w-32 bg-red-700 text-white font-semibold rounded-lg shadow-lg shadow-gray-400"
+							>
+								CANCELLA
+							</button>
+							<button
+								onClick={openEditPopup}
+								class="px-4 py-2 w-32 bg-yellow-500 text-white font-semibold rounded-lg shadow-lg shadow-gray-400"
+							>
+								MODIFICA
+							</button>
+						</div>
 
 					</div>
+				)}
 
-					{/* Pulsanti di azione */}
-					<div class="flex justify-around pt-4 pb-8 h-[56]">
-						<button
-							onClick={() => setShowDeletePopup(true)}
-							class="px-4 py-2 w-32 bg-red-700 text-white font-semibold rounded-lg shadow-lg shadow-gray-400"
-						>
-							CANCELLA
-						</button>
-						<button
-							onClick={openEditPopup}
-							class="px-4 py-2 w-32 bg-yellow-500 text-white font-semibold rounded-lg shadow-lg shadow-gray-400"
-						>
-							MODIFICA
-						</button>
-					</div>
-
-				</div>
-			)}
-
-			{/* Bottone rotondo per aggiungere un nuovo incasso*/}
-			{view() !== 'detail' && (
-				<button
-					onClick={() => {
-						// Resetta i campi di newChiusura
-						setNewChiusura({
-							data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
-							battuti_cassa: '',
-							carte: '',
-							satispay: '',
-							contanti_cassa: '',
-						});
-						// Mostra il popup
-						setShowAddPopup(true);
-					}}
-					class="fixed bottom-6 right-6 w-16 h-16 bg-blue-800 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center"
-				>
-					<img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
-				</button>
-			)}
-
+				{/* Bottone rotondo per aggiungere un nuovo incasso*/}
+				{view() !== 'detail' && (
+					<button
+						onClick={() => {
+							// Resetta i campi di newChiusura
+							setNewChiusura({
+								data_competenza: new Date(Date.now() - 86400000).toISOString().split('T')[0], // Oggi - 1 giorno
+								battuti_cassa: '',
+								carte: '',
+								satispay: '',
+								contanti_cassa: '',
+							});
+							// Mostra il popup
+							setShowAddPopup(true);
+						}}
+						class="fixed bottom-6 right-6 w-16 h-16 bg-blue-800 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center"
+					>
+						<img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
+					</button>
+				)}
+			</div>
 			{/* Popup per aggiungere un nuovo incasso */}
 			{showAddPopup() && (
 				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">

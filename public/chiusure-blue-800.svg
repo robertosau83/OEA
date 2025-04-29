@@ -7,7 +7,7 @@
             <style>
                 .cls-1 {
                     fill: none;
-                    stroke: #2563EB;
+                    stroke: #1E40AF; /* Cambiato in blue-800 */
                     stroke-miterlimit: 10;
                     stroke-width: 1.44;
                 }
