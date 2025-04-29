@@ -18,7 +18,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 		descrizione: '',
 	});
 	const [showDeletePopup, setShowDeletePopup] = createSignal(false);
-	const [showEditPopup, setShowEditPopup] = createSignal(false);
+	const [showEditPopup, setShowEditPopup] = createSignal(true);
 	const [editMovementDirection, setEditMovementDirection] = createSignal('');
 	const [editCashMovement, setEditCashMovement] = createSignal({
 		tipo: '',
@@ -472,7 +472,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 	};
 
 	return (
-		<div class="flex flex-col h-full px-2 pt-2">
+		<div class="flex flex-col h-full px-2 pb-2">
 
 			{/* Tag selezionabili */}
 			{view() !== 'singleDetail' && (
@@ -480,13 +480,13 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 					{/* Primo gruppo di tag (CC / CASH) */}
 					<div class="flex justify-center gap-1">
 						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md ${selectedGr1Tag() === "CC" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
+							class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md border ${selectedGr1Tag() === "CC" ? "bg-blue-800 text-white" : "bg-white text-gray-700"}`}
 							onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CC" ? "" : "CC")}
 						>
 							CC
 						</button>
 						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md ${selectedGr1Tag() === "CASH" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
+							class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md border ${selectedGr1Tag() === "CASH" ? "bg-blue-800 text-white" : "bg-white text-gray-700"}`}
 							onClick={() => setSelectedGr1Tag(selectedGr1Tag() === "CASH" ? "" : "CASH")}
 						>
 							CASH
@@ -496,13 +496,13 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 					{/* Secondo gruppo di tag (Entrate / Uscite) */}
 					<div class="flex justify-center gap-1">
 						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md ${selectedGr2Tag() === "entrate" ? "bg-green-500 text-white" : "bg-gray-200 text-gray-700"}`}
+							class={`w-[65px] text-xs px-4 py-2 rounded-l-full shadow-md border ${selectedGr2Tag() === "entrate" ? "bg-green-800 text-white" : "bg-white text-gray-700"}`}
 							onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "entrate" ? "" : "entrate")}
 						>
 							Entrate
 						</button>
 						<button
-							class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md ${selectedGr2Tag() === "uscite" ? "bg-red-500 text-white" : "bg-gray-200 text-gray-700"}`}
+							class={`w-[65px] text-xs px-4 py-2 rounded-r-full shadow-md border ${selectedGr2Tag() === "uscite" ? "bg-red-800 text-white" : "bg-white text-gray-700"}`}
 							onClick={() => setSelectedGr2Tag(selectedGr2Tag() === "uscite" ? "" : "uscite")}
 						>
 							Uscite
@@ -514,16 +514,21 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 			{/* View delle spese per anno */}
 			{view() === 'year' && (
 				<div class="flex flex-col h-full">
-					<h2 class="flex flex-none items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
+					<h2 class="flex flex-none text-gray-600 items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
 						Cashflow annuale
 					</h2>
-					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-						<div class="flex-none flex items-center justify-end px-4">
+
+					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && thereIsAtLeastOneYearWithCompleteBudget() ? (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
 							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
 								Var BDG
 							</div>
 						</div>
+					) : (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+						</div>
 					)}
+
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByYear().map(([year, total]) => {
 							// Recupera il budget delle spese per l'anno corrente
@@ -539,7 +544,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 							return (
 								<li
-									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md font-bold"
 									onClick={() => {
 										setSelectedYear(year);
 										setView('month');
@@ -568,7 +573,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							const totalBudget = groupBudgetByYearForSpese().reduce((sum, [, bTotal]) => sum + bTotal, 0);
 							const overallDiff = totalBudget + totalExpense;
 							return (
-								<li class="py-2 px-4 bg-gray-100 font-semibold">
+								<li class="py-2 px-4 font-semibold">
 									<div class="flex justify-end items-center">
 										<span class={`${totalExpense > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
 											{formatEuro(totalExpense)} €
@@ -596,22 +601,27 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 			{view() === 'month' && (
 				<div class="flex flex-col h-full">
 					<div class="flex flex-none justify-between h-[55px] mb-16 mt-2">
-						<button class="w-[40px] bg-gray-100 font-bold text-black rounded" onClick={() => setView('year')}>
+						<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('year')}>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
-						<div>
+						<div class="text-gray-600">
 							<div class="text-lg text-center font-semibold">CashFlow Mensile</div>
 							<div class="text-center">{selectedYear()}</div>
 						</div>
 						<div class="w-[40px]"></div>
 					</div>
-					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
-						<div class="flex-none flex items-center justify-end px-4">
+
+					{selectedGr2Tag() === "uscite" && !selectedGr1Tag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) ? (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
 							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
 								Var BDG
 							</div>
 						</div>
+					) : (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+						</div>
 					)}
+
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByMonth().map(({ formattedMonth, total, key }) => {
 							// Usa formattedMonth, total e key qui
@@ -630,7 +640,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							return (
 								<li
 									key={key}
-									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md font-semibold"
 									onClick={() => {
 										setSelectedMonth(formattedMonth);
 										setView('day');
@@ -671,7 +681,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							const sumOfDiff = sumOfTotals + sumOfBudget;
 
 							return (
-								<li class="py-2 px-4 bg-gray-100 font-semibold">
+								<li class="py-2 px-4 font-semibold">
 									<div class="flex justify-end items-center gap-2">
 										{/* Mostra la somma effettiva di tutti i movimenti (negativa se sono spese) */}
 										<span
@@ -709,11 +719,11 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 			{view() === 'day' && (
 				<div class="flex flex-col h-full">
 
-					<div class="flex flex-none justify-between h-[55px] mb-16 mt-2">
-						<button class="w-[40px] bg-gray-100 font-bold text-black rounded" onClick={() => setView('month')}>
+					<div class="flex flex-none justify-between h-[55px] mb-[79px] mt-2">
+						<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('month')}>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
-						<div>
+						<div class="text-gray-600">
 							<div class="text-lg text-center font-semibold">Cashflow giornaliero</div>
 							<div class="text-center">{selectedMonth()}</div>
 						</div>
@@ -723,7 +733,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByDate().map(([date, { total, spese }]) => (
 							<li
-								class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+								class="mx-2 py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
 								onClick={() => {
 									setSelectedDay(date);
 									setView('details');
@@ -739,7 +749,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 						))}
 
 						{/* Totale complessivo del mese selezionato */}
-						<li class="py-2 px-4 bg-gray-100 font-semibold">
+						<li class="py-2 px-4 font-semibold">
 							<div class="flex justify-end">
 								<span class={`${groupByDate().reduce((sum, [, { total }]) => sum + total, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
 									{formatEuro(groupByDate().reduce((sum, [, { total }]) => sum + total, 0))} €
@@ -755,14 +765,14 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 			{view() === 'details' && (
 				<div class="flex flex-col h-full">
 
-					<div class="flex flex-none justify-between h-[55px] mb-16 mt-2">
+					<div class="flex flex-none justify-between h-[55px] mb-[79px] mt-2">
 						<button
-							class="w-[40px] bg-gray-100 font-bold text-black rounded"
+							class="w-[40px] font-bold text-black rounded"
 							onClick={() => setView('day')}
 						>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
-						<div>
+						<div class="text-gray-600">
 							<div class="text-lg text-center font-semibold">Dettaglio Cashflow</div>
 							<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
 						</div>
@@ -820,7 +830,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											{formatEuro(getCCMovements()
 												.filter((entry) => !isExcluded(entry))
 												.reduce((sum, entry) => sum + entry.importo, 0)
-											, true)} €
+												, true)} €
 										</span>
 										<span class="text-blue-800">)</span>
 									</h3>
@@ -853,7 +863,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 										getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) > 0 ? "text-green-800" : "text-red-800"} font-bold`}>
 									{formatEuro(
 										getCashMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0) + getCCMovements().filter((entry) => !isExcluded(entry)).reduce((sum, entry) => sum + entry.importo, 0)
-									, true)} €
+										, true)} €
 								</span>
 							</div>
 						)}
@@ -869,12 +879,12 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 					<div class="flex flex-none justify-between h-[55px] mb-2 mt-2">
 						<button
-							class="w-[40px] bg-gray-100 font-bold text-black rounded"
+							class="w-[40px] font-bold text-black rounded"
 							onClick={() => setView('details')} // Torna alla view "details"
 						>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
-						<div>
+						<div class="text-gray-600">
 							<div class="text-lg text-center font-semibold">Dettaglio Movimento {selectedMovement().origin === "CC" ? "CC" : "CASH"}</div>
 							<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
 						</div>
@@ -906,21 +916,21 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 					{/* Pulsanti di azione */}
 					{selectedMovement().origin === "CASH" && selectedMovement().tipo !== "Storno" && (
-						<div class="flex justify-around py-4 h-[56]">
+						<div class="flex justify-around pt-4 pb-8 h-[56]">
 							{/* Bottone Cancella */}
 							<button
 								onClick={() => setShowDeletePopup(true)} // Mostra il popup di conferma
-								class="px-4 py-2 w-32 bg-red-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-red-600"
+								class="px-4 py-2 w-32 bg-red-700 text-white font-semibold rounded-lg shadow-lg shadow-gray-400 "
 							>
-								Cancella
+								CANCELLA
 							</button>
 
 							{/* Bottone Modifica */}
 							<button
 								onClick={openEditPopup}
-								class="px-4 py-2 w-32 bg-yellow-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-yellow-600"
+								class="px-4 py-2 w-32 bg-yellow-500 text-white font-semibold rounded-lg shadow-lg shadow-gray-400 "
 							>
-								Modifica
+								MODIFICA
 							</button>
 						</div>
 					)}
@@ -944,7 +954,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 						// Mostra il popup
 						setShowAddPopup(true);
 					}}
-					class="fixed bottom-[106px] right-4 w-16 h-16 bg-blue-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-red-600"
+					class="fixed bottom-6 right-6 w-16 h-16 bg-blue-800 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center"
 				>
 					<img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
 				</button>
@@ -952,8 +962,9 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 			{/* Popup per aggiungere una nuova spesa */}
 			{showAddPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div class="bg-white rounded-lg p-6 w-[90%] relative">
+				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+					<div class="bg-gradient-to-b from-blue-200 to-blue-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
+
 						<button
 							onClick={() => setShowAddPopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
@@ -961,20 +972,28 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
 						</button>
 
-						<h2 class="text-lg font-semibold mb-4 text-center text-blue-800">Nuovo movimento CASH</h2>
+						<h2 class="text-lg font-bold mb-6 text-center text-gray-800">
+							Nuovo movimento CASH
+						</h2>
 
 						{/* Sezione per selezionare la direzione del movimento */}
 						<div class="flex justify-center gap-1 mb-4">
 							<button
 								type="button"
-								class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${newMovementDirection() === 'entrata' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+								class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${newMovementDirection() === 'entrata'
+									? 'bg-green-200 text-green-800 font-semibold'
+									: 'bg-white text-gray-700'
+									}`}
 								onClick={() => setNewMovementDirection('entrata')}
 							>
 								IN ENTRATA
 							</button>
 							<button
 								type="button"
-								class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${newMovementDirection() === 'uscita' ? 'bg-red-200 text-red-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
+								class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${newMovementDirection() === 'uscita'
+									? 'bg-red-200 text-red-800 font-semibold'
+									: 'bg-white text-gray-700'
+									}`}
 								onClick={() => setNewMovementDirection('uscita')}
 							>
 								IN USCITA
@@ -987,21 +1006,29 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								await addNewCashMovement();
 							}}
 						>
-
 							{/* Campo per la data di competenza */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Data Competenza</label>
+							<div class="flex flex-col items-center mb-4">
+								<label class="block font-medium mb-1 text-center">
+									Data Competenza
+								</label>
 								<input
 									type="date"
 									value={newCashMovement().data_operazione || ''}
-									onInput={(e) => setNewCashMovement({ ...newCashMovement(), data_operazione: e.currentTarget.value, })}
-									class="w-full border rounded px-3 py-2"
+									onInput={(e) =>
+										setNewCashMovement({
+											...newCashMovement(),
+											data_operazione: e.currentTarget.value,
+										})
+									}
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
 								/>
 							</div>
 
-							{/* Campo Tipo: le opzioni variano in base alla direzione */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Tipo</label>
+							{/* Campo Tipo */}
+							<div class="flex flex-col items-center mb-4">
+								<label class="block font-medium mb-1 text-center">
+									Tipo
+								</label>
 								<select
 									value={newCashMovement().tipo}
 									onInput={(e) =>
@@ -1010,7 +1037,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											tipo: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center shadow-lg w-full"
 								>
 									<option value="" disabled>Seleziona tipo</option>
 									{newMovementDirection() === 'entrata'
@@ -1027,9 +1054,11 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								</select>
 							</div>
 
-							{/* Campo Metodo di pagamento: anche qui le opzioni variano */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Metodo di pagamento</label>
+							{/* Campo Metodo di pagamento */}
+							<div class="flex flex-col items-center mb-7">
+								<label class="block font-medium mb-1 text-center">
+									Metodo di pagamento
+								</label>
 								<select
 									value={newCashMovement().metodo_di_pagamento}
 									onInput={(e) =>
@@ -1038,7 +1067,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											metodo_di_pagamento: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center shadow-lg w-full"
 								>
 									<option value="" disabled>Seleziona metodo di pagamento</option>
 									{newMovementDirection() === 'entrata'
@@ -1055,66 +1084,71 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								</select>
 							</div>
 
-							{/* importo */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Importo</label>
-								<input
-									type="text"
-									value={newCashMovement().importo !== '' ? newCashMovement().importo : ''}
-									onInput={(e) => {
-										const input = e.currentTarget.value;
-
-										// Sostituisci immediatamente "." con ","
-										let sanitizedInput = input.replace('.', ',');
-
-										// Rimuovi tutti i caratteri non validi (solo numeri e ",")
-										sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
-
-										// Aggiorna lo stato con il valore sanitizzato
-										setNewCashMovement({ ...newCashMovement(), importo: sanitizedInput, });
-									}}
-									class={`w-full border rounded px-3 py-2 ${
-										// Validazione: campo è rosso se contiene più di una virgola
-										/^[0-9]*,?[0-9]*$/.test(newCashMovement().importo) ? '' : 'text-red-500'
-										}`}
-								/>
+							{/* Campo Importo */}
+							<div class="flex justify-between items-center mb-4">
+								<label class="flex items-center justify-start font-medium">Importo</label>
+								<div class="flex">
+									<input
+										type="text"
+										value={newCashMovement().importo !== '' ? newCashMovement().importo : ''}
+										onInput={(e) => {
+											const input = e.currentTarget.value;
+											let sanitizedInput = input.replace('.', ',');
+											sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+											setNewCashMovement({ ...newCashMovement(), importo: sanitizedInput });
+										}}
+										class={`rounded-lg px-3 py-1 text-center text-lg shadow-lg w-24 ${/^[0-9]*,?[0-9]*$/.test(newCashMovement().importo) ? '' : 'text-red-500'
+											}`}
+									/>
+									<label class="flex items-center justify-end font-medium w-4">€</label>
+								</div>
 							</div>
 
-							{/* descrizione */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Descrizione</label>
+							{/* Campo Descrizione */}
+							<div class="flex flex-col items-center mb-8">
+								<label class="block font-medium mb-1 text-center">
+									Descrizione
+								</label>
 								<input
 									type="text"
 									value={newCashMovement().descrizione || ''}
-									onInput={(e) => setNewCashMovement({ ...newCashMovement(), descrizione: e.currentTarget.value, })}
-									class="w-full border rounded px-3 py-2"
+									onInput={(e) =>
+										setNewCashMovement({
+											...newCashMovement(),
+											descrizione: e.currentTarget.value,
+										})
+									}
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
 								/>
 							</div>
 
+							{/* Bottone Salva */}
 							<div class="flex justify-center mt-8 w-full">
 								<button
 									type="submit"
-									class="px-4 py-2 w-full text-xl bg-blue-500 text-white rounded hover:bg-blue-600"
+									class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
 								>
 									SALVA
 								</button>
 							</div>
 						</form>
+
 					</div>
 				</div>
 			)}
 
+
 			{/* Popup di conferma cancellazione */}
 			{showDeletePopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div class="bg-red-100 rounded-lg p-6 w-[90%] relative">
+				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+					<div class="bg-gradient-to-b from-red-200 to-red-50 rounded-lg p-6 w-[90%] max-w-[400px] relative">
 						<button
 							onClick={() => setShowDeletePopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
 						>
 							<img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
 						</button>
-						<h2 class="text-lg font-semibold mt-4 mb-4 text-center">
+						<h2 class="text-lg font-semibold mt-4 mb-4 text-center text-gray-800">
 							Verrà cancellato l'attuale movimento registrato in data{' '}
 							{new Date(selectedMovement().data_operazione).toLocaleDateString('it-IT')}
 						</h2>
@@ -1126,7 +1160,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 									setShowDeletePopup(false); // Nascondi il popup
 									setView('details'); // Torna alla view precedente
 								}}
-								class="px-4 py-2 w-full bg-red-500 text-white font-bold rounded hover:bg-red-600"
+								class="px-4 py-2 w-full bg-red-800 text-white font-bold rounded-lg shadow-lg shadow-gray-400"
 							>
 								CONFERMA
 							</button>
@@ -1137,8 +1171,9 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 			{/* Popup per modificare una spesa */}
 			{showEditPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div class="bg-white rounded-lg p-6 w-[90%] relative">
+				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+					<div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
+
 						<button
 							onClick={() => setShowEditPopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
@@ -1146,35 +1181,34 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
 						</button>
 
-						<h2 class="text-lg font-bold mb-4 text-center">Modifica Movimento CASH</h2>
+						<h2 class="text-lg font-bold mb-6 text-center">
+							Modifica Movimento CASH
+						</h2>
 
 						{/* Sezione per selezionare la direzione del movimento */}
-						<div class="flex justify-center gap-2 mb-4">
+						<div class="flex justify-center gap-1 mb-4">
 							<button
 								type="button"
-								class={`px-4 py-2 rounded ${editMovementDirection() === 'entrata' ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+								class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${editMovementDirection() === 'entrata'
+										? 'bg-green-200 text-green-800 font-semibold'
+										: 'bg-white text-gray-700'
+									}`}
 								onClick={() => {
 									setEditMovementDirection('entrata');
-									// Resetta i campi "tipo" e "metodo_di_pagamento"
-									setEditCashMovement({
-										...editCashMovement(),
-										tipo: '',
-										metodo_di_pagamento: '',
-									});
+									setEditCashMovement({ ...editCashMovement(), tipo: '', metodo_di_pagamento: '' });
 								}}
 							>
 								IN ENTRATA
 							</button>
 							<button
 								type="button"
-								class={`px-4 py-2 rounded ${editMovementDirection() === 'uscita' ? 'bg-red-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+								class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${editMovementDirection() === 'uscita'
+										? 'bg-red-200 text-red-800 font-semibold'
+										: 'bg-white text-gray-700'
+									}`}
 								onClick={() => {
 									setEditMovementDirection('uscita');
-									setEditCashMovement({
-										...editCashMovement(),
-										tipo: '',
-										metodo_di_pagamento: '',
-									});
+									setEditCashMovement({ ...editCashMovement(), tipo: '', metodo_di_pagamento: '' });
 								}}
 							>
 								IN USCITA
@@ -1184,13 +1218,16 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 						<form
 							onSubmit={async (e) => {
 								e.preventDefault();
-								await updateCashMovement(); // La funzione updateCashMovement usa editMovementDirection per impostare il segno
+								await updateCashMovement();
 								setShowEditPopup(false);
 							}}
 						>
-							{/* Campo Data Competenza (modificabile) */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Data Competenza</label>
+
+							{/* Campo Data Competenza */}
+							<div class="flex flex-col items-center mb-4">
+								<label class="block font-medium mb-1 text-center">
+									Data Competenza
+								</label>
 								<input
 									type="date"
 									value={editCashMovement().data_operazione || ''}
@@ -1200,13 +1237,15 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											data_operazione: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
 								/>
 							</div>
 
-							{/* Campo Tipo: opzioni condizionali in base alla direzione */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Tipo</label>
+							{/* Campo Tipo */}
+							<div class="flex flex-col items-center mb-4">
+								<label class="block font-medium mb-1 text-center">
+									Tipo
+								</label>
 								<select
 									value={editCashMovement().tipo || ''}
 									onInput={(e) =>
@@ -1215,7 +1254,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											tipo: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center shadow-lg w-full"
 								>
 									<option value="" disabled>Seleziona tipo</option>
 									{editMovementDirection() === 'entrata'
@@ -1232,9 +1271,11 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								</select>
 							</div>
 
-							{/* Campo Metodo di pagamento: opzioni condizionali */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Metodo di pagamento</label>
+							{/* Campo Metodo di pagamento */}
+							<div class="flex flex-col items-center mb-7">
+								<label class="block font-medium mb-1 text-center">
+									Metodo di pagamento
+								</label>
 								<select
 									value={editCashMovement().metodo_di_pagamento || ''}
 									onInput={(e) =>
@@ -1243,7 +1284,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											metodo_di_pagamento: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center shadow-lg w-full"
 								>
 									<option value="" disabled>Seleziona metodo di pagamento</option>
 									{editMovementDirection() === 'entrata'
@@ -1260,36 +1301,41 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 								</select>
 							</div>
 
-							{/* Campo Importo: mostra sempre il valore assoluto, con colore in base alla direzione */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Importo</label>
-								<input
-									type="text"
-									value={
-										editCashMovement().importo
-											? Math.abs(parseFloat(editCashMovement().importo.replace(',', '.')) || 0)
-												.toString()
-												.replace('.', ',')
-											: ''
-									}
-									onInput={(e) => {
-										const input = e.currentTarget.value;
-										let sanitizedInput = input.replace('.', ',');
-										sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
-										setEditCashMovement({ ...editCashMovement(), importo: sanitizedInput });
-									}}
-									class={`w-full border rounded px-3 py-2 ${editMovementDirection() === 'entrata'
-										? 'text-green-600'
-										: editMovementDirection() === 'uscita'
-											? 'text-red-600'
-											: ''
-										}`}
-								/>
+							{/* Campo Importo */}
+							<div class="flex justify-between items-center mb-4">
+								<label class="flex items-center justify-start font-medium">Importo</label>
+								<div class="flex">
+									<input
+										type="text"
+										value={
+											editCashMovement().importo
+												? Math.abs(parseFloat(editCashMovement().importo.replace(',', '.')) || 0)
+													.toString()
+													.replace('.', ',')
+												: ''
+										}
+										onInput={(e) => {
+											const input = e.currentTarget.value;
+											let sanitizedInput = input.replace('.', ',');
+											sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+											setEditCashMovement({ ...editCashMovement(), importo: sanitizedInput });
+										}}
+										class={`rounded-lg px-3 py-1 text-center text-lg shadow-lg w-24 ${editMovementDirection() === 'entrata'
+												? 'text-green-600'
+												: editMovementDirection() === 'uscita'
+													? 'text-red-600'
+													: ''
+											}`}
+									/>
+									<label class="flex items-center justify-end font-medium w-4">€</label>
+								</div>
 							</div>
 
 							{/* Campo Descrizione */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Descrizione</label>
+							<div class="flex flex-col items-center mb-8">
+								<label class="block font-medium mb-1 text-center">
+									Descrizione
+								</label>
 								<input
 									type="text"
 									value={editCashMovement().descrizione || ''}
@@ -1299,22 +1345,26 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 											descrizione: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
 								/>
 							</div>
 
+							{/* Bottone Salva */}
 							<div class="flex justify-center mt-8 w-full">
 								<button
 									type="submit"
-									class="px-4 py-2 w-full text-xl bg-blue-500 text-white rounded hover:bg-blue-600"
+									class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
 								>
 									SALVA
 								</button>
 							</div>
+
 						</form>
+
 					</div>
 				</div>
 			)}
+
 
 		</div>
 	);

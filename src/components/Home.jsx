@@ -1,26 +1,58 @@
 const Home = ({ setCurrentComponent }) => {
 	const modules = [
-		{ name: "Chiusure", label: "Chiusure" },
-		{ name: "Cashflow", label: "Cashflow" },
-		{ name: "EstrattoCC", label: "Estratto Conto" },
-		{ name: "Scadenze", label: "Scadenze" },
-		{ name: "Quadratura_CASH", label: "Allineamento CASH" },
-		{ name: "Quadratura_CC", label: "Allineamento CC" },
-		{ name: "Statistiche", label: "Statistiche" },
-		{ name: "Budget", label: "Budget" },
+		{ name: "Chiusure", label: "Chiusure", icon: "/chiusure-blue-600.svg" },
+		{ name: "Cashflow", label: "Cashflow", icon: "/cashflow-blue-600.svg" },
+		{ name: "EstrattoCC", label: "Estratto Conto", icon: "/estrattoCC-blue-600.svg" },
+		{ name: "Scadenze", label: "Scadenze", icon: "/scadenze-blue-600.svg" },
+		{ name: "Statistiche", label: "Statistiche", icon: "/statistiche-blue-600.svg" },
+		{ name: "Quadratura_CASH", label: "Allineamento CASH", icon: "/allineamento-blue-600.svg" },
+		{ name: "Quadratura_CC", label: "Allineamento CC", icon: "/allineamento-blue-600.svg" },
+		{ name: "Budget", label: "Budget", icon: "/budget-blue-600.svg" },
 	];
 
+	// Separiamo i primi due bottoni dagli altri
+	const topModules = modules.slice(0, 2);      // Chiusure e Cashflow
+	const otherModules = modules.slice(2);        // Gli altri
+
 	return (
-		<div class="flex flex-col items-center justify-center h-full p-6 gap-4">
-			<h1 class="text-2xl font-bold mb-8">Seleziona una sezione</h1>
-			{modules.map((mod) => (
-				<button
-					class="w-full max-w-xs px-6 py-4 bg-blue-500 text-white font-semibold rounded-lg shadow hover:bg-blue-600"
-					onClick={() => setCurrentComponent(mod.name)}
-				>
-					{mod.label}
-				</button>
-			))}
+		<div class="flex flex-col items-center justify-start h-full p-6 overflow-y-auto">
+			{/* Top big buttons */}
+			<div class="grid grid-cols-2 gap-6 w-full max-w-md mb-12">
+				{topModules.map((mod) => (
+					<button
+						class="flex flex-col items-center justify-center p-6 bg-blue-50 text-gray-800 
+						       font-bold text-lg rounded-xl shadow-lg shadow-gray-500
+								 border border-gray-400"
+						onClick={() => setCurrentComponent(mod.name)}
+					>
+						<img src={mod.icon} alt={mod.label} class="h-16 w-16 mb-3" />
+						<span>{mod.label}</span>
+					</button>
+				))}
+			</div>
+
+			{/* Divider margin */}
+			{/* puoi anche mettere una linea separatrice se vuoi tipo <hr class="w-1/2 border-gray-300 mb-6" /> */}
+
+			{/* Other small grid buttons */}
+			<div class="grid grid-cols-3 gap-4 w-full max-w-3xl">
+				{otherModules.map((mod) => (
+					<button
+						class="flex flex-col items-center justify-center p-6 bg-gray-900 text-yellow-400 
+						       font-bold text-lg rounded-xl shadow-lg shadow-gray-600
+								 border border-gray-600"
+						onClick={() => setCurrentComponent(mod.name)}
+					>	
+						<div class="flex items-center justify-center h-12 mb-4">
+							<img src={mod.icon} alt={mod.label} class="h-12 w-12" />
+						</div>
+						<div class="flex flex-grow items-center justify-center text-sm font-medium">
+
+							{mod.label}
+						</div>
+					</button>
+				))}
+			</div>
 		</div>
 	);
 };

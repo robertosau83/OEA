@@ -436,7 +436,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 	};
 
 	return (
-		<div class="flex flex-col h-full px-2 pt-2">
+		<div class="flex flex-col h-full px-2 bg-white">
 
 			{/* tags */}
 			{view() !== 'detail' && (
@@ -444,9 +444,9 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 					{['contanti', 'carte', 'satispay', 'battuti', 'gap'].map((tag) => (
 						<button
 							key={tag}
-							class={`text-xs px-4 py-2 rounded-full shadow-md ${selectedTag() === tag
-								? 'bg-green-500 text-white'
-								: 'bg-gray-200 text-gray-700'
+							class={`text-xs px-3 py-2 rounded-full shadow-md border ${selectedTag() === tag
+								? 'bg-green-800 text-white'
+								: 'bg-white text-gray-700'
 								}`}
 							onClick={() => setSelectedTag(selectedTag() === tag ? '' : tag)} // Single-select toggle
 						>
@@ -458,16 +458,21 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 			{view() === 'year' && (
 				<div class="flex flex-col h-full">
-					<h2 class="flex-none flex items-center justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
+					<h2 class="flex-none flex items-center text-gray-600 justify-center h-[55px] text-lg font-semibold mb-16 mt-2">
 						Chiusure annuali
 					</h2>
-					{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-						<div class="flex-none flex items-center justify-end px-4">
+
+					{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() ? (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
 							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
 								Var BDG
 							</div>
 						</div>
+					) : (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
+						</div>
 					)}
+
 					<ul class="flex-grow overflow-y-auto pb-40">
 						{groupByYear().map(([year, total]) => {
 							const budgetYearEntry = groupBudgetByYear().find(([yr]) => yr == year);
@@ -483,18 +488,18 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 							return (
 								<li
-									class="py-2 px-4 border-b cursor-pointer bg-white mb-2 rounded-lg shadow-md"
+									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
 									onClick={() => {
 										setSelectedYear(year);
 										setView('month');
 									}}
 								>
-									<div class="flex justify-between items-center">
+									<div class="flex justify-between items-center font-bold">
 										<span>{year}</span>
 										<div class="flex text-green-600">
 											{formatEuro(total)} €
 											{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-												<div class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
+												<div class={`flex items-center justify-end w-[90px] text-xs italic font-medium ${diffColor}`}>
 													{inputYearHasCompleteBudget(year) && `(${diffFormatted})`}
 												</div>
 											)}
@@ -503,34 +508,38 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								</li>
 							);
 						})}
-						<li class="py-2 px-4 bg-gray-100 font-semibold">
-							<div class="flex justify-end items-center">
-								<span class="text-green-800 font-bold">
-									{formatEuro(groupByYear().reduce((sum, [, total]) => sum + total, 0))} €
-								</span>
-								{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
-									<div class="flex items-center justify-end w-[90px]">
-										{everyYearHasCompleteBudget() && (
-											<div class={`text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-												groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-												? 'text-green-600'
-												: 'text-red-600'
-												}`}>
-												(
-												{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+
+						{/* Totale complessivo per tutti gli anni */}
+						{groupByYear().length > 1 && (
+							<li class="py-2 px-4 font-semibold">
+								<div class="flex justify-end items-center">
+									<span class="text-green-800 font-bold">
+										{formatEuro(groupByYear().reduce((sum, [, total]) => sum + total, 0))} €
+									</span>
+									{!selectedTag() && thereIsAtLeastOneYearWithCompleteBudget() && (
+										<div class="flex items-center justify-end w-[90px]">
+											{everyYearHasCompleteBudget() && (
+												<div class={`text-xs italic ${groupByYear().reduce((sum, [, total]) => sum + total, 0) -
 													groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
-													? '+'
-													: ''}
-												{formatEuro(
-													groupByYear().reduce((sum, [, total]) => sum + total, 0) -
-													groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
-												)} €)
-											</div>
-										)}
-									</div>
-								)}
-							</div>
-						</li>
+													? 'text-green-600'
+													: 'text-red-600'
+													}`}>
+													(
+													{groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+														groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0) >= 0
+														? '+'
+														: ''}
+													{formatEuro(
+														groupByYear().reduce((sum, [, total]) => sum + total, 0) -
+														groupBudgetByYear().reduce((sum, [, total]) => sum + total, 0)
+													)} €)
+												</div>
+											)}
+										</div>
+									)}
+								</div>
+							</li>
+						)}
 
 					</ul>
 				</div>
@@ -541,23 +550,26 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 				<div class="flex flex-col h-full">
 					<div class="flex-none flex justify-between h-[55px] mb-16 mt-2">
 						<button
-							class="w-[40px] bg-gray-100 font-bold text-black rounded"
+							class="w-[40px] font-bold text-black rounded"
 							onClick={() => setView('year')}
 						>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
-						<div>
+						<div class="text-gray-600">
 							<div class="text-lg text-center font-semibold">Chiusure mensili</div>
-							<div class="text-center">{selectedYear()}</div>
+							<div class="text-center font-semibold">{selectedYear()}</div>
 						</div>
 						<div class="w-[40px]"></div>
 					</div>
 
-					{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
-						<div class="flex-none flex items-center justify-end px-4">
+					{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) ? (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
 							<div class="flex items-center justify-end text-[10px] italic w-[70px] text-gray-500 mr-2">
 								Var BDG
 							</div>
+						</div>
+					) : (
+						<div class="flex-none flex items-center justify-end px-4 h-[15px]">
 						</div>
 					)}
 
@@ -574,18 +586,18 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									: `${formatEuro(diff)} €`;
 							return (
 								<li
-									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									class="py-2 px-4 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
 									onClick={() => {
 										setSelectedMonth(formattedMonth);
 										setView('day');
 									}}
 								>
-									<div class="flex justify-between items-center">
+									<div class="flex justify-between items-center font-semibold">
 										<span>{formattedMonth}</span>
 										<div class="flex text-green-600">
 											{formatEuro(total)} €
 											{!selectedTag() && inputYearHasAtLeastOneMonthBudget(selectedYear()) && (
-												<div class={`flex items-center justify-end w-[90px] text-xs italic font-light ${diffColor}`}>
+												<div class={`flex items-center justify-end w-[90px] text-xs italic font-semibold ${diffColor}`}>
 													{findBudgetForKey(key) && `(${diffFormatted})`}
 												</div>
 											)}
@@ -596,7 +608,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 						})}
 
 						{/* Totale complessivo di tutti i mesi */}
-						<li class="py-2 px-4 bg-gray-100 font-semibold">
+						<li class="py-2 px-4 font-semibold">
 							<div class="flex justify-end items-center">
 								<span class="text-green-800 font-bold">
 									{formatEuro(groupByMonth().reduce((sum, { total }) => sum + total, 0))} €
@@ -629,19 +641,18 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 				</div>
 			)}
 
-
 			{/* View degli incassi giorno per giorno */}
 			{view() === 'day' && (
 				<div class="flex flex-col h-full">
 					{/* Intestazione fissa */}
-					<div class="flex-none flex justify-between items-center h-[55px] mb-16 mt-2">
+					<div class="flex-none flex justify-between items-center h-[55px] mb-[79px] mt-2">
 						<button
-							class="w-[40px] bg-gray-100 font-bold text-black rounded"
+							class="w-[40px] font-bold text-black rounded"
 							onClick={() => setView('month')}
 						>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
-						<div>
+						<div class="text-gray-600">
 							<div class="text-lg text-center font-semibold">Chiusure giornaliere</div>
 							<div class="text-center">{selectedMonth()}</div>
 						</div>
@@ -654,7 +665,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							{filterByDay().map((entry) => (
 								<li
 									key={entry.data_competenza}
-									class="py-2 px-4 border-b cursor-pointer hover:bg-gray-100"
+									class="mx-2 py-2 pr-4 pl-2 border-b cursor-pointer bg-white border border-gray-400 mb-2 rounded-lg shadow-md"
 									onClick={() => {
 										setSelectedDay(entry.data_competenza);
 										setView('detail');
@@ -670,7 +681,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							))}
 
 							{/* Totale complessivo del mese selezionato */}
-							<li class="py-2 px-4 bg-gray-100 font-semibold">
+							<li class="py-2 px-4 font-semibold">
 								<div class="flex justify-end">
 									<span class="text-green-800 font-bold">
 										{formatEuro(calculateTotalByTag(filterByDay()))} €
@@ -682,16 +693,15 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 				</div>
 			)}
 
-
 			{/* View di dettaglio per un giorno */}
 			{view() === 'detail' && (
 				<div class="flex flex-col h-full">
 					{/* Intestazione fissa */}
 					<div class="flex-none flex justify-between h-[55px] mb-2 mt-2">
-						<button class="w-[40px] bg-gray-100 font-bold text-black rounded" onClick={() => setView('day')}>
+						<button class="w-[40px] font-bold text-black rounded" onClick={() => setView('day')}>
 							<img src="/back.svg" alt="back" class="w-full h-auto" />
 						</button>
-						<div>
+						<div class="text-gray-600">
 							<div class="text-lg text-center font-semibold">Dettaglio Chiusura</div>
 							<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
 						</div>
@@ -702,13 +712,6 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 					<div class="flex-grow overflow-y-auto pt-2">
 						{getDailyDetails() && (
 							<div>
-								{/* Battuti cassa */}
-								<div class="flex text-sm justify-between py-1 px-4 border-b bg-gray-100">
-									<span class="">Battuti cassa</span>
-									<span class="text-green-600">
-										{formatEuro(getDailyDetails()?.battuti_cassa || 0, true)} €
-									</span>
-								</div>
 
 								{/* Contanti in cassa (netto spese) */}
 								<div class="flex text-sm justify-between py-1 px-4 border-b">
@@ -727,25 +730,25 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								</div>
 
 								{/* Contanti in cassa (lordo spese) */}
-								<div class="flex justify-between py-1 px-4 border-b">
+								<div class="flex justify-between py-1 px-4 border-b font-semibold">
 									<span class="">Contanti in cassa (lordo spese)</span>
-									<span class="text-green-600 font-semibold">
+									<span class="text-green-600">
 										{formatEuro(getDailyDetails()?.contanti_cassa_lordo_spese_serata || 0, true)} €
 									</span>
 								</div>
 
 								{/* Carte */}
-								<div class="flex justify-between py-1 px-4 border-b">
+								<div class="flex justify-between py-1 px-4 border-b font-semibold">
 									<span>Carte</span>
-									<span class="text-green-600 font-semibold">
+									<span class="text-green-600">
 										{formatEuro(getDailyDetails()?.carte || 0, true)} €
 									</span>
 								</div>
 
 								{/* Satispay */}
-								<div class="flex justify-between py-1 px-4 border-b">
+								<div class="flex justify-between py-1 px-4 border-b font-semibold">
 									<span class="">Satispay</span>
-									<span class="text-green-600 font-semibold">
+									<span class="text-green-600">
 										{formatEuro(getDailyDetails()?.satispay || 0, true)} €
 									</span>
 								</div>
@@ -755,6 +758,14 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 									<span class=""></span>
 									<span class="text-green-800 font-bold">
 										{formatEuro(getDailyDetails()?.chiusura_lorda_reale || 0, true)} €
+									</span>
+								</div>
+
+								{/* Battuti cassa */}
+								<div class="flex text-sm justify-between py-1 px-4 border-b mt-8">
+									<span class="">Battuti cassa</span>
+									<span class="text-green-600">
+										{formatEuro(getDailyDetails()?.battuti_cassa || 0, true)} €
 									</span>
 								</div>
 
@@ -772,18 +783,18 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 					</div>
 
 					{/* Pulsanti di azione */}
-					<div class="flex justify-around py-4 h-[56]">
+					<div class="flex justify-around pt-4 pb-8 h-[56]">
 						<button
 							onClick={() => setShowDeletePopup(true)}
-							class="px-4 py-2 w-32 bg-red-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-red-600"
+							class="px-4 py-2 w-32 bg-red-700 text-white font-semibold rounded-lg shadow-lg shadow-gray-400"
 						>
-							Cancella
+							CANCELLA
 						</button>
 						<button
 							onClick={openEditPopup}
-							class="px-4 py-2 w-32 bg-yellow-500 text-white rounded-lg shadow-lg shadow-gray-400 hover:bg-yellow-600"
+							class="px-4 py-2 w-32 bg-yellow-500 text-white font-semibold rounded-lg shadow-lg shadow-gray-400"
 						>
-							Modifica
+							MODIFICA
 						</button>
 					</div>
 
@@ -805,7 +816,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 						// Mostra il popup
 						setShowAddPopup(true);
 					}}
-					class="fixed bottom-[106px] right-4 w-16 h-16 bg-blue-500 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center hover:bg-green-600"
+					class="fixed bottom-6 right-6 w-16 h-16 bg-blue-800 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center"
 				>
 					<img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
 				</button>
@@ -813,8 +824,8 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 			{/* Popup per aggiungere un nuovo incasso */}
 			{showAddPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div class="bg-white rounded-lg p-6 w-[90%] relative">
+				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+					<div class="bg-gradient-to-b from-blue-200 to-blue-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 						<button
 							onClick={() => setShowAddPopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
@@ -822,7 +833,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
 						</button>
 
-						<h2 class="text-lg font-bold mb-4 text-center">Nuova chiusura</h2>
+						<h2 class="text-lg font-bold mb-6 text-center">NUOVA CHIUSURA</h2>
 
 						<form
 							onSubmit={async (e) => {
@@ -831,8 +842,8 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							}}
 						>
 							{/* Campo per la data di competenza */}
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Data Competenza</label>
+							<div class="flex flex-col items-center mb-8">
+								<label class="block font-medium mb-1 text-center">Data Competenza</label>
 								<input
 									type="date"
 									value={newChiusura().data_competenza || ''}
@@ -842,49 +853,87 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 											data_competenza: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
 								/>
 							</div>
 
 							{/* Campi numerici */}
 							{[
-								{ label: 'Battuti Cassa', key: 'battuti_cassa' },
+								{ label: 'Contanti Cassa', key: 'contanti_cassa' },
 								{ label: 'Carte', key: 'carte' },
 								{ label: 'Satispay', key: 'satispay' },
-								{ label: 'Contanti Cassa', key: 'contanti_cassa' },
 							].map(({ label, key }) => (
-								<div class="mb-4" key={key}>
-									<label class="block text-sm font-medium mb-1">{label}</label>
-									<input
-										type="text"
-										value={newChiusura()[key] !== '' ? newChiusura()[key] : ''}
-										onInput={(e) => {
-											const input = e.currentTarget.value;
+								<div class="flex justify-between mb-4 w-full" key={key}>
+									<label class="flex items-center justify-start font-medium">{label}</label>
+									<div class="flex">
+										<input
+											type="text"
+											value={newChiusura()[key] !== '' ? newChiusura()[key] : ''}
+											onInput={(e) => {
+												const input = e.currentTarget.value;
 
-											// Sostituisci immediatamente "." con ","
-											let sanitizedInput = input.replace('.', ',');
+												// Sostituisci immediatamente "." con ","
+												let sanitizedInput = input.replace('.', ',');
 
-											// Rimuovi tutti i caratteri non validi (solo numeri e ",")
-											sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+												// Rimuovi tutti i caratteri non validi (solo numeri e ",")
+												sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
 
-											// Aggiorna lo stato con il valore sanitizzato
-											setNewChiusura({
-												...newChiusura(),
-												[key]: sanitizedInput,
-											});
-										}}
-										class={`w-full border rounded px-3 py-2 ${
-											// Validazione: campo è rosso se contiene più di una virgola
-											/^[0-9]*,?[0-9]*$/.test(newChiusura()[key]) ? '' : 'text-red-500'
-											}`}
-									/>
+												// Aggiorna lo stato con il valore sanitizzato
+												setNewChiusura({
+													...newChiusura(),
+													[key]: sanitizedInput,
+												});
+											}}
+
+											class={`rounded-lg px-3 py-1 text-center text-lg w-24 shadow-lg ${
+												// Validazione: campo è rosso se contiene più di una virgola
+												/^[0-9]*,?[0-9]*$/.test(newChiusura()[key]) ? '' : 'text-red-500'
+												}`}
+										/>
+										<label class="flex items-center justify-end font-medium w-4">€</label>
+									</div>
 								</div>
 							))}
 
-							<div class="flex justify-center mt-8 w-full">
+							{/* Campi numerici */}
+							{[
+								{ label: 'Battuti Cassa', key: 'battuti_cassa' },
+							].map(({ label, key }) => (
+								<div class="flex justify-between mb-4 pt-6 w-full" key={key}>
+									<label class="flex items-center justify-start font-medium">{label}</label>
+									<div class="flex">
+										<input
+											type="text"
+											value={newChiusura()[key] !== '' ? newChiusura()[key] : ''}
+											onInput={(e) => {
+												const input = e.currentTarget.value;
+
+												// Sostituisci immediatamente "." con ","
+												let sanitizedInput = input.replace('.', ',');
+
+												// Rimuovi tutti i caratteri non validi (solo numeri e ",")
+												sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+
+												// Aggiorna lo stato con il valore sanitizzato
+												setNewChiusura({
+													...newChiusura(),
+													[key]: sanitizedInput,
+												});
+											}}
+											class={`rounded-lg px-3 py-1 text-center text-lg w-24  shadow-lg ${
+												// Validazione: campo è rosso se contiene più di una virgola
+												/^[0-9]*,?[0-9]*$/.test(newChiusura()[key]) ? '' : 'text-red-500'
+												}`}
+										/>
+										<label class="flex items-center justify-end font-medium w-4">€</label>
+									</div>
+								</div>
+							))}
+
+							<div class="flex justify-center mt-12 w-full">
 								<button
 									type="submit"
-									class="px-4 py-2 w-full text-xl bg-blue-500 text-white rounded hover:bg-blue-600"
+									class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
 								>
 									SALVA
 								</button>
@@ -897,23 +946,23 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 			{/* popup di conferma cancellazione incasso */}
 			{showDeletePopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div class="bg-red-100 rounded-lg p-6 w-[90%] relative">
+				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+					<div class="bg-gradient-to-b from-red-200 to-red-50 rounded-lg p-6 w-[90%] max-w-[400px] relative">
 						<button
 							onClick={() => setShowDeletePopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
 						>
 							<img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
 						</button>
-						<h2 class="text-lg font-semibold mt-4 mb-4 text-center">
-							Verrà cancellato l'incasso registrato in data{' '}
+						<h2 class="text-lg font-semibold mt-4 mb-4 text-center text-gray-800">
+							Verrà cancellato questo incasso registrato in data{' '}
 							{new Date(selectedDay()).toLocaleDateString('it-IT')}
 						</h2>
 						<div class="flex justify-center gap-4 mt-6">
 
 							<button
 								onClick={deleteChiusura}
-								class="px-4 py-2 w-full bg-red-500 text-white font-bold rounded hover:bg-red-600"
+								class="px-4 py-2 w-full bg-red-800 text-white font-bold rounded-lg shadow-lg shadow-gray-400"
 							>
 								CONFERMA
 							</button>
@@ -924,8 +973,8 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 			{/* popup di modifica di un incasso */}
 			{showEditPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div class="bg-yellow-100 rounded-lg p-6 w-[90%] relative">
+				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+					<div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 						<button
 							onClick={() => setShowEditPopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
@@ -933,7 +982,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
 						</button>
 
-						<h2 class="text-lg font-bold mb-4 text-center">Modifica Incasso</h2>
+						<h2 class="text-lg font-bold mb-4 text-center">MODIFICA INCASSO</h2>
 
 						<form
 							onSubmit={async (e) => {
@@ -941,8 +990,8 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 								await updateChiusura();
 							}}
 						>
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Data Competenza</label>
+							<div class="flex flex-col items-center mb-8">
+								<label class="block font-medium mb-1 text-center">Data Competenza</label>
 								<input
 									type="date"
 									value={editChiusura().data_competenza || ''}
@@ -952,49 +1001,86 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 											data_competenza: e.currentTarget.value,
 										})
 									}
-									class="w-full border rounded px-3 py-2"
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
 								/>
 							</div>
 
 							{[
-								{ label: 'Battuti Cassa', key: 'battuti_cassa' },
+								{ label: 'Contanti Cassa', key: 'contanti_cassa' },
 								{ label: 'Carte', key: 'carte' },
 								{ label: 'Satispay', key: 'satispay' },
-								{ label: 'Contanti Cassa', key: 'contanti_cassa' },
 							].map(({ label, key }) => (
-								<div class="mb-4" key={key}>
-									<label class="block text-sm font-medium mb-1">{label}</label>
-									<input
-										type="text"
-										value={editChiusura()[key]}
-										onInput={(e) => {
-											const input = e.currentTarget.value;
+								<div class="flex justify-between mb-4 w-full" key={key}>
+									<label class="flex items-center justify-start font-medium">{label}</label>
+									<div class="flex">
+										<input
+											type="text"
+											value={editChiusura()[key]}
+											onInput={(e) => {
+												const input = e.currentTarget.value;
 
-											// Sostituisci immediatamente "." con ","
-											let sanitizedInput = input.replace('.', ',');
+												// Sostituisci immediatamente "." con ","
+												let sanitizedInput = input.replace('.', ',');
 
-											// Rimuovi tutti i caratteri non validi (solo numeri e ",")
-											sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+												// Rimuovi tutti i caratteri non validi (solo numeri e ",")
+												sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
 
-											// Aggiorna lo stato con il valore sanitizzato
-											setEditChiusura({
-												...editChiusura(),
-												[key]: sanitizedInput,
-											});
-										}}
+												// Aggiorna lo stato con il valore sanitizzato
+												setEditChiusura({
+													...editChiusura(),
+													[key]: sanitizedInput,
+												});
+											}}
 
-										class={`w-full border rounded px-3 py-2 ${
-											// Validazione: campo è rosso se contiene più di una virgola
-											/^[0-9]*,?[0-9]*$/.test(editChiusura()[key]) ? '' : 'text-red-500'
-											}`}
-									/>
+											class={`rounded-lg px-3 py-1 text-center text-lg w-24 shadow-lg ${
+												// Validazione: campo è rosso se contiene più di una virgola
+												/^[0-9]*,?[0-9]*$/.test(editChiusura()[key]) ? '' : 'text-red-500'
+												}`}
+										/>
+										<label class="flex items-center justify-end font-medium w-4">€</label>
+									</div>
 								</div>
 							))}
 
-							<div class="flex justify-center">
+							{[
+								{ label: 'Battuti Cassa', key: 'battuti_cassa' },
+							].map(({ label, key }) => (
+								<div class="flex justify-between mb-4 pt-6 w-full" key={key}>
+									<label class="flex items-center justify-start font-medium">{label}</label>
+									<div class="flex">
+										<input
+											type="text"
+											value={editChiusura()[key]}
+											onInput={(e) => {
+												const input = e.currentTarget.value;
+
+												// Sostituisci immediatamente "." con ","
+												let sanitizedInput = input.replace('.', ',');
+
+												// Rimuovi tutti i caratteri non validi (solo numeri e ",")
+												sanitizedInput = sanitizedInput.replace(/[^0-9,]/g, '');
+
+												// Aggiorna lo stato con il valore sanitizzato
+												setEditChiusura({
+													...editChiusura(),
+													[key]: sanitizedInput,
+												});
+											}}
+
+											class={`rounded-lg px-3 py-1 text-center text-lg w-24 shadow-lg ${
+												// Validazione: campo è rosso se contiene più di una virgola
+												/^[0-9]*,?[0-9]*$/.test(editChiusura()[key]) ? '' : 'text-red-500'
+												}`}
+										/>
+										<label class="flex items-center justify-end font-medium w-4">€</label>
+									</div>
+								</div>
+							))}
+
+							<div class="flex justify-center mt-12 w-full">
 								<button
 									type="submit"
-									class="w-full px-4 text-xl py-2 mt-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+									class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
 								>
 									SALVA
 								</button>
