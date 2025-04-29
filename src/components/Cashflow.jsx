@@ -18,7 +18,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 		descrizione: '',
 	});
 	const [showDeletePopup, setShowDeletePopup] = createSignal(false);
-	const [showEditPopup, setShowEditPopup] = createSignal(true);
+	const [showEditPopup, setShowEditPopup] = createSignal(false);
 	const [editMovementDirection, setEditMovementDirection] = createSignal('');
 	const [editCashMovement, setEditCashMovement] = createSignal({
 		tipo: '',
