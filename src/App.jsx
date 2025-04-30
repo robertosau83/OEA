@@ -165,7 +165,7 @@ const App = ({ companyId, companyName, nickName, bancaImportPDF, onLogout }) => 
 								<span class="text-sm font-semibold">{nickName}</span>
 								<span class="text-[11px] italic text-blue-200 truncate">{companyName}</span>
 							</div>
-	
+
 							{/* Moduli navigabili */}
 							<div class="flex-grow overflow-y-auto p-2 gap-2 flex flex-col">
 								{[
@@ -187,7 +187,7 @@ const App = ({ companyId, companyName, nickName, bancaImportPDF, onLogout }) => 
 									</button>
 								))}
 							</div>
-	
+
 							{/* Logout in fondo */}
 							<div class="h-[56px] flex items-center justify-center border-t border-blue-700">
 								<button onClick={onLogout} class="flex gap-2 hover:opacity-80">
@@ -196,7 +196,7 @@ const App = ({ companyId, companyName, nickName, bancaImportPDF, onLogout }) => 
 								</button>
 							</div>
 						</div>
-	
+
 						{/* Area contenuto */}
 						<div class="flex-grow overflow-auto bg-white">
 							{({
@@ -212,32 +212,50 @@ const App = ({ companyId, companyName, nickName, bancaImportPDF, onLogout }) => 
 							<button onClick={() => setCurrentComponentName("Home")}>
 								<img src="/home_white.svg" alt="Home" class="h-8" />
 							</button>
+
+							{/* Titolo dinamico, solo se non siamo su Home */}
+							{currentComponentName() !== "Home" && (
+								<div class="text-lg font-semibold text-center flex-1">
+									{({
+										Chiusure: "Chiusure",
+										Cashflow: "Cashflow",
+										EstrattoCC: "Estratto Conto",
+										Scadenze: "Scadenze",
+										Statistiche: "Statistiche",
+										Quadratura_CASH: "Allineamento CASH",
+										Quadratura_CC: "Allineamento CC",
+										Budget: "Budget"
+									})[currentComponentName()] || ""}
+								</div>
+							)}
+
 							<button onClick={onLogout}>
 								<img src="/logout-white.svg" alt="Logout" class="h-8" />
 							</button>
 						</div>
-	
+
 						{/* Contenuto mobile */}
 						<div class="flex-grow overflow-auto bg-white">
 							{currentComponentName() === "Home"
 								? <Home setCurrentComponent={setCurrentComponentName} />
 								: ({
-									Chiusure: <Chiusure {...sharedProps} />,
-									Cashflow: <Cashflow {...sharedProps} />,
-									EstrattoCC: <EstrattoCC {...sharedProps} />,
-									Scadenze: <Scadenze {...sharedProps} />,
-									Quadratura_CASH: <Quadratura_CASH {...sharedProps} />,
-									Quadratura_CC: <Quadratura_CC {...sharedProps} />,
-									Statistiche: <Statistiche {...sharedProps} />,
-									Budget: <Budget {...sharedProps} />,
-								}[currentComponentName()] || null)}
+									Chiusure: () => <Chiusure {...sharedProps} />,
+									Cashflow: () => <Cashflow {...sharedProps} />,
+									EstrattoCC: () => <EstrattoCC {...sharedProps} />,
+									Scadenze: () => <Scadenze {...sharedProps} />,
+									Quadratura_CASH: () => <Quadratura_CASH {...sharedProps} />,
+									Quadratura_CC: () => <Quadratura_CC {...sharedProps} />,
+									Statistiche: () => <Statistiche {...sharedProps} />,
+									Budget: () => <Budget {...sharedProps} />,
+								}[currentComponentName()] || (() => null))()}
 						</div>
+
 					</>
 				)
 			)}
 		</div>
 	);
-	
+
 
 };
 

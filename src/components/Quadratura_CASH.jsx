@@ -112,7 +112,7 @@ const Quadratura_CASH = ({ companyId, cashflow, cash, setCash }) => {
 					value={cutoffDate()}
 					onInput={(e) => setCutoffDate(e.currentTarget.value)}
 					max={new Date().toISOString().split("T")[0]}
-					class="mt-1 p-2 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+					class="mt-1 p-2 block rounded-md border border-gray-200 shadow-lg text-gray-600 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
 				/>
 			</div>
 

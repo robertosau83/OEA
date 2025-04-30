@@ -151,18 +151,17 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 	};
 
 	return (
-		<div class={`flex flex-col h-full px-2 pt-2 ${isLandscape() ? "text-xl" : "text-xs"}`}>
-			{/* <div class="flex flex-none text-gray-600 w-full h-[30px] items-center justify-center text-lg mb-2 font-semibold">
-        Scadenze
-      </div> */}
-			<div class="flex flex-none w-full h-[30px] border-b items-center font-semibold text-gray-900">
+		<div class={`flex flex-col h-full px-2 pt-2`}>
+
+			<div class={`flex flex-none w-full h-[30px] border-b items-center font-semibold text-gray-900 ${!isLandscape() && "text-xs"}`}>
 				<div class="text-center w-[20%]">Scadenza</div>
 				<div class="text-center w-[35%]">Descrizione</div>
 				<div class="text-center w-[20%]">Importo</div>
 				<div class="text-center w-[15%]">Pagato</div>
 				<div class="text-center w-[10%]"></div>
 			</div>
-			<div class="flex-grow overflow-y-auto pb-40 text-gray-800">
+
+			<div class={`flex-grow overflow-y-auto pb-40 text-gray-800 ${!isLandscape() && "text-xs"}`}>
 				{scadenze()
 					.sort((a, b) => new Date(a.data_scadenza) - new Date(b.data_scadenza))
 					.map(f => (
@@ -182,7 +181,7 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 							<div class="text-center w-[20%]">
 								{new Date(f.data_scadenza).toLocaleDateString('it-IT')}
 							</div>
-							<div class="text-center px-2 w-[35%]">{f.nome}</div>
+							<div class="px-2 flex flex-grow items-center justify-center">{f.nome}</div>
 							<div class="text-right pr-3 w-[20%] whitespace-nowrap">
 								{formatEuro(f.importo)} €
 							</div>
@@ -283,7 +282,7 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 									type="date"
 									value={newScadenza().data_ricevuta}
 									onInput={(e) => setNewScadenza({ ...newScadenza(), data_ricevuta: e.currentTarget.value })}
-									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
 								/>
 							</div>
 
@@ -296,14 +295,14 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 									type="date"
 									value={newScadenza().data_scadenza}
 									onInput={(e) => setNewScadenza({ ...newScadenza(), data_scadenza: e.currentTarget.value })}
-									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
 								/>
 							</div>
 
 							{/* Campo Nome */}
 							<div class="flex flex-col items-center mb-4">
 								<label class="block font-medium mb-1 text-center">
-									Nome
+									Descrizione
 								</label>
 								<input
 									type="text"
@@ -314,9 +313,9 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 							</div>
 
 							{/* Campo Descrizione */}
-							<div class="flex flex-col items-center mb-4">
+							<div class="flex flex-col items-center mb-7">
 								<label class="block font-medium mb-1 text-center">
-									Descrizione
+									Commento
 									<span class="ml-1 text-gray-400 font-normal">(opzionale)</span>
 								</label>
 								<input
@@ -328,7 +327,7 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 							</div>
 
 							{/* Campo Importo */}
-							<div class="flex justify-between items-center mb-8">
+							<div class="flex justify-between items-center mb-10">
 								<label class="flex items-center justify-start font-medium">Importo</label>
 								<div class="flex">
 									<input
@@ -361,110 +360,123 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 			)}
 
 
-			{showEditPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-					<div class="bg-white rounded-lg p-6 w-[90%] relative">
-						<button
-							onClick={() => setShowEditPopup(false)}
-							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-						>
-							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
-						</button>
+{showEditPopup() && (
+  <div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+    <div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 
-						<h2 class="text-lg font-bold mb-4 text-center">Modifica Scadenza</h2>
+      <button
+        onClick={() => setShowEditPopup(false)}
+        class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+      >
+        <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
+      </button>
 
-						{/* Sezione per selezionare la direzione del movimento in modifica */}
-						<div class="flex justify-center gap-1 mb-4">
-							<button
-								type="button"
-								class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${editMovementDirection() === 'entrata' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
-								onClick={() => setEditMovementDirection('entrata')}
-							>
-								IN ENTRATA
-							</button>
-							<button
-								type="button"
-								class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${editMovementDirection() === 'uscita' ? 'bg-red-200 text-red-800 font-semibold' : 'bg-gray-200 text-gray-700'}`}
-								onClick={() => setEditMovementDirection('uscita')}
-							>
-								IN USCITA
-							</button>
-						</div>
+      <h2 class="text-lg font-bold mb-6 text-center">
+        Modifica Scadenza
+      </h2>
 
-						<form
-							onSubmit={async (e) => {
-								e.preventDefault();
-								await updateScadenza();
-							}}
-						>
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Data Ricevuta</label>
-								<input
-									type="date"
-									value={editScadenza().data_ricevuta}
-									onInput={(e) => setEditScadenza({ ...editScadenza(), data_ricevuta: e.currentTarget.value })}
-									class="w-full border rounded px-3 py-2"
-								/>
-							</div>
+      {/* Direzione movimento */}
+      <div class="flex justify-center gap-1 mb-4">
+        <button
+          type="button"
+          class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${editMovementDirection() === 'entrata'
+            ? 'bg-green-200 text-green-800 font-semibold'
+            : 'bg-white text-gray-700'
+            }`}
+          onClick={() => setEditMovementDirection('entrata')}
+        >
+          IN ENTRATA
+        </button>
+        <button
+          type="button"
+          class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${editMovementDirection() === 'uscita'
+            ? 'bg-red-200 text-red-800 font-semibold'
+            : 'bg-white text-gray-700'
+            }`}
+          onClick={() => setEditMovementDirection('uscita')}
+        >
+          IN USCITA
+        </button>
+      </div>
 
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Data Scadenza</label>
-								<input
-									type="date"
-									value={editScadenza().data_scadenza}
-									onInput={(e) => setEditScadenza({ ...editScadenza(), data_scadenza: e.currentTarget.value })}
-									class="w-full border rounded px-3 py-2"
-								/>
-							</div>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          await updateScadenza();
+        }}
+      >
+        <div class="flex flex-col items-center mb-4">
+          <label class="block font-medium mb-1 text-center">Data Ricevuta</label>
+          <input
+            type="date"
+            value={editScadenza().data_ricevuta}
+            onInput={(e) => setEditScadenza({ ...editScadenza(), data_ricevuta: e.currentTarget.value })}
+            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
+          />
+        </div>
 
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Nome</label>
-								<input
-									type="text"
-									value={editScadenza().nome}
-									onInput={(e) => setEditScadenza({ ...editScadenza(), nome: e.currentTarget.value })}
-									class="w-full border rounded px-3 py-2"
-								/>
-							</div>
+        <div class="flex flex-col items-center mb-4">
+          <label class="block font-medium mb-1 text-center">Data Scadenza</label>
+          <input
+            type="date"
+            value={editScadenza().data_scadenza}
+            onInput={(e) => setEditScadenza({ ...editScadenza(), data_scadenza: e.currentTarget.value })}
+            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
+          />
+        </div>
 
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">
-									Descrizione<span class="ml-1 text-gray-400 font-normal">(opzionale)</span>
-								</label>
-								<input
-									type="text"
-									value={editScadenza().descrizione}
-									onInput={(e) => setEditScadenza({ ...editScadenza(), descrizione: e.currentTarget.value })}
-									class="w-full border rounded px-3 py-2"
-								/>
-							</div>
+        <div class="flex flex-col items-center mb-4">
+          <label class="block font-medium mb-1 text-center">Descrizione</label>
+          <input
+            type="text"
+            value={editScadenza().nome}
+            onInput={(e) => setEditScadenza({ ...editScadenza(), nome: e.currentTarget.value })}
+            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
+          />
+        </div>
 
-							<div class="mb-4">
-								<label class="block text-sm font-medium mb-1">Importo</label>
-								<input
-									type="text"
-									value={editScadenza().importo}
-									onInput={(e) => {
-										let input = e.currentTarget.value;
-										input = input.replace(/[^0-9,]/g, '');
-										setEditScadenza({ ...editScadenza(), importo: input });
-									}}
-									class="w-full border rounded px-3 py-2"
-								/>
-							</div>
+        <div class="flex flex-col items-center mb-7">
+          <label class="block font-medium mb-1 text-center">
+            Commento<span class="ml-1 text-gray-400 font-normal">(opzionale)</span>
+          </label>
+          <input
+            type="text"
+            value={editScadenza().descrizione}
+            onInput={(e) => setEditScadenza({ ...editScadenza(), descrizione: e.currentTarget.value })}
+            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
+          />
+        </div>
 
-							<div class="flex justify-center mt-8 w-full">
-								<button
-									type="submit"
-									class="px-4 py-2 w-full text-xl bg-blue-500 text-white rounded hover:bg-blue-600"
-								>
-									SALVA
-								</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			)}
+        <div class="flex justify-between items-center mb-8">
+          <label class="flex items-center justify-start font-medium">Importo</label>
+          <div class="flex">
+            <input
+              type="text"
+              value={editScadenza().importo}
+              onInput={(e) => {
+                let input = e.currentTarget.value;
+                input = input.replace(/[^0-9,]/g, '');
+                setEditScadenza({ ...editScadenza(), importo: input });
+              }}
+              class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-24"
+            />
+            <label class="flex items-center justify-end font-medium w-4">€</label>
+          </div>
+        </div>
+
+        <div class="flex justify-center mt-8 w-full">
+          <button
+            type="submit"
+            class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
+          >
+            SALVA
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
 		</div>
 	);
 };

@@ -23,6 +23,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 		contanti_cassa_netto_spese_serata: 0,
 	});
 	const [selectedTag, setSelectedTag] = createSignal(''); // Stato per il tag selezionato
+	const [isSaving, setIsSaving] = createSignal(false);
 
 	const tagMap = {
 		contanti: 'contanti_cassa_lordo_spese_serata',
@@ -222,68 +223,76 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 	//Funzione per aggiungere un nuovo incasso
 	const addNewChiusura = async () => {
-		// Controlla se esiste già un incasso con la stessa data di competenza
-		const existing = chiusure().find(
-			(entry) => entry.data_competenza === newChiusura().data_competenza
-		);
 
-		if (existing) {
-			// Mostra un messaggio di errore
-			alert(
-				`Non è possibile inserire un incasso per la data di competenza ${new Date(
-					newChiusura().data_competenza
-				).toLocaleDateString('it-IT')}. Esiste già un incasso per questa data.`
+		setIsSaving(true); // ✅ blocca subito
+
+		try {
+
+			// Controlla se esiste già un incasso con la stessa data di competenza
+			const existing = chiusure().find(
+				(entry) => entry.data_competenza === newChiusura().data_competenza
 			);
-			return;
-		}
 
-		// Verifica e converte i campi numerici
-		const fieldsToCheck = ['battuti_cassa', 'carte', 'satispay', 'contanti_cassa'];
-		const convertedValues = {};
-
-		for (const field of fieldsToCheck) {
-			const value = newChiusura()[field];
-
-			// Se il campo è vuoto, imposta a 0
-			if (value === '') {
-				convertedValues[field] = 0;
-				continue;
+			if (existing) {
+				// Mostra un messaggio di errore
+				alert(
+					`Non è possibile inserire un incasso per la data di competenza ${new Date(
+						newChiusura().data_competenza
+					).toLocaleDateString('it-IT')}. Esiste già un incasso per questa data.`
+				);
+				return;
 			}
 
-			// Sostituisci eventuale "," con "."
-			const sanitizedValue = value.replace(',', '.');
+			// Verifica e converte i campi numerici
+			const fieldsToCheck = ['battuti_cassa', 'carte', 'satispay', 'contanti_cassa'];
+			const convertedValues = {};
 
-			// Prova a convertire in numero
-			const numericValue = parseFloat(sanitizedValue);
+			for (const field of fieldsToCheck) {
+				const value = newChiusura()[field];
 
-			if (isNaN(numericValue)) {
-				alert(`Il valore inserito per "${field}" non è valido. Inserisci un numero valido.`);
-				return; // Blocca l'inserimento
+				// Se il campo è vuoto, imposta a 0
+				if (value === '') {
+					convertedValues[field] = 0;
+					continue;
+				}
+
+				// Sostituisci eventuale "," con "."
+				const sanitizedValue = value.replace(',', '.');
+
+				// Prova a convertire in numero
+				const numericValue = parseFloat(sanitizedValue);
+
+				if (isNaN(numericValue)) {
+					alert(`Il valore inserito per "${field}" non è valido. Inserisci un numero valido.`);
+					return; // Blocca l'inserimento
+				}
+
+				convertedValues[field] = numericValue; // Salva il valore convertito
 			}
 
-			convertedValues[field] = numericValue; // Salva il valore convertito
-		}
+			// Crea un nuovo oggetto incasso con i campi convertiti
+			const incassoToInsert = {
+				...newChiusura(),
+				...convertedValues,
+				company_id: companyId, // 🔹 Assicura che ogni insert abbia il company_id corretto
+			};
 
-		// Crea un nuovo oggetto incasso con i campi convertiti
-		const incassoToInsert = {
-			...newChiusura(),
-			...convertedValues,
-			company_id: companyId, // 🔹 Assicura che ogni insert abbia il company_id corretto
-		};
+			// Inserisci nel database
+			const { data, error } = await supabase
+				.from('chiusure')
+				.insert([incassoToInsert], { returning: 'representation' })
+				.select('*'); // Recupera i dati appena inseriti
 
-		// Inserisci nel database
-		const { data, error } = await supabase
-			.from('chiusure')
-			.insert([incassoToInsert], { returning: 'representation' })
-			.select('*'); // Recupera i dati appena inseriti
-
-		if (error) {
-			console.error("Errore durante l'inserimento:", error.message);
-		} else {
-			console.log('Incasso aggiunto con successo:', data);
-			setChiusure((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale Incassi
-			//await aggregateIncassiWithSpese();
-			setShowAddPopup(false); // Chiudi il popup
+			if (error) {
+				console.error("Errore durante l'inserimento:", error.message);
+			} else {
+				console.log('Incasso aggiunto con successo:', data);
+				setChiusure((prev) => [...prev, ...(data || [])]); // Aggiungi i nuovi dati allo stato locale Incassi
+				//await aggregateIncassiWithSpese();
+				setShowAddPopup(false); // Chiudi il popup
+			}
+		} finally {
+			setIsSaving(false); // ✅ riattiva il bottone
 		}
 	};
 
@@ -876,6 +885,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 					</button>
 				)}
 			</div>
+
 			{/* Popup per aggiungere un nuovo incasso */}
 			{showAddPopup() && (
 				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
@@ -987,9 +997,11 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<div class="flex justify-center mt-12 w-full">
 								<button
 									type="submit"
-									class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
-								>
-									SALVA
+									disabled={isSaving()}
+									class={`px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500 ${
+										isSaving() ? 'opacity-50 cursor-not-allowed' : ''
+									}`}								>
+									{isSaving() ? 'SALVATAGGIO...' : 'SALVA'}
 								</button>
 							</div>
 						</form>
@@ -1009,7 +1021,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<img src="/cancel-black.svg" alt="cancel" class="w-7 h-auto" />
 						</button>
 						<h2 class="text-lg font-semibold mt-4 mb-4 text-center text-gray-800">
-							Verrà cancellato questo incasso registrato in data{' '}
+							Verrà cancellato questa chiusura registrata in data{' '}
 							{new Date(selectedDay()).toLocaleDateString('it-IT')}
 						</h2>
 						<div class="flex justify-center gap-4 mt-6">
@@ -1036,7 +1048,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
 						</button>
 
-						<h2 class="text-lg font-bold mb-4 text-center">MODIFICA INCASSO</h2>
+						<h2 class="text-lg font-bold mb-4 text-center">MODIFICA CHIUSURA</h2>
 
 						<form
 							onSubmit={async (e) => {
