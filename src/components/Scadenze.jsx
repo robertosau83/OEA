@@ -153,12 +153,12 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 	return (
 		<div class={`flex flex-col h-full px-2 pt-2`}>
 
-			<div class={`flex flex-none w-full h-[30px] border-b items-center font-semibold text-gray-900 ${!isLandscape() && "text-xs"}`}>
-				<div class="text-center w-[20%]">Scadenza</div>
-				<div class="text-center w-[35%]">Descrizione</div>
-				<div class="text-center w-[20%]">Importo</div>
-				<div class="text-center w-[15%]">Pagato</div>
-				<div class="text-center w-[10%]"></div>
+			<div class={`flex flex-none w-full h-[30px] border-b items-center font-semibold text-gray-900 ${!isLandscape() ? "text-xs" : "pr-4"}`}>
+				<div class="flex-none text-center w-[20%]">Scadenza</div>
+				<div class="flex-grow text-center">Descrizione</div>
+				<div class="flex-none text-center w-[20%]">Importo</div>
+				<div class="flex-none text-center w-[15%]">Pagato</div>
+				<div class="flex-none text-center w-[10%]"></div>   
 			</div>
 
 			<div class={`flex-grow overflow-y-auto pb-40 text-gray-800 ${!isLandscape() && "text-xs"}`}>
@@ -178,14 +178,14 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 								setShowEditPopup(true);
 							}}
 						>
-							<div class="text-center w-[20%]">
+							<div class="flex-none text-center w-[20%]">
 								{new Date(f.data_scadenza).toLocaleDateString('it-IT')}
 							</div>
-							<div class="px-2 flex flex-grow items-center justify-center">{f.nome}</div>
-							<div class="text-right pr-3 w-[20%] whitespace-nowrap">
+							<div class="px-2 flex flex-grow items-center justify-center text-center">{f.nome}</div>
+							<div class="flex-none text-right pr-3 w-[20%] whitespace-nowrap">
 								{formatEuro(f.importo)} €
 							</div>
-							<div class="text-center w-[15%] h-full">
+							<div class="flex-none flex items-center justify-center w-[15%] h-full">
 								<input
 									type="checkbox"
 									checked={f.status === 'PAYED'}
@@ -194,7 +194,7 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 									class="cursor-pointer w-6 h-6"
 								/>
 							</div>
-							<div class="text-center w-[10%]">
+							<div class="flex-none text-center w-[10%]">
 								<button
 									onClick={(e) => {
 										e.stopPropagation();
@@ -359,123 +359,122 @@ const Scadenze = ({ companyId, scadenze, setScadenze, isLandscape }) => {
 				</div>
 			)}
 
+			{showEditPopup() && (
+				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+					<div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 
-{showEditPopup() && (
-  <div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
-    <div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
+						<button
+							onClick={() => setShowEditPopup(false)}
+							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
+						>
+							<img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
+						</button>
 
-      <button
-        onClick={() => setShowEditPopup(false)}
-        class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
-      >
-        <img src="/cancel-black.svg" alt="cancel" class="h-7 mx-auto" />
-      </button>
+						<h2 class="text-lg font-bold mb-6 text-center">
+							Modifica Scadenza
+						</h2>
 
-      <h2 class="text-lg font-bold mb-6 text-center">
-        Modifica Scadenza
-      </h2>
+						{/* Direzione movimento */}
+						<div class="flex justify-center gap-1 mb-4">
+							<button
+								type="button"
+								class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${editMovementDirection() === 'entrata'
+									? 'bg-green-200 text-green-800 font-semibold'
+									: 'bg-white text-gray-700'
+									}`}
+								onClick={() => setEditMovementDirection('entrata')}
+							>
+								IN ENTRATA
+							</button>
+							<button
+								type="button"
+								class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${editMovementDirection() === 'uscita'
+									? 'bg-red-200 text-red-800 font-semibold'
+									: 'bg-white text-gray-700'
+									}`}
+								onClick={() => setEditMovementDirection('uscita')}
+							>
+								IN USCITA
+							</button>
+						</div>
 
-      {/* Direzione movimento */}
-      <div class="flex justify-center gap-1 mb-4">
-        <button
-          type="button"
-          class={`px-4 py-2 w-[140px] rounded-l-full shadow-lg ${editMovementDirection() === 'entrata'
-            ? 'bg-green-200 text-green-800 font-semibold'
-            : 'bg-white text-gray-700'
-            }`}
-          onClick={() => setEditMovementDirection('entrata')}
-        >
-          IN ENTRATA
-        </button>
-        <button
-          type="button"
-          class={`px-4 py-2 w-[140px] rounded-r-full shadow-lg ${editMovementDirection() === 'uscita'
-            ? 'bg-red-200 text-red-800 font-semibold'
-            : 'bg-white text-gray-700'
-            }`}
-          onClick={() => setEditMovementDirection('uscita')}
-        >
-          IN USCITA
-        </button>
-      </div>
+						<form
+							onSubmit={async (e) => {
+								e.preventDefault();
+								await updateScadenza();
+							}}
+						>
+							<div class="flex flex-col items-center mb-4">
+								<label class="block font-medium mb-1 text-center">Data Ricevuta</label>
+								<input
+									type="date"
+									value={editScadenza().data_ricevuta}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), data_ricevuta: e.currentTarget.value })}
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
+								/>
+							</div>
 
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          await updateScadenza();
-        }}
-      >
-        <div class="flex flex-col items-center mb-4">
-          <label class="block font-medium mb-1 text-center">Data Ricevuta</label>
-          <input
-            type="date"
-            value={editScadenza().data_ricevuta}
-            onInput={(e) => setEditScadenza({ ...editScadenza(), data_ricevuta: e.currentTarget.value })}
-            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
-          />
-        </div>
+							<div class="flex flex-col items-center mb-4">
+								<label class="block font-medium mb-1 text-center">Data Scadenza</label>
+								<input
+									type="date"
+									value={editScadenza().data_scadenza}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), data_scadenza: e.currentTarget.value })}
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
+								/>
+							</div>
 
-        <div class="flex flex-col items-center mb-4">
-          <label class="block font-medium mb-1 text-center">Data Scadenza</label>
-          <input
-            type="date"
-            value={editScadenza().data_scadenza}
-            onInput={(e) => setEditScadenza({ ...editScadenza(), data_scadenza: e.currentTarget.value })}
-            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg"
-          />
-        </div>
+							<div class="flex flex-col items-center mb-4">
+								<label class="block font-medium mb-1 text-center">Descrizione</label>
+								<input
+									type="text"
+									value={editScadenza().nome}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), nome: e.currentTarget.value })}
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
+								/>
+							</div>
 
-        <div class="flex flex-col items-center mb-4">
-          <label class="block font-medium mb-1 text-center">Descrizione</label>
-          <input
-            type="text"
-            value={editScadenza().nome}
-            onInput={(e) => setEditScadenza({ ...editScadenza(), nome: e.currentTarget.value })}
-            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
-          />
-        </div>
+							<div class="flex flex-col items-center mb-7">
+								<label class="block font-medium mb-1 text-center">
+									Commento<span class="ml-1 text-gray-400 font-normal">(opzionale)</span>
+								</label>
+								<input
+									type="text"
+									value={editScadenza().descrizione}
+									onInput={(e) => setEditScadenza({ ...editScadenza(), descrizione: e.currentTarget.value })}
+									class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
+								/>
+							</div>
 
-        <div class="flex flex-col items-center mb-7">
-          <label class="block font-medium mb-1 text-center">
-            Commento<span class="ml-1 text-gray-400 font-normal">(opzionale)</span>
-          </label>
-          <input
-            type="text"
-            value={editScadenza().descrizione}
-            onInput={(e) => setEditScadenza({ ...editScadenza(), descrizione: e.currentTarget.value })}
-            class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-full"
-          />
-        </div>
+							<div class="flex justify-between items-center mb-8">
+								<label class="flex items-center justify-start font-medium">Importo</label>
+								<div class="flex">
+									<input
+										type="text"
+										value={editScadenza().importo}
+										onInput={(e) => {
+											let input = e.currentTarget.value;
+											input = input.replace(/[^0-9,]/g, '');
+											setEditScadenza({ ...editScadenza(), importo: input });
+										}}
+										class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-24"
+									/>
+									<label class="flex items-center justify-end font-medium w-4">€</label>
+								</div>
+							</div>
 
-        <div class="flex justify-between items-center mb-8">
-          <label class="flex items-center justify-start font-medium">Importo</label>
-          <div class="flex">
-            <input
-              type="text"
-              value={editScadenza().importo}
-              onInput={(e) => {
-                let input = e.currentTarget.value;
-                input = input.replace(/[^0-9,]/g, '');
-                setEditScadenza({ ...editScadenza(), importo: input });
-              }}
-              class="rounded-lg px-3 py-1 text-center text-lg shadow-lg w-24"
-            />
-            <label class="flex items-center justify-end font-medium w-4">€</label>
-          </div>
-        </div>
-
-        <div class="flex justify-center mt-8 w-full">
-          <button
-            type="submit"
-            class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
-          >
-            SALVA
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
+							<div class="flex justify-center mt-8 w-full">
+								<button
+									type="submit"
+									class="px-4 py-2 w-full text-xl bg-blue-800 text-white font-semibold rounded-lg shadow-lg shadow-gray-500"
+								>
+									SALVA
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
 
 		</div>
 	);

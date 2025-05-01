@@ -23,8 +23,8 @@ const App = ({ companyId, companyName, nickName, bancaImportPDF, onLogout }) => 
 	const [scadenze, setScadenze] = createSignal([]);
 	const [budget, setBudget] = createSignal([]);
 	const [chiusureConSpese, setChiusureConSpese] = createSignal([]);
-
 	const [isLandscape, setIsLandscape] = createSignal(window.innerWidth > window.innerHeight);
+	const [showUserMenu, setShowUserMenu] = createSignal(false);
 
 	const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
 
@@ -229,9 +229,42 @@ const App = ({ companyId, companyName, nickName, bancaImportPDF, onLogout }) => 
 								</div>
 							)}
 
-							<button onClick={onLogout}>
-								<img src="/logout-white.svg" alt="Logout" class="h-8" />
-							</button>
+							<div class="relative">
+								<button onClick={() => setShowUserMenu(true)}>
+									<img src="/user-white.svg" alt="user" class="h-9" />
+								</button>
+
+								{showUserMenu() && (
+									<>
+										{/* Layer cliccabile dietro il popup */}
+										<div
+											class="fixed inset-0 bg-black opacity-60 z-40"
+											onClick={() => setShowUserMenu(false)}
+										/>
+
+										{/* Popup visibile sopra */}
+										<div class="absolute flex flex-col items-center justify-between p-2 right-0 bg-white border border-gray-300 rounded-lg shadow-lg z-50 w-40">
+											<div class="flex flex-col items-center justify-center mb-4">
+												<div class="text-gray-600">{nickName}</div>
+												<div class="text-gray-600">{companyName}</div>
+											</div>
+											<div class="w-full">
+												<button
+													onClick={() => {
+														setShowUserMenu(false);
+														onLogout();
+													}}
+													class="flex items-center justify-center w-full border rounded-lg px-4 py-2 bg-blue-800 text-sm text-white font-semibold"
+												>
+													Logout
+												</button>
+											</div>
+										</div>
+									</>
+								)}
+							</div>
+
+
 						</div>
 
 						{/* Contenuto mobile */}

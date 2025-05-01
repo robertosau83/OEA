@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient.js';
 
-const Budget = ({ companyId, budget, setBudget }) => {
+const Budget = ({ companyId, budget, setBudget, isLandscape }) => {
 	// Stato per la modifica inline; per ogni record si memorizzano le stringhe dei numeri
 	const [editing, setEditing] = createSignal({});
 
@@ -9,6 +9,7 @@ const Budget = ({ companyId, budget, setBudget }) => {
 	const [newDate, setNewDate] = createSignal("");
 	const [newIncassi, setNewIncassi] = createSignal("");
 	const [newSpese, setNewSpese] = createSignal("");
+	const [showModal, setShowModal] = createSignal(false);
 
 	// Array dei nomi dei mesi in italiano
 	const monthNames = [
@@ -190,31 +191,32 @@ const Budget = ({ companyId, budget, setBudget }) => {
 	};
 
 	return (
-		<div class="flex items-center justify-center w-full h-full">
-			<div class="flex flex-col w-[100%] h-full p-4">
-				<h2 class="text-center text-2xl mb-4">Budget</h2>
-				<div class="flex flex-col w-full h-full overflow-y-auto text-xs">
-					<table class="w-full table-auto">
-						<thead class="sticky top-0 bg-gray-100 z-10">
-							<tr class="border-b">
-								<th class="w-[140px] min-w-[140px]">Data</th>
-								<th>Incassi</th>
-								<th>Spese</th>
-								<th class="max-w-[30px]"></th>
-							</tr>
-						</thead>
-						<tbody>
-							{[...budget()]
-								.sort((a, b) => {
-									if (a.anno_rif !== b.anno_rif) return a.anno_rif - b.anno_rif;
-									return a.mese_rif - b.mese_rif;
-								})
-								.map(b => (
-									<tr class="h-[50px]" key={b.id}>
-										<td class="border-b px-2 text-base">
-											{getMonthYearText(b.mese_rif, b.anno_rif)}
-										</td>
-										<td class="border-b px-2 min-w-[100px]">
+		<div>
+			<div class={`flex flex-col h-full items-center text-sm pb-40 ${isLandscape() && "w-[500px] mx-auto"}`}>
+				{/* Intestazione fissa */}
+				<div class="w-full flex items-center font-semibold text-left py-2 border-b px-2 bg-white sticky top-0 z-10">
+					<div class="ml-2 w-[130px] text-center">Data</div>
+					<div class="flex flex-grow">
+						<div class="w-1/2 text-center">Incassi</div>
+						<div class="w-1/2 text-center">Spese</div>
+					</div>
+					<div class="w-[40px] mr-2"></div>
+				</div>
+
+				{/* Righe dinamiche */}
+				<div class="flex flex-col gap-2 mt-1 w-full px-2 overflow-y-auto flex-grow">
+					{[...budget()]
+						.sort((a, b) => {
+							if (a.anno_rif !== b.anno_rif) return a.anno_rif - b.anno_rif;
+							return a.mese_rif - b.mese_rif;
+						})
+						.map(b => (
+							<div class="flex items-center w-full bg-white shadow-md rounded-lg border py-2" key={b.id}>
+								<div class="flex-none ml-2 w-[130px]">{getMonthYearText(b.mese_rif, b.anno_rif)}</div>
+
+								<div class="flex flex-grow">
+									<div class="w-1/2 text-right">
+										<div class="w-[90%]">
 											<input
 												type="text"
 												value={editing()[b.id]?.incassi !== undefined
@@ -222,10 +224,13 @@ const Budget = ({ companyId, budget, setBudget }) => {
 													: formatEuro(b.incassi)}
 												onInput={(e) => handleEditChange(b.id, 'incassi', e.target.value)}
 												onBlur={() => handleSave(b.id)}
-												class="w-full pl-2 h-[40px] text-base rounded-lg text-right pr-2"
+												class="w-full h-[36px] rounded-lg text-right px-2 border font-semibold text-green-800"
 											/>
-										</td>
-										<td class="border-b px-2 min-w-[100px]">
+										</div>
+									</div>
+
+									<div class="w-1/2 text-right">
+										<div class="w-[90%]">
 											<input
 												type="text"
 												value={editing()[b.id]?.spese !== undefined
@@ -233,63 +238,88 @@ const Budget = ({ companyId, budget, setBudget }) => {
 													: formatEuro(b.spese)}
 												onInput={(e) => handleEditChange(b.id, 'spese', e.target.value)}
 												onBlur={() => handleSave(b.id)}
-												class="w-full pl-2 h-[40px] min-w-[50px] text-base rounded-lg text-right pr-2"
+												class="w-full h-[36px] rounded-lg text-right pr-2 pl-2 border font-semibold text-red-800"
 											/>
-										</td>
-										<td class="border-b w-[60px] p-0">
-											<div
-												onClick={() => handleDelete(b.id)}
-												class="flex items-center justify-center h-full cursor-pointer w-[40px]"
-											>
-												<img src="/cancel-black.svg" alt="Elimina" class="w-6 h-6" />
-											</div>
-										</td>
-									</tr>
-								))
-							}
-							<tr>
-								<td class="border-b h-full">
-									<select
-										value={newDate()}
-										onInput={(e) => setNewDate(e.target.value)}
-										class="w-full rounded-lg pl-2 h-[30px]"
-									>
-										<option value="">Seleziona data</option>
-										{dateOptions.map(opt => (
-											<option key={`${opt.month}-${opt.year}`} value={opt.value}>
-												{opt.value}
-											</option>
-										))}
-									</select>
-								</td>
-								<td class="border-b p-2">
-									<input
-										type="text"
-										value={newIncassi()}
-										onInput={(e) => setNewIncassi(e.target.value.replace(/\D/g, ""))}
-										placeholder="Incassi"
-										class="w-full text-2xl rounded-lg pl-2 placeholder:text-center"
-									/>
-								</td>
-								<td class="border-b p-2">
-									<input
-										type="text"
-										value={newSpese()}
-										onInput={(e) => setNewSpese(e.target.value.replace(/\D/g, ""))}
-										placeholder="Spese"
-										class="w-full text-2xl rounded-lg pl-2 placeholder:text-center"
-									/>
-								</td>
-								<td class="border-b p-2">
-									<button onClick={handleAdd} class="bg-green-500 text-white px-2 py-1 rounded">
-										Aggiungi
-									</button>
-								</td>
-							</tr>
-						</tbody>
-					</table>
+										</div>
+									</div>
+								</div>
+
+								<div class="flex-none w-[40px] flex justify-center">
+									<div onClick={() => handleDelete(b.id)} class="cursor-pointer">
+										<img src="/cancel-black.svg" alt="Elimina" class="w-6 h-6" />
+									</div>
+								</div>
+							</div>
+						))
+					}
 				</div>
 			</div>
+
+			{/* Bottone rotondo */}
+			<button
+				onClick={() => setShowModal(true)}
+				class="fixed bottom-6 right-6 w-16 h-16 bg-blue-800 text-white rounded-full shadow-lg shadow-gray-400 flex items-center justify-center"
+			>
+				<img src="/plus-white.svg" alt="plus" class="h-7 mx-auto" />
+			</button>
+
+			{/* popup di inserimento  */}
+			{showModal() && (
+				<div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+					<div class="bg-white rounded-lg p-6 w-[300px]">
+						<h2 class="text-lg font-bold mb-4">Nuovo Budget</h2>
+
+						<label class="block mb-2">
+							Data
+							<select
+								value={newDate()}
+								onInput={(e) => setNewDate(e.target.value)}
+								class="w-full mt-1 rounded border px-2 py-1"
+							>
+								<option value="">Seleziona data</option>
+								{dateOptions.map(opt => (
+									<option key={`${opt.month}-${opt.year}`} value={opt.value}>
+										{opt.value}
+									</option>
+								))}
+							</select>
+						</label>
+
+						<label class="block mb-2">
+							Incassi
+							<input
+								type="text"
+								value={newIncassi()}
+								onInput={(e) => setNewIncassi(e.target.value.replace(/\D/g, ""))}
+								class="w-full mt-1 rounded border px-2 py-1"
+							/>
+						</label>
+
+						<label class="block mb-4">
+							Spese
+							<input
+								type="text"
+								value={newSpese()}
+								onInput={(e) => setNewSpese(e.target.value.replace(/\D/g, ""))}
+								class="w-full mt-1 rounded border px-2 py-1"
+							/>
+						</label>
+
+						<div class="flex justify-end space-x-2">
+							<button onClick={() => setShowModal(false)} class="px-3 py-1 rounded bg-gray-300">
+								Annulla
+							</button>
+							<button onClick={async () => {
+								await handleAdd();
+								setShowModal(false);
+							}} class="px-3 py-1 rounded bg-blue-600 text-white">
+								Salva
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
 		</div>
 	);
 };

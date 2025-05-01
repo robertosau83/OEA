@@ -1,7 +1,7 @@
 import { createSignal, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }) => {
+const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget, isLandscape }) => {
 	const [view, setView] = createSignal('year'); // 'month' | 'day' | 'detail'
 	const [selectedYear, setSelectedYear] = createSignal(''); // Anno selezionato
 	const [selectedMonth, setSelectedMonth] = createSignal('');
@@ -445,10 +445,10 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 	};
 
 	return (
-		<div class="flex flex-col h-full px-2 bg-white">
+		<div class={`flex flex-col h-full px-2 bg-white ${isLandscape() && "items-center"}`}>
 
 			{/* Intestazioni e tags - NON scrollabili */}
-			<div class="flex-none">
+			<div class={`flex-none ${isLandscape() && "w-[500px]"}`}>
 
 				{/* intestazioni di pagina */}
 				{view() === 'year' && (
@@ -514,7 +514,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 			</div>
 
 			{/* Contenuto scrollabile */}
-			<div class="flex-grow overflow-y-auto">
+			<div class={`flex-grow overflow-y-auto ${isLandscape() && "w-[500px]"}`}>
 
 				{/* View degli incassi anno per anno */}
 				{view() === 'year' && (
@@ -888,7 +888,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 			{/* Popup per aggiungere un nuovo incasso */}
 			{showAddPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+				<div class={`fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ${isLandscape() && "ml-[200px]"}`}>
 					<div class="bg-gradient-to-b from-blue-200 to-blue-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 						<button
 							onClick={() => setShowAddPopup(false)}
@@ -1012,8 +1012,8 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 			{/* popup di conferma cancellazione incasso */}
 			{showDeletePopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-					<div class="bg-gradient-to-b from-red-200 to-red-50 rounded-lg p-6 w-[90%] max-w-[400px] relative">
+				<div class={`fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ${isLandscape() && "ml-[200px]"}`}>
+					<div class="bg-gradient-to-b from-red-200 to-red-50 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 						<button
 							onClick={() => setShowDeletePopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
@@ -1039,7 +1039,7 @@ const Chiusure = ({ companyId, chiusure, setChiusure, chiusureConSpese, budget }
 
 			{/* popup di modifica di un incasso */}
 			{showEditPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+				<div class={`fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ${isLandscape() && "ml-[200px]"}`}>
 					<div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 						<button
 							onClick={() => setShowEditPopup(false)}

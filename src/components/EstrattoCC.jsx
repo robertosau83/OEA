@@ -548,37 +548,42 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 					{filteredMovCC().length > 0 ? (
 						// Container scrollabile con altezza fissa
 						<div class="flex-grow w-full pb-[100px]">
-							<table class="table-fixed w-full border-separate border-spacing-y-2 px-2">
-								<thead class="bg-white sticky top-0 z-10">
-									<tr>
-										<th class="px-1 py-1 w-[15%]">Data Op</th>
-										<th class="px-1 py-1 w-[50%]">Descrizione</th>
-										<th class="px-1 py-1 w-[15%]">Importo</th>
-										<th class="px-1 py-1 w-[20%]">Tipo</th>
-									</tr>
-								</thead>
-								<tbody>
-									{filteredMovCC().map((row) => (
-										<tr class={`${row.importo > 0 ? "bg-green-50" : "bg-red-50"} h-10`} key={row.id}>
-											<td class="rounded-l-lg border-b border-gray-200 px-1 py-1 text-center">{formatDate(row.data_operazione)}</td>
-											<td class="border-b border-gray-200 px-1 py-1 break-words">{row.descrizione}</td>
-											<td class="border-b border-gray-200 px-1 py-1 text-right">
-												{formatEuro(row.importo, true)}
-											</td>
-											<td
-												class={`rounded-r-lg border-b border-gray-200 px-1 py-1 text-center cursor-pointer ${!row.tipo || row.tipo.trim() === "" ? "text-red-500 font-semibold" : "underline text-blue-600"}`}
-												onClick={() => {
-													setSelectedRow(row);
-													//console.log(selectedRow());
-													setShowPopup(true);
-												}}
-											>
-												{!row.tipo || row.tipo.trim() === "" ? "Tipo mancante!" : row.tipo}
-											</td>
-										</tr>
-									))}
-								</tbody>
-							</table>
+							<div class="flex flex-col gap-2 px-2">
+								{/* Intestazione sticky */}
+								<div class="sticky top-0 z-10 bg-white border-b border-gray-300 flex font-semibold text-left py-2 px-1 text-black">
+									<div class="flex-none w-[15%] text-center">Data Op</div>
+									<div class="flex-grow pl-1">Descrizione</div>
+									<div class="flex-none w-[15%] text-right pr-2">Importo</div>
+									<div class="flex-none w-[20%] text-center">Tipo</div>
+								</div>
+
+								{/* Righe dinamiche */}
+								{filteredMovCC().map((row) => (
+									<div
+										key={row.id}
+										class={`flex items-center py-2 rounded-lg shadow-sm px-1 ${row.importo > 0 ? "bg-green-50" : "bg-red-50"
+											}`}
+									>
+										<div class="flex-none w-[15%] text-center">{formatDate(row.data_operazione)}</div>
+										<div class="flex-grow break-words pl-1">{row.descrizione}</div>
+										<div class="flex-none w-[15%] text-right pr-2">{formatEuro(row.importo, true)}</div>
+										<div
+											class={`flex-none w-[20%] text-center cursor-pointer ${!row.tipo || row.tipo.trim() === ""
+													? "text-red-500 font-semibold"
+													: "underline text-blue-600"
+												}`}
+											onClick={() => {
+												setSelectedRow(row);
+												setShowPopup(true);
+											}}
+										>
+											{!row.tipo || row.tipo.trim() === "" ? "Tipo mancante!" : row.tipo}
+										</div>
+									</div>
+								))}
+							</div>
+
+
 							{/* Bottone fuori dal table */}
 							{!startDate() && !endDate() && !showWithoutType() && movementFilter() === "all" && filteredMovCC().length < cc().length && (
 								<div class="flex justify-center mt-8">
@@ -590,6 +595,7 @@ const EstrattoCC = ({ companyId, bancaImportPDF, cc, setCC, isLandscape }) => {
 									</button>
 								</div>
 							)}
+
 						</div>
 					) : (
 						<div class="flex h-full items-center justify-center text-xl">

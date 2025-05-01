@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onMount } from 'solid-js';
 import { supabase } from '../lib/supabaseClient';
 
-const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
+const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget, isLandscape }) => {
 	const [view, setView] = createSignal('year'); // 'month' | 'day' | 'details'
 	const [selectedYear, setSelectedYear] = createSignal(''); // Stato per l'anno selezionato
 	const [selectedMonth, setSelectedMonth] = createSignal('');
@@ -472,10 +472,10 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 	};
 
 	return (
-		<div class="flex flex-col h-full px-2 pb-2">
+		<div class={`flex flex-col h-full px-2 bg-white ${isLandscape() && "items-center"}`}>
 
 			{/* Intestazioni e tags - NON scrollabili */}
-			<div class="flex-none">
+			<div class={`flex-none ${isLandscape() && "w-[500px]"}`}>
 				{view() === 'year' && (
 					<h2 class="flex flex-none text-gray-600 items-center justify-center h-[55px] text-lg font-semibold mt-2">
 						Cashflow annuale
@@ -571,7 +571,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 			</div>
 
 			{/* Contenuto scrollabile */}
-			<div class="flex-grow overflow-y-auto">
+			<div class={`flex-grow overflow-y-auto ${isLandscape() && "w-[500px]"}`}>
 
 				{/* View delle spese per anno */}
 				{view() === 'year' && (
@@ -824,21 +824,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 				{view() === 'details' && (
 					<div class="flex flex-col h-full">
 
-						{/* <div class="flex flex-none justify-between h-[55px] mb-[79px] mt-2">
-							<button
-								class="w-[40px] font-bold text-black rounded"
-								onClick={() => setView('day')}
-							>
-								<img src="/back.svg" alt="back" class="w-full h-auto" />
-							</button>
-							<div class="text-gray-600">
-								<div class="text-lg text-center font-semibold">Dettaglio Cashflow</div>
-								<div class="text-center">{new Date(selectedDay()).toLocaleDateString()}</div>
-							</div>
-							<div class="w-[40px]"></div>
-						</div> */}
-
-						<div class="flex-grow overflow-y-auto pb-40">
+						<div class="flex-grow overflow-y-auto pb-40 mt-4">
 							{/* Sezione "CASH" */}
 							{getCashMovements().length > 0 && (
 								<div>
@@ -880,7 +866,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 							{/* Sezione "CC" */}
 							{getCCMovements().length > 0 && (
-								<div class="mt-6">
+								<div class={`${getCashMovements().length > 0 && "mt-4"}`}>
 									<div class="flex items-center mb-2">
 										<h3 class="flex font-semibold text-blue-800">
 											Movimenti CC
@@ -1022,7 +1008,7 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 			{/* Popup per aggiungere una nuova spesa */}
 			{showAddPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
+				<div class={`fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ${isLandscape() && "ml-[200px]"}`}>
 					<div class="bg-gradient-to-b from-blue-200 to-blue-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 
 						<button
@@ -1197,11 +1183,10 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 				</div>
 			)}
 
-
 			{/* Popup di conferma cancellazione */}
 			{showDeletePopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-					<div class="bg-gradient-to-b from-red-200 to-red-50 rounded-lg p-6 w-[90%] max-w-[400px] relative">
+				<div class={`fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ${isLandscape() && "ml-[200px]"}`}>
+					<div class="bg-gradient-to-b from-red-200 to-red-50 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 						<button
 							onClick={() => setShowDeletePopup(false)}
 							class="absolute top-2 right-2 text-gray-500 hover:text-gray-800"
@@ -1231,8 +1216,8 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 
 			{/* Popup per modificare una spesa */}
 			{showEditPopup() && (
-				<div class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300">
-					<div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
+				<div class={`fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 transition-opacity duration-300 ${isLandscape() && "ml-[200px]"}`}>
+				<div class="bg-gradient-to-b from-yellow-200 to-yellow-50 text-gray-800 rounded-lg p-6 w-[90%] max-w-[400px] relative transform transition-all duration-300 ease-out translate-y-full opacity-0 animate-slidein">
 
 						<button
 							onClick={() => setShowEditPopup(false)}
@@ -1424,7 +1409,6 @@ const Cashflow = ({ companyId, setCash, cashflow, setCashflow, budget }) => {
 					</div>
 				</div>
 			)}
-
 
 		</div>
 	);
