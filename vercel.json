@@ -1,16 +1,22 @@
 {
-    "headers": [
-      {
-        "source": "/index.html",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate" }
-        ]
-      },
-      {
-        "source": "/(.*)",
-        "headers": [
-          { "key": "Cache-Control", "value": "no-cache" }
-        ]
-      }
-    ]
-  }
+  "headers": [
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
