@@ -6,6 +6,7 @@ import './index.css';
 import { supabase } from './lib/supabaseClient.js';
 import Auth from './components/Auth.jsx';
 import App from './App.jsx';
+import Signup from './components/Signup';
 
 const root = document.getElementById('root');
 
@@ -27,6 +28,10 @@ const Main = () => {
 	const [nickName, setNickname] = createSignal(null);
 	const [bancaImportPDF, setBancaImportPDF] = createSignal(null);
 	const [isLoading, setIsLoading] = createSignal(true); // 🔹 Stato per il caricamento
+
+	if (window.location.pathname === '/signup') {
+		return <Signup />;
+	}
 
 	// Funzione per recuperare il company_id
 	const fetchCompanyId = async (userId) => {

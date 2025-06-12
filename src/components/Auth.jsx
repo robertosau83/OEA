@@ -8,16 +8,16 @@ const Auth = ({ setSession }) => {
 
 	const signIn = async () => {
 		const { data, error } = await supabase.auth.signInWithPassword({
-		  email: email(),
-		  password: password(),
+			email: email(),
+			password: password(),
 		});
-	 
+
 		if (error) {
-		  setError(error.message);
+			setError(error.message);
 		} else {
-		  setSession(data.session); // 🔹 Basta questo, Main.jsx recupererà il company_id
+			setSession(data.session); // 🔹 Basta questo, Main.jsx recupererà il company_id
 		}
-	 };	 
+	};
 
 	// 🔹 Funzione per il login con Google
 	const signInWithGoogle = async () => {
@@ -60,6 +60,11 @@ const Auth = ({ setSession }) => {
 			<button onClick={signIn} class="bg-blue-800 text-white font-semibold rounded-lg px-4 py-2 mt-4">
 				Sign In
 			</button>
+
+			<p class="mt-8 text-sm text-gray-600">
+				Non hai un account?{' '}
+				<a href="/signup" class="text-blue-800 underline">Registrati</a>
+			</p>
 
 			{error() && <p class="text-red-500 mt-2">{error()}</p>}
 		</div>
