@@ -81,7 +81,10 @@ const decodeTipo = (importo, descrizione) => {
 		return "Satispay";
 	}
 
-	if (importo > 0 && (descrizione.includes("INCASSO TRAMITE P.O.S. ACCR. TRANSATO") || (descrizione.includes("WORLDLINE MERCHANT SERVICES ITALIA")))) {
+	if (importo > 0 && 
+		(descrizione.includes("INCASSO TRAMITE P.O.S. ACCR. TRANSATO") || 
+		(descrizione.includes("WORLDLINE MERCHANT SERVICES ITALIA")) || 
+		(descrizione.includes("INCASSO TRAMITE P.O.S. MANGORITA DI FERRI S. ACCREDITO")) )) {
 		return "Incassi POS";
 	}
 
