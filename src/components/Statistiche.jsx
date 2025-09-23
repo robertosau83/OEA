@@ -472,14 +472,10 @@ const Statistiche = (props) => {
 
 	const expensesByType = createMemo(() => {
 		const rawData = cashflow();
-		//console.log("Selected Tag:", selectedTag());
-		//console.log("Raw Data (cashflow()):", rawData);
 
-		// Filtriamo i dati in base alla tag selezionata
 		let filteredData = [];
 		if (selectedTag() === "Da inizio") {
 			filteredData = rawData;
-			//console.log("filteredData appena assegnato:", filteredData);
 		} else if (selectedTag() === "Mese corrente") {
 			filteredData = rawData.filter(item => {
 				const date = new Date(item.data_operazione);
@@ -497,45 +493,48 @@ const Statistiche = (props) => {
 			});
 		}
 
-		//console.log("Filtered Data:", filteredData);
+		// Saldo netto "Allineamento"
+		const alignmentNet = filteredData
+			.filter(item => item.tipo === "Allineamento")
+			.reduce((sum, item) => sum + item.importo, 0);
 
-		// Filtriamo solo i movimenti con importo negativo ed escludiamo gli "Storno" o le controparti, ovvero i trasferimenti
-		const negativeMovements = filteredData.filter(item => item.importo < 0 && item.tipo !== "Storno" && item.tipo !== "Trasf CASH -> CC" && item.tipo !== "Trasf CC -> CASH");
-		//console.log("Negative Movements:", negativeMovements);
+		// Negativi escludendo "Allineamento"
+		const negativeMovements = filteredData.filter(
+			item =>
+				item.importo < 0 &&
+				item.tipo !== "Storno" &&
+				item.tipo !== "Trasf CASH -> CC" &&
+				item.tipo !== "Trasf CC -> CASH" &&
+				item.tipo !== "Allineamento"
+		);
 
-		// Creiamo una mappa per sommare gli importi per tipo
 		const groupedData = new Map();
 		negativeMovements.forEach(item => {
-			if (!groupedData.has(item.tipo)) {
-				groupedData.set(item.tipo, 0);
-			}
+			if (!groupedData.has(item.tipo)) groupedData.set(item.tipo, 0);
 			groupedData.set(item.tipo, groupedData.get(item.tipo) + item.importo);
 		});
 
-		// Convertiamo la mappa in un array e calcoliamo il totale
+		// Se il saldo "Allineamento" è negativo, aggiungilo qui
+		if (alignmentNet < 0) {
+			groupedData.set("Allineamento", alignmentNet);
+		}
+
 		const expensesArray = Array.from(groupedData.entries())
-			.map(([tipo, total]) => ({ tipo, total: Math.abs(total) })) // Rendiamo positivo il valore per leggibilità
-			.sort((a, b) => b.total - a.total); // Ordiniamo dalla spesa maggiore alla minore
+			.map(([tipo, total]) => ({ tipo, total: Math.abs(total) }))
+			.sort((a, b) => b.total - a.total);
 
-		//console.log("Grouped Data:", groupedData);
-		//console.log("Expenses Array:", expensesArray);
-
-		// Calcoliamo il totale di tutte le spese
-		const totalSpese = expensesArray.reduce((sum, expense) => sum + expense.total, 0);
-
-		// Aggiungiamo il totale alla fine dell'array
+		const totalSpese = expensesArray.reduce((sum, e) => sum + e.total, 0);
 		if (expensesArray.length > 0) {
 			expensesArray.push({ tipo: "Totale Spese", total: totalSpese });
 		}
 
-		//console.log("Final Expenses Array:", expensesArray);
 		return expensesArray;
 	});
+
 
 	const incomeByType = createMemo(() => {
 		const rawData = cashflow();
 
-		// Filtriamo i dati in base alla tag selezionata
 		let filteredData = [];
 		if (selectedTag() === "Da inizio") {
 			filteredData = rawData;
@@ -556,35 +555,45 @@ const Statistiche = (props) => {
 			});
 		}
 
-		// Filtriamo solo i movimenti con importo positivo ed escludiamo gli "Storno" o le controparti, ovvero i trasferimenti
-		const positiveMovements = filteredData.filter(item => item.importo > 0 && item.tipo !== "Storno" && item.tipo !== "Trasf CASH -> CC" && item.tipo !== "Trasf CC -> CASH");
+		// Saldo netto "Allineamento"
+		const alignmentNet = filteredData
+			.filter(item => item.tipo === "Allineamento")
+			.reduce((sum, item) => sum + item.importo, 0);
 
-		// Creiamo una mappa per sommare gli importi per tipo
+		// Positivi escludendo "Allineamento"
+		const positiveMovements = filteredData.filter(
+			item =>
+				item.importo > 0 &&
+				item.tipo !== "Storno" &&
+				item.tipo !== "Trasf CASH -> CC" &&
+				item.tipo !== "Trasf CC -> CASH" &&
+				item.tipo !== "Allineamento"
+		);
+
 		const groupedData = new Map();
 		positiveMovements.forEach(item => {
-			if (!groupedData.has(item.tipo)) {
-				groupedData.set(item.tipo, 0);
-			}
+			if (!groupedData.has(item.tipo)) groupedData.set(item.tipo, 0);
 			groupedData.set(item.tipo, groupedData.get(item.tipo) + item.importo);
 		});
 
-		// Convertiamo la mappa in un array e calcoliamo il totale
+		// Se il saldo "Allineamento" è positivo, aggiungilo qui
+		if (alignmentNet > 0) {
+			groupedData.set("Allineamento", alignmentNet);
+		}
+
 		const incomesArray = Array.from(groupedData.entries())
-			.map(([tipo, total]) => ({ tipo, total: Math.abs(total) })) // Rendiamo positivo il valore per leggibilità
-			.sort((a, b) => b.total - a.total); // Ordiniamo dal valore più alto
+			.map(([tipo, total]) => ({ tipo, total: Math.abs(total) }))
+			.sort((a, b) => b.total - a.total);
 
-		// Calcoliamo il totale di tutte le entrate
-		const totalEntrate = incomesArray.reduce((sum, income) => sum + income.total, 0);
-
-		// Aggiungiamo il totale alla fine dell'array
+		const totalEntrate = incomesArray.reduce((sum, i) => sum + i.total, 0);
 		if (incomesArray.length > 0) {
 			incomesArray.push({ tipo: "Totale Entrate", total: totalEntrate });
 		}
 
 		console.log(incomesArray);
-
 		return incomesArray;
 	});
+
 
 	const summaryData = createMemo(() => {
 		const rawData = cashflow();
@@ -1138,20 +1147,25 @@ const Statistiche = (props) => {
 						<div id="pie-chart-income" class="w-full h-full"></div>
 					</div>
 
-					{/* ✅ Legenda per le fette piccole */}
-					{pieChartOptionsIncome().extra.smallSlices.length > 0 && (
-						<div class="flex-none justify-center mt-2 text-sm p-2">
-							<h4 class="flex flex-none justify-center font-semibold mb-2">Altre Entrate</h4>
-							<ul class="flex flex-wrap items-center justify-center gap-2">
-								{pieChartOptionsIncome().extra.smallSlices.map(slice => (
-									<li class="flex items-center justify-center border rounded-xl px-2 bg-green-50 shadow-lg">
-										<span>{slice.label}</span>
-										<span class="ml-1">({slice.percent.toFixed(1)}%)</span>
-									</li>
-								))}
-							</ul>
-						</div>
-					)}
+					{/* ✅ Legenda personalizzata per le fette piccole (Entrate) */}
+					{(() => {
+						const small = pieChartOptionsIncome().extra.smallSlices;
+						if (!small || small.length === 0) return null;
+
+						const totalPct = small.reduce((sum, s) => sum + s.percent, 0);
+						const items = small
+							.map(s => `${s.label} (${s.percent.toFixed(1)}%)`)
+							.join(", ");
+
+						return (
+							<div class="flex-none flex items-center justify-center mt-2 text-xs p-2 w-full">
+								<div class="text-center max-w-72">
+									<span class="font-semibold">Altre Entrate ({totalPct.toFixed(1)}%): </span>
+									<span>{items}</span>
+								</div>
+							</div>
+						);
+					})()}
 				</div>
 
 				{/* Card con la lista delle spese */}
@@ -1176,6 +1190,36 @@ const Statistiche = (props) => {
 						<span>{expensesByType().at(-1).tipo}</span>
 						<span>{formatEuro(expensesByType().at(-1).total)}€</span>
 					</div>
+				</div>
+
+				{/* Card con il grafico a torta e la legenda delle SPESE*/}
+				<div class="border rounded shadow-lg bg-white p-4 h-[400px] flex flex-col justify-between"
+					style="flex: 1 1 auto; min-width: 300px;">
+
+					{/* Contenitore flessibile per il grafico */}
+					<div class="flex-grow flex justify-center items-center">
+						<div id="pie-chart" class="w-full h-full"></div>
+					</div>
+
+					{/* ✅ Legenda personalizzata per le fette piccole */}
+					{(() => {
+						const small = pieChartOptions().extra.smallSlices;
+						if (!small || small.length === 0) return null;
+
+						const totalPct = small.reduce((sum, s) => sum + s.percent, 0);
+						const items = small
+							.map(s => `${s.label} (${s.percent.toFixed(1)}%)`)
+							.join(", ");
+
+						return (
+							<div class="flex-none flex items-center justify-center mt-2 text-xs p-2 w-full">
+								<div class="text-center max-w-72">
+									<span class="font-semibold">Altre Spese ({totalPct.toFixed(1)}%): </span>
+									<span>{items}</span>
+								</div>
+							</div>
+						);
+					})()}
 				</div>
 
 				{/* Slot per "Chiusure vs Budget Puntuale" */}
@@ -1292,31 +1336,6 @@ const Statistiche = (props) => {
 				<div class="border rounded shadow-lg bg-white p-4 h-[400px]"
 					style="flex: 1 1 auto; min-width: 300px;">
 					<div id="expense-budget-chart" class="flex justify-center w-full h-full"></div>
-				</div>
-
-				{/* Card con il grafico a torta e la legenda */}
-				<div class="border rounded shadow-lg bg-white p-4 h-[400px] flex flex-col justify-between"
-					style="flex: 1 1 auto; min-width: 300px;">
-
-					{/* Contenitore flessibile per il grafico */}
-					<div class="flex-grow flex justify-center items-center">
-						<div id="pie-chart" class="w-full h-full"></div>
-					</div>
-
-					{/* ✅ Legenda personalizzata per le fette piccole */}
-					{pieChartOptions().extra.smallSlices.length > 0 && (
-						<div class="flex-none justify-center mt-2 text-sm p-2">
-							<h4 class="flex flex-none justify-center font-semibold mb-2">Altre Spese</h4>
-							<ul class="flex flex-wrap items-center justify-center gap-2">
-								{pieChartOptions().extra.smallSlices.map(slice => (
-									<li class="flex items-center justify-center border rounded-xl px-2 bg-red-50 shadow-lg">
-										<span>{slice.label}</span>
-										<span class="ml-1">({slice.percent.toFixed(1)}%)</span>
-									</li>
-								))}
-							</ul>
-						</div>
-					)}
 				</div>
 
 				{/* Card con il grafico a barre */}

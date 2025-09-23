@@ -121,6 +121,83 @@ const composeLocalStates = (chiusure, cash, cc, setChiusureConSpese, setCashflow
 
 	// Aggiorniamo lo stato locale cashflow con i dati ordinati
 	setCashflow(sortedCashflow);
+
+	// --- EXPORT AUTOMATICO CSV ---
+// try {
+//   const csvString = toCSV(sortedCashflow);
+//   const blob = new Blob([csvString], { type: "text/csv;charset=utf-8" });
+//   const today = new Date().toISOString().slice(0, 10); // es. 2025-09-22
+//   downloadBlob(blob, `cashflow_${today}.csv`);
+// } catch (err) {
+//   console.error("Errore durante l'esportazione CSV:", err);
+// }
+
+// --- (OPZIONALE) EXPORT XLSX con SheetJS ---
+// Richiede la libreria 'xlsx' (es. import * as XLSX from 'xlsx' oppure via CDN che espone window.XLSX)
+/*
+try {
+  if (window.XLSX) {
+    const ws = window.XLSX.utils.json_to_sheet(sortedCashflow);
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, "Cashflow");
+    const wbout = window.XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const xlsBlob = new Blob(
+      [wbout],
+      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+    );
+    const today = new Date().toISOString().slice(0, 10);
+    downloadBlob(xlsBlob, `cashflow_${today}.xlsx`);
+  }
+} catch (err) {
+  console.error("Errore durante l'esportazione XLSX:", err);
+}
+*/
+
 };
+
+// Converte un array di oggetti in CSV con intestazioni dinamiche
+const toCSV = (rows) => {
+  if (!rows || rows.length === 0) return "";
+
+  const headerSet = new Set(Object.keys(rows[0]));
+  for (const r of rows) for (const k of Object.keys(r)) headerSet.add(k);
+  const headers = Array.from(headerSet);
+
+  const escapeCell = (h, v) => {
+    if (v === null || v === undefined) return "";
+
+    // Se è il campo importo → forza il formato con virgola
+    if (h === "importo" && !isNaN(v)) {
+      return String(v).replace(".", ",");
+    }
+
+    const s = String(v);
+    // Se contiene caratteri critici, racchiudi tra doppi apici
+    if (/[\";\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+
+  const sep = ";"; // separatore colonne
+  const headerLine = headers.map((h) => escapeCell(h, h)).join(sep);
+  const lines = rows.map((row) =>
+    headers.map((h) => escapeCell(h, row[h])).join(sep)
+  );
+
+  return [headerLine, ...lines].join("\r\n");
+};
+
+
+// Scarica un Blob come file dal browser
+const downloadBlob = (blob, filename) => {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+};
+
 
 export default composeLocalStates;
