@@ -8,7 +8,7 @@ import type { Session } from '@supabase/supabase-js'
 
 const root = document.getElementById('root')
 
-type AheadUser = {
+type User = {
   id: string
   user_id: string
   name: string | null
@@ -19,11 +19,11 @@ const today = () => new Date().toISOString().split('T')[0]
 
 const Main = () => {
   const [session, setSession] = createSignal<Session | null>(null)
-  const [aheadUser, setAheadUser] = createSignal<AheadUser | null>(null)
+  const [user, setUser] = createSignal<User | null>(null)
   const [errorMsg, setErrorMsg] = createSignal<string | null>(null)
   const [isLoading, setIsLoading] = createSignal(true)
 
-  const fetchAheadUser = async (userId: string) => {
+  const fetchUser = async (userId: string) => {
     const { data, error } = await supabase
       .from('Ahead_users')
       .select('*')
@@ -40,14 +40,14 @@ const Main = () => {
       return
     }
 
-    setAheadUser(data)
+    setUser(data)
   }
 
   // Caricamento iniziale della sessione
   supabase.auth.getSession().then(async ({ data }) => {
     if (data.session) {
       setSession(data.session)
-      await fetchAheadUser(data.session.user.id)
+      await fetchUser(data.session.user.id)
     }
     setIsLoading(false)
   })
@@ -57,9 +57,9 @@ const Main = () => {
     setSession(newSession)
     if (newSession?.user) {
       setIsLoading(true)
-      fetchAheadUser(newSession.user.id).then(() => setIsLoading(false))
+      fetchUser(newSession.user.id).then(() => setIsLoading(false))
     } else {
-      setAheadUser(null)
+      setUser(null)
       setIsLoading(false)
     }
   })
@@ -67,7 +67,7 @@ const Main = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     setSession(null)
-    setAheadUser(null)
+    setUser(null)
     setErrorMsg(null)
     setIsLoading(false)
   }
@@ -78,8 +78,8 @@ const Main = () => {
         <div class="h-screen flex items-center justify-center text-lg font-semibold">
           Caricamento...
         </div>
-      ) : session() && aheadUser() ? (
-        <App aheadUser={aheadUser()!} onLogout={handleLogout} />
+      ) : session() && user() ? (
+        <App user={user()!} onLogout={handleLogout} />
       ) : (
         <Auth setSession={setSession} />
       )}
