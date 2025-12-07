@@ -1,18 +1,29 @@
+import { createSignal, onMount } from "solid-js";
 import { Route } from "@solidjs/router";
-import LoginPage from "./auth/Login";
-import RegisterPage from "./auth/Register";
+import Login from "./auth/Login"
+import Register from "./auth/Register";
 import AdminHome from "./admin/AdminHome";
 import EmployeeHome from "./employee/EmployeeHome";
 
 export default function App() {
-  return (
-    <>
-      <Route path="/" component={LoginPage} />
-      <Route path="/register" component={RegisterPage} />
 
-      {/* Home protette */}
-      <Route path="/admin" component={AdminHome} />
-      <Route path="/employee" component={EmployeeHome} />
-    </>
-  );
+	const [isLandscape, setIsLandscape] = createSignal(window.innerWidth > window.innerHeight);
+	const updateOrientation = () => setIsLandscape(window.innerWidth > window.innerHeight);
+
+	// Listener per aggiornare quando cambia l’orientamento
+	onMount(() => {
+		window.addEventListener('resize', updateOrientation);
+		return () => window.removeEventListener('resize', updateOrientation);
+	});
+
+	return (
+		<>
+			<Route path="/" component={() => <Login isLandscape={isLandscape()} />} />
+			<Route path="/register" component={() => <Register isLandscape={isLandscape()} />} />
+
+			{/* Home protette */}
+			<Route path="/admin" component={AdminHome} />
+			<Route path="/employee" component={EmployeeHome} />
+		</>
+	);
 }

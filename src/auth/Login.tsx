@@ -2,91 +2,98 @@ import { createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { supabase } from "../supabaseClient";
 
-export default function LoginPage() {
-  const navigate = useNavigate();
-  const [email, setEmail] = createSignal("");
-  const [password, setPassword] = createSignal("");
-  const [message, setMessage] = createSignal("");
+interface LoginProps {
+  isLandscape: boolean;
+}
 
-  async function handleLogin() {
-    setMessage("");
+export default function Login(props: LoginProps) {
+	const navigate = useNavigate();
+	const [email, setEmail] = createSignal("");
+	const [password, setPassword] = createSignal("");
+	const [message, setMessage] = createSignal("");
 
-    // 1) LOGIN
-    const { data: loginData, error } = await supabase.auth.signInWithPassword({
-      email: email(),
-      password: password(),
-    });
+	console.log(props.isLandscape)
 
-    if (error) {
-      setMessage("❌ Email o password errati");
-      return;
-    }
+	async function handleLogin() {
+		setMessage("");
 
-    // 2) PRENDO USER LOGGATO
-    const user = loginData.user;
-    if (!user) {
-      setMessage("❌ Errore: utente non trovato dopo login.");
-      return;
-    }
+		// 1) LOGIN
+		const { data: loginData, error } = await supabase.auth.signInWithPassword({
+			email: email(),
+			password: password(),
+		});
 
-    // 3) PRENDO IL PROFILO PER SCOPRIRE IL RUOLO
-    const { data: profile, error: profileErr } = await supabase
-      .from("onshift_users")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+		if (error) {
+			setMessage("Email o password errati");
+			return;
+		}
 
-    if (profileErr || !profile) {
-      setMessage("❌ Errore caricamento profilo.");
-      return;
-    }
+		// 2) PRENDO USER LOGGATO
+		const user = loginData.user;
+		if (!user) {
+			setMessage("Errore: utente non trovato dopo login.");
+			return;
+		}
 
-    // 4) REDIRECT BASATO SUL RUOLO
-    if (profile.role === "ADMIN") {
-      navigate("/admin");
-    } else {
-      navigate("/employee");
-    }
-  }
+		// 3) PRENDO IL PROFILO PER SCOPRIRE IL RUOLO
+		const { data: profile, error: profileErr } = await supabase
+			.from("onshift_users")
+			.select("role")
+			.eq("id", user.id)
+			.single();
 
-  return (
-    <div class="min-h-screen flex items-center justify-center bg-gray-100">
-      <div class="bg-white shadow-lg rounded-xl p-8 w-96">
-        <h1 class="text-2xl font-semibold text-center mb-6">Accedi a OnShift</h1>
+		if (profileErr || !profile) {
+			setMessage("Errore caricamento profilo.");
+			return;
+		}
 
-        <input
-          type="email"
-          placeholder="Email"
-          class="w-full p-2 border rounded mb-3"
-          onInput={(e) => setEmail(e.currentTarget.value)}
-        />
+		// 4) REDIRECT BASATO SUL RUOLO
+		if (profile.role === "ADMIN") {
+			navigate("/admin");
+		} else {
+			navigate("/employee");
+		}
+	}
 
-        <input
-          type="password"
-          placeholder="Password"
-          class="w-full p-2 border rounded mb-4"
-          onInput={(e) => setPassword(e.currentTarget.value)}
-        />
+	return (
+		<div class={`min-h-screen flex items-center justify-center ${props.isLandscape ? "bg-gray-50" : ""}`}>
+			<div class={`bg-white ${props.isLandscape ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
+				<h1 class="text-3xl font-bold text-center mb-16">onShift</h1>
 
-        <button
-          class="w-full bg-blue-600 text-white p-2 rounded mb-3"
-          onClick={handleLogin}
-        >
-          Login
-        </button>
+				<input
+					type="email"
+					placeholder="Email"
+					class="w-full p-2 border border-gray-300 rounded mb-3"
+					onInput={(e) => setEmail(e.currentTarget.value)}
+				/>
 
-        <p class="text-center text-sm text-gray-600">
-          Nuovo utente?{" "}
-          <span
-            class="text-blue-600 cursor-pointer"
-            onClick={() => navigate("/register")}
-          >
-            Registrati
-          </span>
-        </p>
+				<input
+					type="password"
+					placeholder="Password"
+					class="w-full p-2 border border-gray-300 rounded mb-4"
+					onInput={(e) => setPassword(e.currentTarget.value)}
+				/>
 
-        <p class="text-center mt-3">{message()}</p>
-      </div>
-    </div>
-  );
+				<button
+					class="w-full h-11 bg-[#0551b5] text-white p-2 rounded-full mb-3 font-semibold"
+					onClick={handleLogin}
+				>
+					Login
+				</button>
+
+				<p class="text-center text-sm text-gray-500 my-4">
+					oppure
+				</p>
+
+				<button
+					class="w-full h-11 bg-white text-black rounded-full mb-3 font-semibold border-2 border-black"
+					onClick={() => navigate("/register")}
+				>
+					Registrati
+				</button>
+
+				{message() && <p class="text-sm text-center mt-3 px-6 py-1 bg-red-100 text-red-600 rounded-full">{message()}</p>}
+			</div>
+		</div>
+	);
 }

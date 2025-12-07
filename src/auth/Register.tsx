@@ -2,14 +2,18 @@ import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { supabase } from "../supabaseClient";
 
-export default function RegisterPage() {
+interface RegisterProps {
+  isLandscape: boolean;
+}
+
+export default function Register(props: RegisterProps) {
 	const navigate = useNavigate();
 	const [mode, setMode] = createSignal<"ADMIN" | "EMP">("ADMIN");
 
 	// 🆕 WHITELIST DI EMAIL PER REGISTRARE ADMIN
 	// Se l'array è vuoto → tutte le email sono ammesse.
 	const allowedAdminEmails: string[] = [
-		"bobby@example.com",
+		//"bobby@example.com",
 		// "azienda@dominio.it"
 	];
 
@@ -40,7 +44,7 @@ export default function RegisterPage() {
 			allowedAdminEmails.length > 0 &&
 			!allowedAdminEmails.includes(adminEmail().toLowerCase())
 		) {
-			setAdminError("❌ Questa email non è autorizzata alla registrazione admin.");
+			setAdminError("Questa email non è autorizzata alla registrazione admin.");
 			return;
 		}
 
@@ -139,13 +143,13 @@ export default function RegisterPage() {
 		});
 
 		if (signUpError) {
-			setEmpMessage("❌ Errore creazione utente: " + signUpError.message);
+			setEmpMessage("Errore creazione utente: " + signUpError.message);
 			return;
 		}
 
 		const user = data.user;
 		if (!user) {
-			setEmpMessage("❌ Errore interno: user non creato.");
+			setEmpMessage("Errore interno: user non creato.");
 			return;
 		}
 
@@ -167,7 +171,7 @@ export default function RegisterPage() {
 			.eq("invite_code", inviteCode());
 
 		if (inviteErr || !companies || companies.length === 0) {
-			setEmpMessage("❌ Invite code non valido.");
+			setEmpMessage("Invite code non valido.");
 			return;
 		}
 
@@ -184,7 +188,7 @@ export default function RegisterPage() {
 			});
 
 		if (profileErr) {
-			setEmpMessage("❌ Errore creazione profilo: " + profileErr.message);
+			setEmpMessage("Errore creazione profilo: " + profileErr.message);
 			return;
 		}
 
@@ -196,29 +200,29 @@ export default function RegisterPage() {
 	// -------------------------------------------------------------
 
 	return (
-		<div class="min-h-screen flex items-center justify-center bg-gray-100">
-			<div class="bg-white shadow-lg rounded-xl p-8 w-[420px]">
+		<div class={`min-h-screen flex items-center justify-center ${props.isLandscape ? "bg-gray-50" : ""}`}>
+			<div class={`bg-white ${props.isLandscape ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
 
-				<h1 class="text-2xl font-semibold text-center mb-6">
+				<h1 class="text-2xl font-semibold text-center mb-10">
 					Crea un nuovo account
 				</h1>
 
 				{/* Toggle */}
-				<div class="flex justify-center mb-6">
+				<div class="flex justify-center mb-6 gap-3 text-sm">
 					<button
-						class={`px-4 py-2 rounded-l ${mode() === "ADMIN"
-								? "bg-blue-600 text-white"
-								: "bg-gray-200 text-gray-600"
+						class={`flex items-center justify-center w-28 h-8 rounded-full ${mode() === "ADMIN"
+								? "bg-black text-white"
+								: "bg-white text-gray-600 border"
 							}`}
 						onClick={() => setMode("ADMIN")}
 					>
-						Admin
+						Titolare
 					</button>
 
 					<button
-						class={`px-4 py-2 rounded-r ${mode() === "EMP"
-								? "bg-blue-600 text-white"
-								: "bg-gray-200 text-gray-600"
+						class={`flex items-center justify-center w-28 h-8 rounded-full ${mode() === "EMP"
+								? "bg-black text-white"
+								: "bg-white text-gray-600 border"
 							}`}
 						onClick={() => setMode("EMP")}
 					>
@@ -228,90 +232,100 @@ export default function RegisterPage() {
 
 				{/* FORM ADMIN ------------------------------------------------ */}
 				<Show when={mode() === "ADMIN"}>
-					<div class="flex flex-col gap-2">
+					
+					<div class="text-sm text-gray-500 flex items-center justify-center text-center mb-6">
+						Registra la tua attività come titolare, ottieni il pieno controllo e dai l'accesso ai tuoi dipendenti
+					</div>
+
+					<div class="flex flex-col gap-2 justify-between">
 
 						<input
-							class="border p-2 rounded"
-							placeholder="Nome Azienda"
+							class="border border-gray-300 p-2 rounded"
+							placeholder="Nome Attività"
 							value={companyName()}
 							onInput={(e) => setCompanyName(e.currentTarget.value)}
 						/>
 
 						{/* 🆕 CAMPO NOME */}
 						<input
-							class="border p-2 rounded"
-							placeholder="Nome completo"
+							class="border border-gray-300 p-2 rounded"
+							placeholder="Nome Utente"
 							onInput={(e) => setAdminName(e.currentTarget.value)}
 						/>
 
 						<input
-							class="border p-2 rounded"
+							class="border border-gray-300 p-2 rounded"
 							type="email"
 							placeholder="Email"
 							onInput={(e) => setAdminEmail(e.currentTarget.value)}
 						/>
 
 						<input
-							class="border p-2 rounded"
+							class="border border-gray-300 p-2 rounded"
 							type="password"
 							placeholder="Password"
 							onInput={(e) => setAdminPassword(e.currentTarget.value)}
 						/>
 
 						<button
-							class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded mt-2"
+							class="bg-[#0551b5] text-white p-2 rounded-full font-semibold mt-2"
 							onClick={handleRegisterAdmin}
 						>
-							Crea Account Admin
+							Crea Account Titolare
 						</button>
 
-						{adminError() && <p class="text-red-500">{adminError()}</p>}
+						{adminError() && <p class="text-sm text-center mt-3 px-6 py-1 bg-red-100 text-red-600 rounded-full">{adminError()}</p>}
 					</div>
 				</Show>
 
 				{/* FORM EMPLOYEE ------------------------------------------- */}
 				<Show when={mode() === "EMP"}>
-					<div class="flex flex-col gap-2">
+
+					<div class="text-sm text-gray-500 flex items-center justify-center text-center mb-6">
+						Registrati come dipendente, dovrai fornire il codice d'invito in mano al tuo titolare
+					</div>
+
+					<div class="flex flex-col gap-2 justify-between">
 
 						<input
-							class="border p-2 rounded"
+							class="border border-gray-300 p-2 rounded"
 							placeholder="Nome"
 							onInput={(e) => setEmpName(e.currentTarget.value)}
 						/>
 
 						<input
-							class="border p-2 rounded"
+							class="border border-gray-300 p-2 rounded"
 							type="email"
 							placeholder="Email"
 							onInput={(e) => setEmpEmail(e.currentTarget.value)}
 						/>
 
 						<input
-							class="border p-2 rounded"
+							class="border border-gray-300 p-2 rounded"
 							type="password"
 							placeholder="Password"
 							onInput={(e) => setEmpPassword(e.currentTarget.value)}
 						/>
 
 						<input
-							class="border p-2 rounded"
-							placeholder="Invite Code"
+							class="border border-gray-300 p-2 rounded"
+							placeholder="Codice d'invito"
 							onInput={(e) => setInviteCode(e.currentTarget.value)}
 						/>
 
 						<button
-							class="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded mt-2"
+							class="bg-[#0551b5] text-white p-2 rounded-full font-semibold mt-2"
 							onClick={handleRegisterEmployee}
 						>
 							Crea Account Dipendente
 						</button>
 
-						<p>{empMessage()}</p>
+						{empMessage() && <p class="text-sm text-center mt-3 px-6 py-1 bg-red-100 text-red-600 rounded-full">{empMessage()}</p>}
 					</div>
 				</Show>
 
 				<p
-					class="text-center text-sm text-gray-600 mt-4 cursor-pointer"
+					class="text-center text-sm text-gray-500 mt-7 cursor-pointer"
 					onClick={() => navigate("/")}
 				>
 					Torna al login
