@@ -2,9 +2,8 @@ import { createSignal, onMount } from "solid-js";
 import { Route } from "@solidjs/router";
 import Login from "./auth/Login"
 import Register from "./auth/Register";
-import AdminHome from "./admin/AdminHome";
-import EmployeeHome from "./employee/EmployeeHome";
 import AdminIndex from "./admin/index";
+import EmployeeIndex from "./employee/index";
 
 export default function App() {
 
@@ -24,7 +23,7 @@ export default function App() {
 
 			{/* Home protette */}
 			<Route path="/admin" component={AdminIndex} />
-			<Route path="/employee" component={EmployeeHome} />
+			<Route path="/employee" component={EmployeeIndex} />
 		</>
 	);
 }

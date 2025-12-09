@@ -12,7 +12,7 @@ export default function Login(props: LoginProps) {
 	const [password, setPassword] = createSignal("");
 	const [message, setMessage] = createSignal("");
 
-	console.log(props.isLandscape)
+	//console.log(props.isLandscape)
 
 	async function handleLogin() {
 		setMessage("");

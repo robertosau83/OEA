@@ -1,6 +1,7 @@
 // src/admin/AdminHome.tsx
 import { createSignal, Show } from "solid-js";
 import { supabase } from "../supabaseClient";
+import { useNavigate } from "@solidjs/router";
 
 interface AdminHomeProps {
 	loading: boolean;
@@ -14,6 +15,8 @@ interface AdminHomeProps {
 
 export default function AdminHome(props: AdminHomeProps) {
 
+	const navigate = useNavigate();
+	
 	const [userName, setUserName] = createSignal(props.userName);
 	const [companyName, setCompanyName] = createSignal(props.companyName);
 	const [inviteCode, setInviteCode] = createSignal(props.inviteCode);
@@ -21,6 +24,8 @@ export default function AdminHome(props: AdminHomeProps) {
 	const [showModal, setShowModal] = createSignal(false);
 	const [modalField, setModalField] = createSignal<"user" | "company" | null>(null);
 	const [newValue, setNewValue] = createSignal("");
+
+	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
 
 	const handleSave = async () => {
 		if (modalField() === "user") {
@@ -65,6 +70,21 @@ export default function AdminHome(props: AdminHomeProps) {
 		}
 	};
 
+
+	const handleDeleteAccount = async () => {
+		const { error } = await supabase.rpc("admin_delete_account");
+
+		if (error) {
+			alert("Errore nella cancellazione dell'account: " + error.message);
+			return;
+		}
+
+		// logout dopo cancellazione
+		await supabase.auth.signOut();
+
+		// redirect
+		navigate("/")
+	};
 
 
 	return (
@@ -111,6 +131,14 @@ export default function AdminHome(props: AdminHomeProps) {
 							Rigenera
 						</button>
 					</p>
+
+					<button
+						class="mt-6 px-4 py-2 bg-red-600 text-white rounded"
+						onClick={() => setShowDeleteModal(true)}
+					>
+						Cancella Account
+					</button>
+
 				</div>
 
 			</Show>
@@ -136,6 +164,37 @@ export default function AdminHome(props: AdminHomeProps) {
 				</div>
 			</Show>
 
+			<Show when={showDeleteModal()}>
+				<div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center">
+					<div class="bg-white p-5 rounded shadow-lg max-w-sm text-center space-y-4">
+
+						<h2 class="text-xl font-bold text-red-700">Conferma Eliminazione</h2>
+
+						<p>
+							Questa operazione è <strong>irreversibile</strong>.<br />
+							Verranno eliminati la tua azienda, tutti i dipendenti
+							e il tuo account utente.
+						</p>
+
+						<div class="flex justify-center space-x-3">
+							<button
+								class="px-3 py-1 rounded border"
+								onClick={() => setShowDeleteModal(false)}
+							>
+								Annulla
+							</button>
+
+							<button
+								class="px-3 py-1 bg-red-600 text-white rounded"
+								onClick={handleDeleteAccount}
+							>
+								Eliminazione definitiva
+							</button>
+						</div>
+
+					</div>
+				</div>
+			</Show>
 
 		</>
 

@@ -157,3 +157,67 @@ Per utilizzare questo template devi:
 4️⃣ Ora l’ADMIN può:
 - vedere tutti i dipendenti della sua azienda
 - confermarli cambiando status = 'CONFIRMED'
+
+## cancellazione utenza da parte di admin. 
+
+Per fare in modo che admin possa cancellare la sua utenza quindi:
+
+la company
+tutti i dipendenti
+l’admin stesso
+tutti gli utenti Auth relativi
+
+bisogna inserire una funzione rpc così:
+
+````md
+```sql
+
+create or replace function admin_delete_account()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  admin_uid uuid := auth.uid();
+  v_company_id uuid;
+  user_ids uuid[];
+begin
+  -- 1) Verifica che l'utente sia realmente un admin
+  select company_id into v_company_id
+  from onshift_users
+  where id = admin_uid
+    and role = 'ADMIN';
+
+  if v_company_id is null then
+    raise exception 'Unauthorized: only admins can delete their account and company.';
+  end if;
+
+  -- 2) Recupera TUTTI gli utenti della company (admin + employees)
+  select array_agg(id) into user_ids
+  from onshift_users
+  where onshift_users.company_id = v_company_id;
+
+  if user_ids is null then
+    raise exception 'Unexpected error: no users found for this company.';
+  end if;
+
+  -- 3) Cancella gli utenti dalla tabella applicativa
+  delete from onshift_users
+  where onshift_users.id = any(user_ids);
+
+  -- 4) Cancella la company
+  delete from onshift_companies
+  where onshift_companies.id = v_company_id;
+
+  -- 5) Cancella gli utenti dal sistema Auth
+  delete from auth.users
+  where auth.users.id = any(user_ids);
+
+end;
+$$;
+
+```
+
+il codice la richiamerà quando vorremo cancellare l'utenza di un ADMIN e lasciare tutto pulito.
+i relativi employee non saranno più in grado di fare nulla, e verranno loggati fuori dopo tot ore o al successivo refresh.
