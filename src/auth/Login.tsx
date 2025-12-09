@@ -3,7 +3,7 @@ import { useNavigate } from "@solidjs/router";
 import { supabase } from "../supabaseClient";
 
 interface LoginProps {
-  isLandscape: boolean;
+	isLandscape: boolean;
 }
 
 export default function Login(props: LoginProps) {
@@ -27,6 +27,9 @@ export default function Login(props: LoginProps) {
 			setMessage("Email o password errati");
 			return;
 		}
+
+		console.log("RAW SESSION:", loginData.session);
+		console.log("ACCESS TOKEN:", loginData.session?.access_token);
 
 		// 2) PRENDO USER LOGGATO
 		const user = loginData.user;

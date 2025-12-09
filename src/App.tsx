@@ -4,6 +4,7 @@ import Login from "./auth/Login"
 import Register from "./auth/Register";
 import AdminHome from "./admin/AdminHome";
 import EmployeeHome from "./employee/EmployeeHome";
+import AdminIndex from "./admin/index";
 
 export default function App() {
 
@@ -22,7 +23,7 @@ export default function App() {
 			<Route path="/register" component={() => <Register isLandscape={isLandscape()} />} />
 
 			{/* Home protette */}
-			<Route path="/admin" component={AdminHome} />
+			<Route path="/admin" component={AdminIndex} />
 			<Route path="/employee" component={EmployeeHome} />
 		</>
 	);

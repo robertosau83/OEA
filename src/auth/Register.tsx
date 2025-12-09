@@ -3,7 +3,7 @@ import { useNavigate } from "@solidjs/router";
 import { supabase } from "../supabaseClient";
 
 interface RegisterProps {
-  isLandscape: boolean;
+	isLandscape: boolean;
 }
 
 export default function Register(props: RegisterProps) {
@@ -120,12 +120,22 @@ export default function Register(props: RegisterProps) {
 				company_id: companyId,
 				role: "ADMIN",
 				name: adminName(),  // 🆕 SALVATAGGIO DEL NOME
+				email: adminEmail(),
+				status: "CONFIRMED"
 			});
 
 		if (userInsertError) {
 			setAdminError("Errore creazione profilo utente: " + userInsertError.message);
 			return;
 		}
+
+		// 6) INSERISCI company_id NEL JWT (user_metadata)
+		await supabase.auth.updateUser({
+			data: {
+				companies: [{ company_id: companyId }],
+				role: "ADMIN"
+			}
+		});
 
 		navigate("/");
 	}
@@ -185,12 +195,21 @@ export default function Register(props: RegisterProps) {
 				company_id: companyId,
 				role: "EMPLOYEE",
 				name: empName(),
+				email: empEmail(),
+				status: "PENDING"
 			});
 
 		if (profileErr) {
 			setEmpMessage("Errore creazione profilo: " + profileErr.message);
 			return;
 		}
+
+		await supabase.auth.updateUser({
+			data: {
+				companies: [{ company_id: companyId }],
+				role: "EMPLOYEE"
+			}
+		});
 
 		setEmpMessage("✅ Registrazione completata! Torna al login.");
 	}
@@ -211,8 +230,8 @@ export default function Register(props: RegisterProps) {
 				<div class="flex justify-center mb-6 gap-3 text-sm">
 					<button
 						class={`flex items-center justify-center w-28 h-8 rounded-full ${mode() === "ADMIN"
-								? "bg-black text-white"
-								: "bg-white text-gray-600 border"
+							? "bg-black text-white"
+							: "bg-white text-gray-600 border"
 							}`}
 						onClick={() => setMode("ADMIN")}
 					>
@@ -221,8 +240,8 @@ export default function Register(props: RegisterProps) {
 
 					<button
 						class={`flex items-center justify-center w-28 h-8 rounded-full ${mode() === "EMP"
-								? "bg-black text-white"
-								: "bg-white text-gray-600 border"
+							? "bg-black text-white"
+							: "bg-white text-gray-600 border"
 							}`}
 						onClick={() => setMode("EMP")}
 					>
@@ -232,7 +251,7 @@ export default function Register(props: RegisterProps) {
 
 				{/* FORM ADMIN ------------------------------------------------ */}
 				<Show when={mode() === "ADMIN"}>
-					
+
 					<div class="text-sm text-gray-500 flex items-center justify-center text-center mb-6">
 						Registra la tua attività come titolare, ottieni il pieno controllo e dai l'accesso ai tuoi dipendenti
 					</div>
