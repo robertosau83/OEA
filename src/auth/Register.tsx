@@ -37,9 +37,29 @@ export default function Register() {
 	async function handleRegisterAdmin() {
 		setAdminError("");
 
-		// 0️⃣ CONTROLLA SE L'EMAIL È AUTORIZZATA
-		// - Se allowedAdminEmails è vuoto → tutti possono registrarsi
-		// - Altrimenti → solo email nella lista
+		// ---------------------------------------
+		// VALIDAZIONI LATO CLIENT
+		// ---------------------------------------
+		if (!companyName().trim()) {
+			setAdminError("Inserisci il nome dell'attività.");
+			return;
+		}
+		if (!adminName().trim()) {
+			setAdminError("Inserisci il tuo nome.");
+			return;
+		}
+		if (!adminEmail().trim()) {
+			setAdminError("Inserisci un'email.");
+			return;
+		}
+		if (!adminPassword().trim() || adminPassword().length < 6) {
+			setAdminError("La password deve contenere almeno 6 caratteri.");
+			return;
+		}
+
+		// ---------------------------------------
+		// 0) CONTROLLA WHITELIST (PRIMA DI SIGNUP)
+		// ---------------------------------------
 		if (
 			allowedAdminEmails.length > 0 &&
 			!allowedAdminEmails.includes(adminEmail().toLowerCase())
@@ -48,41 +68,53 @@ export default function Register() {
 			return;
 		}
 
-		// 1️⃣ CREA UTENTE AUTH
-		const { error: signUpError } = await supabase.auth.signUp({
+		// ---------------------------------------
+		// 1) CREA L'UTENTE IN AUTH
+		// ---------------------------------------
+		const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
 			email: adminEmail(),
 			password: adminPassword(),
 		});
+
+		let user = signUpData?.user;
 
 		if (signUpError) {
-			setAdminError("Errore registrazione: " + signUpError.message);
+			// Caso tipico: utente già esistente → proviamo login
+			if ((signUpError as any).code === "user_already_exists") {
+				const { data: loginData, error: loginErr } =
+					await supabase.auth.signInWithPassword({
+						email: adminEmail(),
+						password: adminPassword(),
+					});
+
+				if (loginErr || !loginData.user) {
+					setAdminError(
+						"Questa email risulta già registrata. Se hai un account, accedi dal login."
+					);
+					return;
+				}
+
+				user = loginData.user;
+			} else {
+				setAdminError("Errore registrazione: " + signUpError.message);
+				return;
+			}
+		}
+
+		if (!user) {
+			setAdminError("Errore interno: impossibile creare l'utente.");
 			return;
 		}
 
-		// 2️⃣ LOGIN AUTOMATICO
-		const { error: loginError } = await supabase.auth.signInWithPassword({
-			email: adminEmail(),
-			password: adminPassword(),
-		});
+		// 🚀 Ora l'utente è autenticato e possiamo procedere.
 
-		if (loginError) {
-			setAdminError("Errore login: " + loginError.message);
-			return;
-		}
-
-		// 3️⃣ OTTIENI USER ID
-		const { data: userData } = await supabase.auth.getUser();
-		const userId = userData?.user?.id;
-		if (!userId) {
-			setAdminError("Impossibile ottenere l'ID utente.");
-			return;
-		}
-
-		// 4️⃣ CREA COMPANY solo se non esiste
+		// ---------------------------------------
+		// 2) CREA / RECUPERA L'AZIENDA
+		// ---------------------------------------
 		const { data: existingCompany } = await supabase
 			.from("onshift_companies")
 			.select("id")
-			.eq("admin_id", userId)
+			.eq("admin_id", user.id)
 			.maybeSingle();
 
 		let companyId;
@@ -90,20 +122,18 @@ export default function Register() {
 		if (!existingCompany) {
 			const invite = crypto.randomUUID().slice(0, 6);
 
-			const { data: companyData, error: companyError } = await supabase
+			const { data: companyData, error: companyErr } = await supabase
 				.from("onshift_companies")
 				.insert({
 					name: companyName(),
-					admin_id: userId,
+					admin_id: user.id,
 					invite_code: invite,
 				})
 				.select("id")
 				.single();
 
-			if (companyError) {
-				setAdminError(
-					"Errore nella creazione dell'azienda: " + companyError.message
-				);
+			if (companyErr) {
+				setAdminError("Errore nella creazione dell'azienda: " + companyErr.message);
 				return;
 			}
 
@@ -112,24 +142,38 @@ export default function Register() {
 			companyId = existingCompany.id;
 		}
 
-		// 5️⃣ CREA PROFILO UTENTE (🆕 Aggiunto il campo name)
-		const { error: userInsertError } = await supabase
+		// ---------------------------------------
+		// 3) CREA PROFILO ADMIN SE NON ESISTE GIÀ
+		// ---------------------------------------
+		const { data: existingProfile } = await supabase
 			.from("onshift_users")
-			.insert({
-				id: userId,
-				company_id: companyId,
-				role: "ADMIN",
-				name: adminName(),  // 🆕 SALVATAGGIO DEL NOME
-				email: adminEmail(),
-				status: "CONFIRMED"
-			});
+			.select("id")
+			.eq("id", user.id)
+			.maybeSingle();
 
-		if (userInsertError) {
-			setAdminError("Errore creazione profilo utente: " + userInsertError.message);
-			return;
+		if (!existingProfile) {
+			const { error: profileErr } = await supabase
+				.from("onshift_users")
+				.insert({
+					id: user.id,
+					company_id: companyId,
+					role: "ADMIN",
+					name: adminName(),
+					email: adminEmail(),
+					status: "CONFIRMED"
+				});
+
+			if (profileErr) {
+				setAdminError(
+					"Errore nella creazione del profilo admin: " + profileErr.message
+				);
+				return;
+			}
 		}
 
-		// 6) INSERISCI company_id NEL JWT (user_metadata)
+		// ---------------------------------------
+		// 4) METADATA JWT (idempotenti)
+		// ---------------------------------------
 		await supabase.auth.updateUser({
 			data: {
 				companies: [{ company_id: companyId }],
@@ -140,70 +184,116 @@ export default function Register() {
 		setShowSuccessModal(true);
 	}
 
+
 	// -------------------------------------------------------------
 	// 🟢 REGISTRAZIONE DIPENDENTE — invariata
 	// -------------------------------------------------------------
 	async function handleRegisterEmployee() {
 		setEmpMessage("");
 
-		// 1) CREA UTENTE AUTH
-		const { data, error: signUpError } = await supabase.auth.signUp({
-			email: empEmail(),
-			password: empPassword(),
-		});
-
-		if (signUpError) {
-			setEmpMessage("Errore creazione utente: " + signUpError.message);
+		// -----------------------------
+		// VALIDAZIONI LATO CLIENT
+		// -----------------------------
+		if (!empName().trim()) {
+			setEmpMessage("Inserisci il tuo nome.");
+			return;
+		}
+		if (!empEmail().trim()) {
+			setEmpMessage("Inserisci una email.");
+			return;
+		}
+		if (!empPassword().trim() || empPassword().length < 6) {
+			setEmpMessage("La password deve contenere almeno 6 caratteri.");
+			return;
+		}
+		if (!inviteCode().trim()) {
+			setEmpMessage("Inserisci il codice di invito.");
 			return;
 		}
 
-		const user = data.user;
-		if (!user) {
-			setEmpMessage("Errore interno: user non creato.");
-			return;
-		}
-
-		// 2) LOGIN AUTOMATICO
-		const { error: loginErr } = await supabase.auth.signInWithPassword({
-			email: empEmail(),
-			password: empPassword(),
-		});
-
-		if (loginErr) {
-			setEmpMessage("Errore login dopo registrazione: " + loginErr.message);
-			return;
-		}
-
-		// 3) CERCA COMPANY
-		const { data: companies, error: inviteErr } = await supabase
+		// -----------------------------
+		// 1) CONTROLLA CODICE INVITO PRIMA DI TUTTO
+		// -----------------------------
+		const { data: company, error: inviteErr } = await supabase
 			.from("onshift_companies")
 			.select("id")
-			.eq("invite_code", inviteCode());
+			.eq("invite_code", inviteCode())
+			.maybeSingle();
 
-		if (inviteErr || !companies || companies.length === 0) {
-			setEmpMessage("Invite code non valido.");
+		if (inviteErr || !company) {
+			setEmpMessage("Codice di invito non valido.");
 			return;
 		}
 
-		const companyId = companies[0].id;
+		const companyId = company.id;
 
-		// 4) CREA PROFILO
-		const { error: profileErr } = await supabase
+		// -----------------------------
+		// 2) CREA L'UTENTE IN AUTH
+		// -----------------------------
+		const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+			email: empEmail(),
+			password: empPassword(),
+		});
+
+		let user = signUpData?.user;
+
+		if (signUpError) {
+			// Caso comune: utente già registrato
+			if ((signUpError as any).code === "user_already_exists") {
+				// Proviamo login
+				const { data: loginData, error: loginError } =
+					await supabase.auth.signInWithPassword({
+						email: empEmail(),
+						password: empPassword(),
+					});
+
+				if (loginError || !loginData.user) {
+					setEmpMessage("Email già registrata. Vai al login.");
+					return;
+				}
+
+				user = loginData.user;
+			} else {
+				setEmpMessage("Errore registrazione: " + signUpError.message);
+				return;
+			}
+		}
+
+		if (!user) {
+			setEmpMessage("Errore interno: impossibile creare l'utente.");
+			return;
+		}
+
+		// -----------------------------
+		// 3) CREA PROFILO SOLO SE NON ESISTE GIÀ
+		// -----------------------------
+		const { data: existingProfile } = await supabase
 			.from("onshift_users")
-			.insert({
-				id: user.id,
-				company_id: companyId,
-				role: "EMPLOYEE",
-				name: empName(),
-				email: empEmail(),
-				status: "PENDING"
-			});
+			.select("id")
+			.eq("id", user.id)
+			.maybeSingle();
 
-		if (profileErr) {
-			setEmpMessage("Errore creazione profilo: " + profileErr.message);
-			return;
+		if (!existingProfile) {
+			const { error: profileErr } = await supabase
+				.from("onshift_users")
+				.insert({
+					id: user.id,
+					company_id: companyId,
+					role: "EMPLOYEE",
+					name: empName(),
+					email: empEmail(),
+					status: "PENDING"
+				});
+
+			if (profileErr) {
+				setEmpMessage("Errore creazione profilo: " + profileErr.message);
+				return;
+			}
 		}
 
+		// -----------------------------
+		// 4) METADATA JWT
+		// -----------------------------
 		await supabase.auth.updateUser({
 			data: {
 				companies: [{ company_id: companyId }],
@@ -213,6 +303,7 @@ export default function Register() {
 
 		setShowSuccessModal(true);
 	}
+
 
 	// -------------------------------------------------------------
 	// UI
@@ -302,7 +393,7 @@ export default function Register() {
 					<Show when={mode() === "EMP"}>
 
 						<div class="text-sm text-gray-500 flex items-center justify-center text-center mb-6">
-							Registrati come dipendente, dovrai fornire il codice d'invito in mano al tuo titolare
+							Registrati come dipendente, dovrai inserire il codice d'invito fornito dal tuo titolare
 						</div>
 
 						<div class="flex flex-col gap-2 justify-between">

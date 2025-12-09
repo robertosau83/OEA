@@ -67,6 +67,7 @@ export default function Login() {
 					placeholder="Email"
 					class="w-full p-2 border border-gray-300 rounded mb-3"
 					onInput={(e) => setEmail(e.currentTarget.value)}
+					onKeyDown={(e) => e.key === "Enter" && handleLogin()}
 				/>
 
 				<input
@@ -74,6 +75,7 @@ export default function Login() {
 					placeholder="Password"
 					class="w-full p-2 border border-gray-300 rounded mb-4"
 					onInput={(e) => setPassword(e.currentTarget.value)}
+					onKeyDown={(e) => e.key === "Enter" && handleLogin()}
 				/>
 
 				<button
