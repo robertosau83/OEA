@@ -1,12 +1,10 @@
+import { useOrientation } from "../context/OrientationContext";
 import { createSignal, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { supabase } from "../supabaseClient";
 
-interface RegisterProps {
-	isLandscape: boolean;
-}
-
-export default function Register(props: RegisterProps) {
+export default function Register() {
+	const { isLandscape } = useOrientation();
 	const navigate = useNavigate();
 	const [mode, setMode] = createSignal<"ADMIN" | "EMP">("ADMIN");
 
@@ -222,8 +220,8 @@ export default function Register(props: RegisterProps) {
 
 	return (
 		<>
-			<div class={`min-h-screen flex items-center justify-center ${props.isLandscape ? "bg-gray-50" : ""}`}>
-				<div class={`bg-white ${props.isLandscape ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
+			<div class={`min-h-screen flex items-center justify-center ${isLandscape() ? "bg-gray-50" : ""}`}>
+				<div class={`bg-white ${isLandscape() ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
 
 					<h1 class="text-2xl font-semibold text-center mb-10">
 						Crea un nuovo account

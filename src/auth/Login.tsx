@@ -1,13 +1,12 @@
+import { useOrientation } from "../context/OrientationContext";
 import { createSignal } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { supabase } from "../supabaseClient";
 
-interface LoginProps {
-	isLandscape: boolean;
-}
-
-export default function Login(props: LoginProps) {
+export default function Login() {
 	const navigate = useNavigate();
+	const { isLandscape } = useOrientation();
+
 	const [email, setEmail] = createSignal("");
 	const [password, setPassword] = createSignal("");
 	const [message, setMessage] = createSignal("");
@@ -59,8 +58,8 @@ export default function Login(props: LoginProps) {
 	}
 
 	return (
-		<div class={`min-h-screen flex items-center justify-center ${props.isLandscape ? "bg-gray-50" : ""}`}>
-			<div class={`bg-white ${props.isLandscape ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
+		<div class={`min-h-screen flex items-center justify-center ${isLandscape() ? "bg-gray-50" : ""}`}>
+			<div class={`bg-white ${isLandscape() ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
 				<h1 class="text-3xl font-bold text-center mb-16">onShift</h1>
 
 				<input

@@ -3,21 +3,50 @@
 @tailwind utilities;
 
 html, body {
-  overscroll-behavior: none; /* Impedisce il trascinamento */
-  touch-action: none; /* Disabilita il trascinamento */
-  overflow: hidden; /* Rimuove lo scrolling */
-  height: 100%; /* Assicura che il contenitore riempia l'altezza dello schermo */
-  margin: 0;
-  padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
-    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
-    'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+	overscroll-behavior: none;
+	/* Impedisce il trascinamento */
+	touch-action: none;
+	/* Disabilita il trascinamento */
+	overflow: hidden;
+	/* Rimuove lo scrolling */
+	height: 100%;
+	/* Assicura che il contenitore riempia l'altezza dello schermo */
+	margin: 0;
+	padding: 0;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+		'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans',
+		'Helvetica Neue', sans-serif;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+	font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+		monospace;
 }
- 
+
+@keyframes slideFade {
+	0% {
+		opacity: 0;
+		transform: translate(-50%, 20px);
+	}
+
+	20% {
+		opacity: 1;
+		transform: translate(-50%, 0);
+	}
+
+	80% {
+		opacity: 1;
+		transform: translate(-50%, 0);
+	}
+
+	100% {
+		opacity: 0;
+		transform: translate(-50%, 20px);
+	}
+}
+
+.animate-slideFade {
+	animation: slideFade 2s ease forwards;
+}

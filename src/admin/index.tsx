@@ -7,68 +7,72 @@ import { supabase } from "../supabaseClient";
 import { useNavigate } from "@solidjs/router";
 
 export default function AdminIndex() {
-  const navigate = useNavigate();
+	const navigate = useNavigate();
 
-  const [loading, setLoading] = createSignal(true);
+	const [loading, setLoading] = createSignal(true);
 
-  const [userName, setUserName] = createSignal("");
-  const [userEmail, setUserEmail] = createSignal("");
-  const [role, setRole] = createSignal("");
-  const [companyName, setCompanyName] = createSignal("");
-  const [inviteCode, setInviteCode] = createSignal("");
-  const [companyId, setCompanyId] = createSignal("");
+	const [userName, setUserName] = createSignal("");
+	const [userEmail, setUserEmail] = createSignal("");
+	const [role, setRole] = createSignal("");
+	const [companyName, setCompanyName] = createSignal("");
+	const [inviteCode, setInviteCode] = createSignal("");
+	const [companyId, setCompanyId] = createSignal("");
 
-  onMount(async () => {
-    const { data: session } = await supabase.auth.getSession();
-    const user = session?.session?.user;
+	onMount(async () => {
+		const { data: session } = await supabase.auth.getSession();
+		const user = session?.session?.user;
 
-    if (!user) {
-      navigate("/");
-      return;
-    }
+		if (!user) {
+			navigate("/");
+			return;
+		}
 
-    setUserEmail(user.email ?? "");
+		setUserEmail(user.email ?? "");
 
-    const { data: profile } = await supabase
-      .from("onshift_users")
-      .select("name, role, company_id")
-      .eq("id", user.id)
-      .single();
+		const { data: profile } = await supabase
+			.from("onshift_users")
+			.select("name, role, company_id")
+			.eq("id", user.id)
+			.single();
 
-    if (profile) {
-      setUserName(profile.name);
-      setRole(profile.role);
-      setCompanyId(profile.company_id);
+		if (profile) {
+			setUserName(profile.name);
+			setRole(profile.role);
+			setCompanyId(profile.company_id);
 
-      const { data: company } = await supabase
-        .from("onshift_companies")
-        .select("name, invite_code")
-        .eq("id", profile.company_id)
-        .single();
+			const { data: company } = await supabase
+				.from("onshift_companies")
+				.select("name, invite_code")
+				.eq("id", profile.company_id)
+				.single();
 
-      if (company) {
-        setCompanyName(company.name);
-        setInviteCode(company.invite_code);
-      }
-    }
+			if (company) {
+				setCompanyName(company.name);
+				setInviteCode(company.invite_code);
+			}
+		}
 
-    setLoading(false);
-  });
+		setLoading(false);
+	});
 
-  return (
-    <AdminLayout
-      userTab={
-        <AdminHome
-          loading={loading()}
-          userName={userName()}
-          userEmail={userEmail()}
-          role={role()}
-          companyName={companyName()}
-			 companyId={companyId()}
-          inviteCode={inviteCode()}
-        />
-      }
-      employeesTab={<Employees companyId={companyId()} />}
-    />
-  );
+	return (
+		<AdminLayout
+			userTab={
+				<AdminHome
+					loading={loading()}
+					userName={userName()}
+					setUserName={setUserName}
+					userEmail={userEmail()}
+					role={role()}
+					companyName={companyName()}
+					setCompanyName={setCompanyName}
+					companyId={companyId()}
+					inviteCode={inviteCode()}
+				/>
+			}
+			employeesTab={<Employees companyId={companyId()} />}
+			userName={userName()}
+			companyName={companyName()}
+		/>
+	);
 }

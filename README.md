@@ -158,7 +158,7 @@ Per utilizzare questo template devi:
 - vedere tutti i dipendenti della sua azienda
 - confermarli cambiando status = 'CONFIRMED'
 
-## cancellazione utenza da parte di admin. 
+## auto cancellazione utenza da parte di admin. 
 
 Per fare in modo che admin possa cancellare la sua utenza quindi:
 
@@ -221,3 +221,123 @@ $$;
 
 il codice la richiamerà quando vorremo cancellare l'utenza di un ADMIN e lasciare tutto pulito.
 i relativi employee non saranno più in grado di fare nulla, e verranno loggati fuori dopo tot ore o al successivo refresh.
+
+
+## auto cancellazione utenza da parte di employee. 
+
+Per fare in modo che employee possa cancellare la sua utenza quindi:
+
+se stesso
+la sua utenza Auth
+
+bisogna inserire una funzione rpc così:
+
+````md
+```sql
+
+create or replace function employee_delete_self()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  emp_uid uuid := auth.uid();
+  emp_role text;
+begin
+  -- 1) Recupera ruolo dell'utente
+  select role into emp_role
+  from onshift_users
+  where id = emp_uid;
+
+  if emp_role is null then
+    raise exception 'User not found.';
+  end if;
+
+  -- 2) Blocca la cancellazione per un ADMIN
+  if emp_role = 'ADMIN' then
+    raise exception 'Admins cannot delete themselves. Use admin_delete_account instead.';
+  end if;
+
+  -- 3) Cancella dalla tabella applicativa
+  delete from onshift_users
+  where id = emp_uid;
+
+  -- 4) Cancella dal sistema Auth
+  delete from auth.users
+  where id = emp_uid;
+
+end;
+$$;
+
+
+```
+
+il codice la richiamerà quando vorremo cancellare l'utenza di un EMPLOYEE e lasciare tutto pulito.
+
+
+## cancellazione singola utenza EMPLOYEE da parte di ADMIN
+
+Per fare in modo che un Admin possa cancellare una singola utenza (tasto "cancella" nella tabella dei suoi dipendenti):
+-viene cancellata l'istanza del dipendente da onshift_users
+-viene cancellata l'istanza del dipendente da auth
+
+bisogna inserire una funzione rpc così:
+
+````md
+```sql
+
+create or replace function admin_delete_employee(emp_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  admin_uid uuid := auth.uid();
+  admin_company uuid;
+  emp_company uuid;
+  emp_role text;
+begin
+  -- Recupera company dell'admin chiamante
+  select company_id into admin_company
+  from onshift_users
+  where id = admin_uid and role = 'ADMIN';
+
+  if admin_company is null then
+    raise exception 'Unauthorized: only admins can delete employees.';
+  end if;
+
+  -- Recupera la company del dipendente da eliminare
+  select company_id, role into emp_company, emp_role
+  from onshift_users
+  where id = emp_id;
+
+  if emp_company is null then
+    raise exception 'Employee not found.';
+  end if;
+
+  -- L'admin NON può eliminare altri admin
+  if emp_role = 'ADMIN' then
+    raise exception 'Admins cannot delete other admin accounts.';
+  end if;
+
+  -- Devono appartenere alla stessa company
+  if emp_company != admin_company then
+    raise exception 'Cannot delete employees from another company.';
+  end if;
+
+  -- Elimina dalla tabella applicativa
+  delete from onshift_users where id = emp_id;
+
+  -- Elimina dal sistema Auth
+  delete from auth.users where id = emp_id;
+
+end;
+$$;
+
+
+
+```
+
+il codice la richiamerà quando vorremo cancellare l'utenza di un EMPLOYEE e lasciare tutto pulito.
