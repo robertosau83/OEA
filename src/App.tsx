@@ -2,8 +2,8 @@ import { Route } from "@solidjs/router";
 
 import Login from "./auth/Login";
 import Register from "./auth/Register";
-import AdminIndex from "./admin/index";
-import EmployeeIndex from "./employee/index";
+import AdminIndex from "./admin/AdminIndex";
+import EmployeeIndex from "./employee/EmployeeIndex";
 
 export default function App() {
   return (

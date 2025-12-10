@@ -27,8 +27,8 @@ export default function Login() {
 			return;
 		}
 
-		console.log("RAW SESSION:", loginData.session);
-		console.log("ACCESS TOKEN:", loginData.session?.access_token);
+		//console.log("RAW SESSION:", loginData.session);
+		//console.log("ACCESS TOKEN:", loginData.session?.access_token);
 
 		// 2) PRENDO USER LOGGATO
 		const user = loginData.user;

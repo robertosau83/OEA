@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createSignal, Show, createEffect } from "solid-js";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "@solidjs/router";
 
@@ -31,6 +31,11 @@ export default function AdminHome(props: AdminHomeProps) {
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
 
 	const brandBlue = "#0551b5";
+
+	// 🔥 Sincronizza sempre quando cambiano i props
+	createEffect(() => {
+		setInviteCode(props.inviteCode);
+	});
 
 	const handleSave = async () => {
 		if (modalField() === "user") {

@@ -1,5 +1,4 @@
-// src/admin/Employees.tsx
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import { supabase } from "../supabaseClient";
 import { useOrientation } from "../context/OrientationContext";
 
@@ -15,7 +14,7 @@ interface EmployeesProps {
 	companyId: string;
 }
 
-export default function Employees(props: EmployeesProps) {
+export default function EmployeesTab(props: EmployeesProps) {
 	const { isLandscape } = useOrientation();
 
 	const [employees, setEmployees] = createSignal<Employee[]>([]);
@@ -24,15 +23,26 @@ export default function Employees(props: EmployeesProps) {
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
 	const [employeeToDelete, setEmployeeToDelete] = createSignal<string | null>(null);
 
-	onMount(async () => {
+	// ⏱️ Polling interval tipizzato
+	let pollingInterval: ReturnType<typeof setInterval> | undefined;
+
+	// ---------------------------------------------------
+	// FUNZIONE CHE RICARICA LA LISTA DIPENDENTI
+	// ---------------------------------------------------
+	const fetchEmployees = async () => {
+
+		if (!props.companyId) return;  // ⬅️ evita query vuota
+		
 		const { data } = await supabase
 			.from("onshift_users")
 			.select("id, name, email, role, status")
-			.eq("role", "EMPLOYEE");
+			.eq("role", "EMPLOYEE")
+			.eq("company_id", props.companyId);
 
-		setEmployees(sortEmployees((data as Employee[]) || []));
-		setLoading(false);
-	});
+		if (data) {
+			setEmployees(sortEmployees(data as Employee[]));
+		}
+	};
 
 	const sortEmployees = (list: Employee[]) =>
 		list
@@ -43,24 +53,54 @@ export default function Employees(props: EmployeesProps) {
 				return a.name.localeCompare(b.name);
 			});
 
+	// ---------------------------------------------------
+	// MOUNT
+	// ---------------------------------------------------
+	onMount(async () => {
+		await fetchEmployees();
+		setLoading(false);
+
+		// ⏱ Soft polling ogni 20 sec
+		pollingInterval = setInterval(async () => {
+			if (document.visibilityState === "visible") {
+				await fetchEmployees();
+			}
+		}, 20_000);
+
+		// Aggiorna subito quando la tab torna attiva
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+	});
+
+	const handleVisibilityChange = () => {
+		if (document.visibilityState === "visible") {
+			fetchEmployees();
+		}
+	};
+
+	// ---------------------------------------------------
+	// CLEANUP
+	// ---------------------------------------------------
+	onCleanup(() => {
+		if (pollingInterval) clearInterval(pollingInterval);
+		document.removeEventListener("visibilitychange", handleVisibilityChange);
+	});
+
+	// ---------------------------------------------------
+	// FUNZIONI DI UPDATE
+	// ---------------------------------------------------
 	const confirmEmployee = async (empId: string) => {
 		const { error } = await supabase
 			.from("onshift_users")
 			.update({ status: "CONFIRMED" })
 			.eq("id", empId);
 
-		if (error) {
-			alert("Errore nella conferma del dipendente: " + error.message);
-			return;
-		}
-
-		setEmployees(prev =>
-			sortEmployees(
-				prev.map(emp =>
+		if (!error) {
+			setEmployees(prev =>
+				sortEmployees(prev.map(emp =>
 					emp.id === empId ? { ...emp, status: "CONFIRMED" } : emp
-				)
-			)
-		);
+				))
+			);
+		}
 	};
 
 	const suspendEmployee = async (empId: string) => {
@@ -69,18 +109,13 @@ export default function Employees(props: EmployeesProps) {
 			.update({ status: "PENDING" })
 			.eq("id", empId);
 
-		if (error) {
-			alert("Errore nella sospensione: " + error.message);
-			return;
-		}
-
-		setEmployees(prev =>
-			sortEmployees(
-				prev.map(emp =>
+		if (!error) {
+			setEmployees(prev =>
+				sortEmployees(prev.map(emp =>
 					emp.id === empId ? { ...emp, status: "PENDING" } : emp
-				)
-			)
-		);
+				))
+			);
+		}
 	};
 
 	return (
@@ -128,7 +163,7 @@ export default function Employees(props: EmployeesProps) {
 
 										<Show when={emp.status === "CONFIRMED"}>
 											<button
-												class="h-9 px-4 py-1 bg-white text-yellow-500 border rounded-full text-sm font-semibold shadow hover:bg-yellow-600 transition"
+												class="h-9 px-4 py-1 bg-white text-yellow-500 border rounded-full text-sm font-semibold shadow transition"
 												onClick={() => suspendEmployee(emp.id)}
 											>
 												Sospendi

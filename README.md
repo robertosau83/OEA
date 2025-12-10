@@ -341,3 +341,7 @@ $$;
 ```
 
 il codice la richiamerà quando vorremo cancellare l'utenza di un EMPLOYEE e lasciare tutto pulito.
+
+
+
+ALTER TABLE public."onshift_companies" REPLICA IDENTITY FULL;
