@@ -60,6 +60,12 @@ export default function Login() {
 	return (
 		<div class={`min-h-screen flex items-center justify-center ${isLandscape() ? "bg-gray-50" : ""}`}>
 			<div class={`bg-white ${isLandscape() ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
+
+				<div class="flex items-center justify-center">
+
+					<img src="/onShift 1024.png" class="w-48 mb-4" />
+				</div>
+
 				<h1 class="text-3xl font-bold text-center mb-16">onShift</h1>
 
 				<input

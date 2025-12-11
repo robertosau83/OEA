@@ -345,3 +345,5 @@ il codice la richiamerà quando vorremo cancellare l'utenza di un EMPLOYEE e las
 
 
 ALTER TABLE public."onshift_companies" REPLICA IDENTITY FULL;
+
+alle sottoscrizioni alle tabelle users e companies ho preferito un soft polling che rifà le query ogni 20 secondi.

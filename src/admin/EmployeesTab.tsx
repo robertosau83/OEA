@@ -1,3 +1,4 @@
+// src/admin/EmployeesTab.tsx
 import { createSignal, onMount, onCleanup, Show } from "solid-js";
 import { supabase } from "../supabaseClient";
 import { useOrientation } from "../context/OrientationContext";
@@ -23,16 +24,14 @@ export default function EmployeesTab(props: EmployeesProps) {
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
 	const [employeeToDelete, setEmployeeToDelete] = createSignal<string | null>(null);
 
-	// ⏱️ Polling interval tipizzato
 	let pollingInterval: ReturnType<typeof setInterval> | undefined;
 
-	// ---------------------------------------------------
-	// FUNZIONE CHE RICARICA LA LISTA DIPENDENTI
-	// ---------------------------------------------------
+	// -----------------------------
+	// FETCH
+	// -----------------------------
 	const fetchEmployees = async () => {
+		if (!props.companyId) return;
 
-		if (!props.companyId) return;  // ⬅️ evita query vuota
-		
 		const { data } = await supabase
 			.from("onshift_users")
 			.select("id, name, email, role, status")
@@ -53,21 +52,19 @@ export default function EmployeesTab(props: EmployeesProps) {
 				return a.name.localeCompare(b.name);
 			});
 
-	// ---------------------------------------------------
+	// -----------------------------
 	// MOUNT
-	// ---------------------------------------------------
+	// -----------------------------
 	onMount(async () => {
 		await fetchEmployees();
 		setLoading(false);
 
-		// ⏱ Soft polling ogni 20 sec
 		pollingInterval = setInterval(async () => {
 			if (document.visibilityState === "visible") {
 				await fetchEmployees();
 			}
 		}, 20_000);
 
-		// Aggiorna subito quando la tab torna attiva
 		document.addEventListener("visibilitychange", handleVisibilityChange);
 	});
 
@@ -77,17 +74,17 @@ export default function EmployeesTab(props: EmployeesProps) {
 		}
 	};
 
-	// ---------------------------------------------------
+	// -----------------------------
 	// CLEANUP
-	// ---------------------------------------------------
+	// -----------------------------
 	onCleanup(() => {
 		if (pollingInterval) clearInterval(pollingInterval);
 		document.removeEventListener("visibilitychange", handleVisibilityChange);
 	});
 
-	// ---------------------------------------------------
-	// FUNZIONI DI UPDATE
-	// ---------------------------------------------------
+	// -----------------------------
+	// UPDATE STATUS
+	// -----------------------------
 	const confirmEmployee = async (empId: string) => {
 		const { error } = await supabase
 			.from("onshift_users")
@@ -96,9 +93,11 @@ export default function EmployeesTab(props: EmployeesProps) {
 
 		if (!error) {
 			setEmployees(prev =>
-				sortEmployees(prev.map(emp =>
-					emp.id === empId ? { ...emp, status: "CONFIRMED" } : emp
-				))
+				sortEmployees(
+					prev.map(emp =>
+						emp.id === empId ? { ...emp, status: "CONFIRMED" } : emp
+					)
+				)
 			);
 		}
 	};
@@ -111,25 +110,29 @@ export default function EmployeesTab(props: EmployeesProps) {
 
 		if (!error) {
 			setEmployees(prev =>
-				sortEmployees(prev.map(emp =>
-					emp.id === empId ? { ...emp, status: "PENDING" } : emp
-				))
+				sortEmployees(
+					prev.map(emp =>
+						emp.id === empId ? { ...emp, status: "PENDING" } : emp
+					)
+				)
 			);
 		}
 	};
 
+	// -----------------------------
+	// RENDER
+	// -----------------------------
 	return (
 		<>
 			<Show when={!loading()} fallback={<div class="text-xl">Caricamento...</div>}>
 
-				{/* TITOLI */}
 				<h1 class={`font-bold ${isLandscape() ? "text-2xl" : "text-xl"} mb-4 ml-2`}>
 					Dipendenti
 				</h1>
 
-				{/* ------------------------------------------- */}
-				{/* LANDSCAPE → TABELLA */}
-				{/* ------------------------------------------- */}
+				{/* ----------------------------- */}
+				{/* TABELLA DESKTOP */}
+				{/* ----------------------------- */}
 				<Show when={isLandscape()}>
 					<table class="w-full bg-white shadow-md rounded-lg overflow-hidden">
 						<thead class="bg-[#0551b5] text-white">
@@ -143,7 +146,7 @@ export default function EmployeesTab(props: EmployeesProps) {
 
 						<tbody>
 							{employees().map(emp => (
-								<tr class="border-b hover:bg-gray-50 transition">
+								<tr class="border-b hover:bg-gray-50">
 									<td class="p-3">{emp.name}</td>
 									<td class="p-3">{emp.email}</td>
 									<td class={`p-3 font-semibold ${emp.status === "PENDING" ? "text-yellow-600" : "text-green-600"}`}>
@@ -151,10 +154,9 @@ export default function EmployeesTab(props: EmployeesProps) {
 									</td>
 
 									<td class="p-3 flex items-center gap-3 justify-end">
-
 										<Show when={emp.status === "PENDING"}>
 											<button
-												class="h-9 px-5 py-1 bg-[#0551b5] text-white rounded-full text-sm font-semibold shadow transition"
+												class="h-9 px-5 bg-[#0551b5] text-white rounded-full text-sm"
 												onClick={() => confirmEmployee(emp.id)}
 											>
 												Attiva
@@ -163,7 +165,7 @@ export default function EmployeesTab(props: EmployeesProps) {
 
 										<Show when={emp.status === "CONFIRMED"}>
 											<button
-												class="h-9 px-4 py-1 bg-white text-yellow-500 border rounded-full text-sm font-semibold shadow transition"
+												class="h-9 px-4 bg-white text-yellow-500 border rounded-full text-sm"
 												onClick={() => suspendEmployee(emp.id)}
 											>
 												Sospendi
@@ -171,7 +173,7 @@ export default function EmployeesTab(props: EmployeesProps) {
 										</Show>
 
 										<button
-											class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-600 hover:bg-red-700 transition"
+											class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-600 hover:bg-red-700"
 											onClick={() => {
 												setEmployeeToDelete(emp.id);
 												setShowDeleteModal(true);
@@ -179,7 +181,6 @@ export default function EmployeesTab(props: EmployeesProps) {
 										>
 											<img src="/trash-white.svg" class="w-4 h-4" />
 										</button>
-
 									</td>
 								</tr>
 							))}
@@ -187,37 +188,31 @@ export default function EmployeesTab(props: EmployeesProps) {
 					</table>
 				</Show>
 
-				{/* ------------------------------------------- */}
-				{/* PORTRAIT → CARD LIST MODERNA */}
-				{/* ------------------------------------------- */}
+				{/* ----------------------------- */}
+				{/* MOBILE CARD LIST */}
+				{/* ----------------------------- */}
 				<Show when={!isLandscape()}>
 					<div class="flex flex-col gap-4">
-
 						{employees().map(emp => (
-							<div class="bg-white shadow-md rounded-xl p-4 border border-gray-200 flex flex-col gap-3">
+							<div class="bg-white shadow-md rounded-xl p-4 border flex flex-col gap-3">
 
 								<div class="flex justify-between items-center">
 									<div>
-										<div class="text-lg font-semibold text-gray-800">{emp.name}</div>
+										<div class="text-lg font-semibold">{emp.name}</div>
 										<div class="text-sm text-gray-500">{emp.email}</div>
 									</div>
 
-									<span
-										class={`px-3 py-1 rounded-full font-semibold 
-                    ${emp.status === "PENDING"
-												? "bg-yellow-100 text-yellow-700"
-												: "bg-green-100 text-green-700"}`}
-									>
+									<span class={`px-3 py-1 rounded-full font-semibold 
+										${emp.status === "PENDING" ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"}`}>
 										{emp.status === "PENDING" ? "SOSPESO" : "ATTIVO"}
 									</span>
 								</div>
 
-								{/* BOTTONI */}
-								<div class="flex justify-end gap-2 items-center pt-2">
+								<div class="flex justify-end gap-2 pt-2">
 
 									<Show when={emp.status === "PENDING"}>
 										<button
-											class="h-9 px-4 py-1 bg-[#0551b5] text-white rounded-full text-sm font-semibold shadow transition"
+											class="h-9 px-4 bg-[#0551b5] text-white rounded-full text-sm"
 											onClick={() => confirmEmployee(emp.id)}
 										>
 											Attiva
@@ -226,7 +221,7 @@ export default function EmployeesTab(props: EmployeesProps) {
 
 									<Show when={emp.status === "CONFIRMED"}>
 										<button
-											class="h-9 px-4 py-1 bg-white text-yellow-500 border rounded-full text-sm font-semibold shadow transition"
+											class="h-9 px-4 bg-white text-yellow-500 border rounded-full text-sm"
 											onClick={() => suspendEmployee(emp.id)}
 										>
 											Sospendi
@@ -234,7 +229,7 @@ export default function EmployeesTab(props: EmployeesProps) {
 									</Show>
 
 									<button
-										class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-600 hover:bg-red-700 transition"
+										class="w-9 h-9 flex items-center justify-center rounded-lg bg-red-600 hover:bg-red-700"
 										onClick={() => {
 											setEmployeeToDelete(emp.id);
 											setShowDeleteModal(true);
@@ -243,39 +238,29 @@ export default function EmployeesTab(props: EmployeesProps) {
 										<img src="/trash-white.svg" class="w-4 h-4" />
 									</button>
 								</div>
+
 							</div>
 						))}
-
 					</div>
 				</Show>
 
 			</Show>
 
-
-			{/* ------------------------------------------- */}
-			{/* MODALE DI ELIMINAZIONE */}
-			{/* ------------------------------------------- */}
+			{/* ----------------------------- */}
+			{/* MODALE ELIMINAZIONE */}
+			{/* ----------------------------- */}
 			<Show when={showDeleteModal()}>
-				<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-					<div class="bg-white p-6 rounded-xl shadow-xl max-w-[90%] text-center border border-gray-200 space-y-4">
+				<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+					<div class="bg-white p-6 rounded-xl text-center space-y-4 w-[90%] max-w-sm">
 
 						<h2 class="text-xl font-bold text-red-700">Conferma Eliminazione</h2>
+						<p>Questa operazione è <strong>irreversibile</strong>.</p>
 
-						<p>
-							Questa operazione è <strong>irreversibile</strong>.<br />
-							Il dipendente verrà definitivamente rimosso da onShift.
-						</p>
-
-						<div class="flex justify-center space-x-3">
-							<button
-								class="px-3 py-1 rounded border"
-								onClick={() => setShowDeleteModal(false)}
-							>
-								Annulla
-							</button>
+						<div class="flex justify-center gap-3">
+							<button onClick={() => setShowDeleteModal(false)}>Annulla</button>
 
 							<button
-								class="px-3 py-1 bg-red-600 text-white rounded"
+								class="px-4 py-1.5 bg-red-600 text-white rounded"
 								onClick={async () => {
 									if (!employeeToDelete()) return;
 
@@ -283,12 +268,10 @@ export default function EmployeesTab(props: EmployeesProps) {
 										emp_id: employeeToDelete()
 									});
 
-									if (error) {
-										alert("Errore nella cancellazione: " + error.message);
+									if (!error) {
+										setEmployees(prev => prev.filter(emp => emp.id !== employeeToDelete()));
 									} else {
-										setEmployees(prev =>
-											prev.filter(emp => emp.id !== employeeToDelete())
-										);
+										alert("Errore nella cancellazione: " + error.message);
 									}
 
 									setShowDeleteModal(false);
@@ -302,6 +285,7 @@ export default function EmployeesTab(props: EmployeesProps) {
 					</div>
 				</div>
 			</Show>
+
 		</>
 	);
 }

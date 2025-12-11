@@ -1,8 +1,5 @@
-// src/admin/index.tsx
-
+// src/admin/AdminIndex.tsx
 import AdminLayout from "./AdminLayout";
-import AdminHome from "./AdminHome";
-import EmployeesTab from "./EmployeesTab";
 import { createSignal, onMount, onCleanup } from "solid-js";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "@solidjs/router";
@@ -19,22 +16,23 @@ export default function AdminIndex() {
 	const [inviteCode, setInviteCode] = createSignal("");
 	const [companyId, setCompanyId] = createSignal("");
 
-	// Polling interval tipizzato correttamente
 	let pollingInterval: ReturnType<typeof setInterval> | undefined;
 
 	// ---------------------------------------------------------
-	// 🔵 FUNZIONE DI REFRESH DATI ADMIN
+	// FUNZIONE DI REFRESH DATI ADMIN
 	// ---------------------------------------------------------
 	const fetchProfile = async () => {
 		const { data: session } = await supabase.auth.getSession();
 		const user = session?.session?.user;
 
-		if (!user) return;
+		if (!user) {
+			navigate("/");
+			return;
+		}
 
-		// Aggiorno email se serve
 		if (user.email !== userEmail()) setUserEmail(user.email ?? "");
 
-		// 1) PROFILO ADMIN
+		// profilo admin
 		const { data: profile } = await supabase
 			.from("onshift_users")
 			.select("name, role, company_id")
@@ -43,11 +41,11 @@ export default function AdminIndex() {
 
 		if (!profile) return;
 
-		if (profile.name !== userName()) setUserName(profile.name);
-		if (profile.role !== role()) setRole(profile.role);
-		if (profile.company_id !== companyId()) setCompanyId(profile.company_id);
+		setUserName(profile.name);
+		setRole(profile.role);
+		setCompanyId(profile.company_id);
 
-		// 2) DATI COMPANY
+		// company info
 		const { data: company } = await supabase
 			.from("onshift_companies")
 			.select("name, invite_code")
@@ -56,31 +54,23 @@ export default function AdminIndex() {
 
 		if (!company) return;
 
-		if (company.name !== companyName()) setCompanyName(company.name);
-
-		//console.log(company.invite_code, inviteCode());
-
-		if (company.invite_code !== inviteCode()) {
-			setInviteCode(company.invite_code);
-			//console.log(inviteCode());
-		}
+		setCompanyName(company.name);
+		setInviteCode(company.invite_code);
 	};
 
 	// ---------------------------------------------------------
-	// 🔵 MOUNT: CARICAMENTO + POLLING + VISIBILITY CHANGE
+	// MOUNT
 	// ---------------------------------------------------------
 	onMount(async () => {
 		await fetchProfile();
 		setLoading(false);
 
-		// ⏱️ Soft polling ogni 20 secondi
 		pollingInterval = setInterval(async () => {
 			if (document.visibilityState === "visible") {
 				await fetchProfile();
 			}
 		}, 20_000);
 
-		// 👁️ Aggiorna subito quando la tab torna visibile
 		document.addEventListener("visibilitychange", handleVisibilityChange);
 	});
 
@@ -91,7 +81,7 @@ export default function AdminIndex() {
 	};
 
 	// ---------------------------------------------------------
-	// 🔵 CLEANUP
+	// CLEANUP
 	// ---------------------------------------------------------
 	onCleanup(() => {
 		if (pollingInterval) clearInterval(pollingInterval);
@@ -99,30 +89,17 @@ export default function AdminIndex() {
 	});
 
 	// ---------------------------------------------------------
-	// 🔵 RENDER
+	// RENDER
 	// ---------------------------------------------------------
 	return (
 		<AdminLayout
-			userTab={
-				<AdminHome
-					loading={loading()}
-					userName={userName()}
-					setUserName={setUserName}
-					userEmail={userEmail()}
-					role={role()}
-					companyName={companyName()}
-					setCompanyName={setCompanyName}
-					companyId={companyId()}
-					inviteCode={inviteCode()}
-				/>
-			}
-			employeesTab={
-				companyId()
-					? <EmployeesTab companyId={companyId()} />
-					: <div>Caricamento dipendenti...</div>
-			}
+			loading={loading()}
 			userName={userName()}
+			userEmail={userEmail()}
+			role={role()}
 			companyName={companyName()}
+			inviteCode={inviteCode()}
+			companyId={companyId()}
 		/>
 	);
 }

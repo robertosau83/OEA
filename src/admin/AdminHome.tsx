@@ -1,3 +1,4 @@
+// src/admin/AdminHome.tsx
 import { createSignal, Show, createEffect } from "solid-js";
 import { supabase } from "../supabaseClient";
 import { useNavigate } from "@solidjs/router";
@@ -18,25 +19,24 @@ export default function AdminHome(props: AdminHomeProps) {
 
 	const navigate = useNavigate();
 
-	// reactive invite code
 	const [inviteCode, setInviteCode] = createSignal(props.inviteCode);
-	const [copied, setCopied] = createSignal(false);
 	const [showToast, setShowToast] = createSignal(false);
 
-	// modals
+	// Modals
 	const [showModal, setShowModal] = createSignal(false);
 	const [modalField, setModalField] = createSignal<"user" | "company" | null>(null);
 	const [newValue, setNewValue] = createSignal("");
 
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
 
-	const brandBlue = "#0551b5";
-
-	// 🔥 Sincronizza sempre quando cambiano i props
+	// 🔥 Sincronizza Invite Code quando cambia nei props
 	createEffect(() => {
 		setInviteCode(props.inviteCode);
 	});
 
+	// -----------------------------
+	// SALVA MODIFICA USER / COMPANY
+	// -----------------------------
 	const handleSave = async () => {
 		if (modalField() === "user") {
 			const { error } = await supabase
@@ -63,6 +63,9 @@ export default function AdminHome(props: AdminHomeProps) {
 		setShowModal(false);
 	};
 
+	// -----------------------------
+	// RIGENERA INVITE CODE
+	// -----------------------------
 	const regenerateInviteCode = async () => {
 		const newCode = Array.from(crypto.getRandomValues(new Uint8Array(4)))
 			.map(b => b.toString(16).padStart(2, "0"))
@@ -79,43 +82,24 @@ export default function AdminHome(props: AdminHomeProps) {
 		}
 	};
 
+	// -----------------------------
+	// COPY INVITE CODE
+	// -----------------------------
 	const copyInviteCode = async () => {
 		const text = inviteCode();
 
 		try {
-			if (navigator.clipboard && window.isSecureContext) {
-				await navigator.clipboard.writeText(text);
-				setShowToast(true);
-				setTimeout(() => setShowToast(false), 2000);
-				return;
-			}
-		} catch (_) { }
-
-		try {
-			const textarea = document.createElement("textarea");
-			textarea.value = text;
-			textarea.style.position = "fixed";
-			textarea.style.left = "-9999px";
-
-			document.body.appendChild(textarea);
-			textarea.select();
-			textarea.setSelectionRange(0, 99999);
-
-			const success = document.execCommand("copy");
-			document.body.removeChild(textarea);
-
-			if (success) {
-				setShowToast(true);
-				setTimeout(() => setShowToast(false), 2000);
-				return;
-			}
-
-			throw new Error("fallback failed");
-		} catch (err) {
+			await navigator.clipboard.writeText(text);
+			setShowToast(true);
+			setTimeout(() => setShowToast(false), 2000);
+		} catch (e) {
 			alert("Impossibile copiare il codice");
 		}
 	};
 
+	// -----------------------------
+	// DELETE ACCOUNT
+	// -----------------------------
 	const handleDeleteAccount = async () => {
 		const { error } = await supabase.rpc("admin_delete_account");
 
@@ -134,17 +118,15 @@ export default function AdminHome(props: AdminHomeProps) {
 
 				<div class="space-y-8 max-w-2xl">
 
-					{/* TITLE */}
 					<h1 class="font-bold text-2xl ml-2 tracking-tight text-gray-800">
 						Account
 					</h1>
 
 					{/* USER CARD */}
-					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-						<h2 class="text-xl font-semibold text-gray-800 mb-4">Profilo Utente</h2>
+					<div class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
+						<h2 class="text-xl font-semibold mb-4">Profilo Utente</h2>
 
-						<div class="space-y-3 text-gray-700">
-
+						<div class="space-y-3">
 							<div class="flex justify-between items-center">
 								<div>
 									<span class="font-medium text-gray-900">Nome</span>
@@ -152,7 +134,7 @@ export default function AdminHome(props: AdminHomeProps) {
 								</div>
 
 								<button
-									class="px-5 py-1.5 bg-[#0551b5] text-white rounded-full shadow-sm text-sm font-semibold transition-colors"
+									class="px-5 py-1.5 bg-[#0551b5] text-white rounded-full text-sm"
 									onClick={() => {
 										setModalField("user");
 										setNewValue(props.userName);
@@ -164,23 +146,22 @@ export default function AdminHome(props: AdminHomeProps) {
 							</div>
 
 							<div>
-								<span class="font-medium text-gray-900">Email</span>
+								<span class="font-medium">Email</span>
 								<p>{props.userEmail}</p>
 							</div>
 
 							<div>
-								<span class="font-medium text-gray-900">Ruolo</span>
+								<span class="font-medium">Ruolo</span>
 								<p class="capitalize">{props.role.toLowerCase()}</p>
 							</div>
-
 						</div>
 					</div>
 
 					{/* COMPANY CARD */}
-					<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-						<h2 class="text-xl font-semibold text-gray-800 mb-4">Azienda</h2>
+					<div class="bg-white rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow">
+						<h2 class="text-xl font-semibold mb-4">Azienda</h2>
 
-						<div class="space-y-3 text-gray-700">
+						<div class="space-y-3">
 
 							<div class="flex justify-between items-center">
 								<div>
@@ -189,7 +170,7 @@ export default function AdminHome(props: AdminHomeProps) {
 								</div>
 
 								<button
-									class="px-5 py-1.5 bg-[#0551b5] text-white rounded-full shadow-sm text-sm font-semibold transition-colors"
+									class="px-5 py-1.5 bg-[#0551b5] text-white rounded-full text-sm"
 									onClick={() => {
 										setModalField("company");
 										setNewValue(props.companyName);
@@ -200,38 +181,29 @@ export default function AdminHome(props: AdminHomeProps) {
 								</button>
 							</div>
 
-							<div class="flex justify-between items-center gap-3">
+							{/* INVITE CODE */}
+							<div class="flex justify-between items-center">
 								<div>
 									<span class="font-medium text-gray-900">Invite Code</span>
-
 									<div class="flex items-center gap-3 mt-1">
 										<p class="font-mono tracking-wide text-lg">{inviteCode()}</p>
 
-										{/* COPY BUTTON */}
 										<button
-											class="w-8 h-8 flex items-center justify-center bg-white border border-[#0551b5] rounded-md transition"
+											class="w-8 h-8 flex items-center justify-center bg-white border rounded-md"
 											onClick={copyInviteCode}
-											title="Copia"
 										>
 											<img src="/copy.svg" class="w-5 h-5" />
 										</button>
-
-										{/* FEEDBACK "COPIATO!" */}
-										<Show when={copied()}>
-											<span class="text-green-600 text-sm font-semibold">Copiato!</span>
-										</Show>
 									</div>
 								</div>
 
-								{/* RIGENERA */}
 								<button
-									class="px-5 py-1.5 bg-yellow-500 text-white rounded-full shadow-sm text-sm font-semibold hover:bg-yellow-600 transition-colors whitespace-nowrap"
+									class="px-5 py-1.5 bg-yellow-500 text-white rounded-full text-sm"
 									onClick={regenerateInviteCode}
 								>
 									Rigenera
 								</button>
 							</div>
-
 
 						</div>
 					</div>
@@ -239,7 +211,7 @@ export default function AdminHome(props: AdminHomeProps) {
 					{/* DELETE ACCOUNT */}
 					<div class="pt-8">
 						<button
-							class="px-4 py-2 bg-white text-red-600 border-2 border-red-600 rounded-full shadow-sm hover:bg-red-100 transition-colors"
+							class="px-4 py-2 bg-white text-red-600 border-2 border-red-600 rounded-full"
 							onClick={() => setShowDeleteModal(true)}
 						>
 							Elimina Account
@@ -249,33 +221,23 @@ export default function AdminHome(props: AdminHomeProps) {
 
 			</Show>
 
-			{/* ---------------------- */}
-			{/* MODAL MODIFICA DATI */}
-			{/* ---------------------- */}
+			{/* MODAL - Modifica */}
 			<Show when={showModal()}>
-				<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-					<div class="bg-white p-6 rounded-xl shadow-xl w-80 space-y-4 border border-gray-200">
-						<h2 class="text-xl font-semibold text-gray-800">
+				<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+					<div class="bg-white p-6 rounded-xl shadow-xl w-80 space-y-4">
+						<h2 class="text-xl font-semibold">
 							Modifica {modalField() === "user" ? "nome utente" : "nome azienda"}
 						</h2>
 
 						<input
-							class="border border-gray-300 w-full px-3 py-2 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+							class="border w-full px-3 py-2 rounded-md"
 							value={newValue()}
 							onInput={(e) => setNewValue(e.currentTarget.value)}
 						/>
 
-						<div class="flex justify-end space-x-2">
-							<button
-								class="px-3 py-1 text-gray-700 hover:text-gray-900"
-								onClick={() => setShowModal(false)}
-							>
-								Annulla
-							</button>
-							<button
-								class="px-4 py-1.5 bg-[#0551b5] text-white rounded-md shadow-sm transition-colors"
-								onClick={handleSave}
-							>
+						<div class="flex justify-end gap-2">
+							<button onClick={() => setShowModal(false)}>Annulla</button>
+							<button class="px-4 py-1.5 bg-[#0551b5] text-white rounded-md" onClick={handleSave}>
 								Salva
 							</button>
 						</div>
@@ -283,56 +245,29 @@ export default function AdminHome(props: AdminHomeProps) {
 				</div>
 			</Show>
 
-			{/* ---------------------- */}
-			{/* MODAL DELETE ACCOUNT */}
-			{/* ---------------------- */}
+			{/* MODAL DELETE */}
 			<Show when={showDeleteModal()}>
-				<div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-					<div class="bg-white p-6 rounded-xl shadow-xl max-w-[90%] text-center border border-gray-200 space-y-4">
-
+				<div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+					<div class="bg-white p-6 rounded-xl max-w-[90%] text-center space-y-4">
 						<h2 class="text-2xl font-bold text-red-700">Eliminazione Account</h2>
-						<p class="text-gray-700">
-							Questa operazione è <strong>irreversibile</strong>. Verranno eliminati
-							la tua azienda, i dipendenti e il tuo account.
-						</p>
+						<p>Tutta l'azienda e i dipendenti verranno eliminati.</p>
 
-						<div class="flex justify-center space-x-3 pt-2">
-							<button
-								class="px-4 py-1.5 border rounded-md text-gray-700 hover:bg-gray-100 transition"
-								onClick={() => setShowDeleteModal(false)}
-							>
-								Annulla
-							</button>
-
-							<button
-								class="px-4 py-1.5 bg-red-600 text-white rounded-md shadow-sm hover:bg-red-700 transition-colors"
-								onClick={handleDeleteAccount}
-							>
+						<div class="flex justify-center gap-3">
+							<button onClick={() => setShowDeleteModal(false)}>Annulla</button>
+							<button class="px-4 py-1.5 bg-red-600 text-white rounded-md" onClick={handleDeleteAccount}>
 								Elimina
 							</button>
 						</div>
-
 					</div>
 				</div>
 			</Show>
 
-			{/* ---------------------- */}
-			{/* TOAST COPY SUCCESS */}
-			{/* ---------------------- */}
+			{/* TOAST COPY */}
 			<Show when={showToast()}>
-				<div
-					class="
-      fixed left-1/2 -translate-x-1/2 bottom-6
-      bg-[#0551b5] text-white text-sm font-semibold
-      px-4 py-2 rounded-full shadow-lg
-      animate-slideFade
-      z-50
-    "
-				>
+				<div class="fixed left-1/2 -translate-x-1/2 bottom-6 bg-[#0551b5] text-white px-4 py-2 rounded-full shadow-lg">
 					Copiato!
 				</div>
 			</Show>
-
 		</>
 	);
 }
