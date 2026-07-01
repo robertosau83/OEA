@@ -1,6 +1,6 @@
 import { For, Show, createSignal } from "solid-js";
 import type { Accessor, Setter } from "solid-js";
-import { ArrowDownIcon, ArrowUpIcon, CloseIcon, QuickInputIcon, TrashIcon } from "./icons";
+import { ArrowDownIcon, ArrowLeftIcon, ArrowUpIcon, CloseIcon, QuickInputIcon, TrashIcon } from "./icons";
 import type { Game, GamePlayer, OeaUser, QuickPreviewItem, Voice } from "./types";
 
 interface GamesSectionProps {
@@ -10,6 +10,7 @@ interface GamesSectionProps {
 	games: Accessor<Game[]>;
 	selectedGameId: Accessor<string>;
 	selectedGame: Accessor<Game | undefined>;
+	isDetailPage: Accessor<boolean>;
 	players: Accessor<GamePlayer[]>;
 	activeVoices: Accessor<Voice[]>;
 	totals: Accessor<Record<string, number>>;
@@ -24,6 +25,7 @@ interface GamesSectionProps {
 	moveSelectedUser: (userId: string, direction: -1 | 1) => void;
 	createGame: () => Promise<boolean>;
 	selectGame: (gameId: string) => void;
+	backToGames: () => void;
 	deleteGame: (gameId: string) => void;
 	getScore: (userId: string, voiceId: string) => number | "";
 	saveScore: (userId: string, voiceId: string, value: string) => void;
@@ -207,8 +209,17 @@ export default function GamesSection(props: GamesSectionProps) {
 	);
 
 	const GameDetail = () => (
-		<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+		<section class="mx-auto max-w-5xl rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
 			<Show when={props.selectedGame()} fallback={<p class="text-gray-500">Seleziona o crea una partita.</p>}>
+				<button
+					class="mb-4 flex h-10 items-center gap-2 rounded-full bg-blue-50 px-3 text-sm font-semibold text-[#0551b5]"
+					onClick={props.backToGames}
+					aria-label="Torna alle partite"
+				>
+					<ArrowLeftIcon />
+					<span>Torna</span>
+				</button>
+
 				<div class="mb-4">
 					<div class="flex flex-wrap items-center gap-2">
 						<h2 class="text-base font-semibold text-gray-900">Dettaglio partita</h2>
@@ -363,23 +374,44 @@ export default function GamesSection(props: GamesSectionProps) {
 
 	return (
 		<>
-			<div class={props.isLandscape() && props.selectedGame() ? "grid grid-cols-[340px_1fr] gap-4" : "space-y-4"}>
-				<div class="space-y-4">
-					<GameList />
-				</div>
-				<Show when={props.selectedGame()}>
+			<Show
+				when={props.isDetailPage()}
+				fallback={
+					<>
+						<div class="space-y-4">
+							<GameList />
+						</div>
+
+						<button
+							class="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#0551b5] text-3xl font-light leading-none text-white shadow-lg active:bg-blue-800"
+							aria-label="Crea nuova partita"
+							title="Crea nuova partita"
+							onClick={() => setNewGameOpen(true)}
+						>
+							+
+						</button>
+					</>
+				}
+			>
+				<Show
+					when={props.selectedGame() && props.players().length > 0}
+					fallback={
+						<section class="rounded-lg border border-gray-200 bg-white p-4 text-gray-500 shadow-sm">
+							<button
+								class="mb-4 flex h-10 items-center gap-2 rounded-full bg-blue-50 px-3 text-sm font-semibold text-[#0551b5]"
+								onClick={props.backToGames}
+								aria-label="Torna alle partite"
+							>
+								<ArrowLeftIcon />
+								<span>Torna</span>
+							</button>
+							Caricamento partita...
+						</section>
+					}
+				>
 					<GameDetail />
 				</Show>
-			</div>
-
-			<button
-				class="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#0551b5] text-3xl font-light leading-none text-white shadow-lg active:bg-blue-800"
-				aria-label="Crea nuova partita"
-				title="Crea nuova partita"
-				onClick={() => setNewGameOpen(true)}
-			>
-				+
-			</button>
+			</Show>
 
 			<Show when={newGameOpen()}>
 				<div class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-3 sm:items-center">

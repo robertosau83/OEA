@@ -10,6 +10,7 @@ export default function App() {
 			<Route path="/" component={Login} />
 			<Route path="/register" component={Register} />
 			<Route path="/app" component={Dashboard} />
+			<Route path="/app/games/:gameId" component={Dashboard} />
 		</>
 	);
 }

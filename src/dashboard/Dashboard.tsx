@@ -1,5 +1,5 @@
-import { Show, createMemo, createSignal, onMount } from "solid-js";
-import { useNavigate } from "@solidjs/router";
+import { Show, createEffect, createMemo, createSignal, onMount } from "solid-js";
+import { useNavigate, useParams } from "@solidjs/router";
 import { useOrientation } from "../context/OrientationContext";
 import { supabase } from "../supabaseClient";
 import GamesSection from "./GamesSection";
@@ -19,6 +19,7 @@ const slugify = (value: string) =>
 
 export default function Dashboard() {
 	const navigate = useNavigate();
+	const params = useParams();
 	const { isLandscape } = useOrientation();
 
 	const [loading, setLoading] = createSignal(true);
@@ -56,6 +57,8 @@ export default function Dashboard() {
 	);
 	const activeUsers = createMemo(() => users().filter((user) => user.status === "ACTIVE"));
 	const selectedGame = createMemo(() => games().find((game) => game.id === selectedGameId()));
+	const routeGameId = createMemo(() => params.gameId ?? "");
+	const isGameDetailPage = createMemo(() => Boolean(routeGameId()));
 
 	onMount(async () => {
 		const { data: sessionData } = await supabase.auth.getSession();
@@ -82,6 +85,34 @@ export default function Dashboard() {
 		setSelectedUserIds([authUser.id]);
 		await loadBaseData();
 		setLoading(false);
+	});
+
+	createEffect(() => {
+		if (loading()) return;
+
+		const gameId = routeGameId();
+		if (!gameId) {
+			if (selectedGameId()) {
+				setSelectedGameId("");
+				setPlayers([]);
+				setScores([]);
+				setQuickPlayerId("");
+				setQuickInput("");
+			}
+			return;
+		}
+
+		if (gameId !== selectedGameId()) {
+			if (!games().some((game) => game.id === gameId)) {
+				setSelectedGameId("");
+				setPlayers([]);
+				setScores([]);
+				setMessage("Partita non trovata.");
+				return;
+			}
+
+			void selectGame(gameId);
+		}
 	});
 
 	const loadBaseData = async () => {
@@ -164,14 +195,6 @@ export default function Dashboard() {
 	};
 
 	const selectGame = async (gameId: string) => {
-		if (selectedGameId() === gameId) {
-			setSelectedGameId("");
-			setPlayers([]);
-			setScores([]);
-			setMessage("");
-			return;
-		}
-
 		setSelectedGameId(gameId);
 		setMessage("");
 
@@ -203,6 +226,14 @@ export default function Dashboard() {
 		setScores((scoreData ?? []) as Score[]);
 		setActiveSection("games");
 		setDrawerOpen(false);
+	};
+
+	const openGameDetail = (gameId: string) => {
+		navigate(`/app/games/${gameId}`);
+	};
+
+	const backToGames = () => {
+		navigate("/app");
 	};
 
 	const toggleUser = (userId: string) => {
@@ -296,7 +327,7 @@ export default function Dashboard() {
 		setOnRecord(false);
 		setSaving(false);
 		await loadGames();
-		await selectGame(game.id);
+		openGameDetail(game.id);
 		return true;
 	};
 
@@ -314,6 +345,9 @@ export default function Dashboard() {
 		}
 
 		await loadGames();
+		if (routeGameId() === gameId) {
+			backToGames();
+		}
 	};
 
 	const createVoice = async () => {
@@ -616,9 +650,7 @@ export default function Dashboard() {
 		setDrawerOpen(false);
 
 		if (section === "games") {
-			setSelectedGameId("");
-			setPlayers([]);
-			setScores([]);
+			backToGames();
 		}
 	};
 
@@ -685,7 +717,7 @@ export default function Dashboard() {
 							<div class="min-w-0">
 								<h1 class="truncate text-lg font-bold">OEA Yazzi</h1>
 								<p class="truncate text-xs text-gray-500">
-									{activeSection() === "games" ? "Partite" : activeSection() === "voices" ? "Voci" : "Utenti"}
+									{activeSection() === "games" ? isGameDetailPage() ? "Dettaglio partita" : "Partite" : activeSection() === "voices" ? "Voci" : "Utenti"}
 								</p>
 							</div>
 						</div>
@@ -707,6 +739,7 @@ export default function Dashboard() {
 									games={games}
 									selectedGameId={selectedGameId}
 									selectedGame={selectedGame}
+									isDetailPage={isGameDetailPage}
 									players={players}
 									activeVoices={activeVoices}
 									totals={totals}
@@ -720,7 +753,8 @@ export default function Dashboard() {
 									toggleUser={toggleUser}
 									moveSelectedUser={moveSelectedUser}
 									createGame={createGame}
-									selectGame={selectGame}
+									selectGame={openGameDetail}
+									backToGames={backToGames}
 									deleteGame={deleteGame}
 									getScore={getScore}
 									saveScore={saveScore}
