@@ -1,109 +1,12 @@
-import { For, Show, createMemo, createSignal, onMount } from "solid-js";
+import { Show, createMemo, createSignal, onMount } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { useOrientation } from "../context/OrientationContext";
 import { supabase } from "../supabaseClient";
-
-interface OeaUser {
-	id: string;
-	name: string;
-	email: string;
-	status: string;
-	is_admin: boolean;
-}
-
-interface Voice {
-	id: string;
-	code: string;
-	name: string;
-	sort_order: number;
-	is_active: boolean;
-	counts_in_total: boolean;
-}
-
-interface Game {
-	id: string;
-	played_at: string;
-	on_record: boolean;
-	notes: string | null;
-	created_by: string;
-	created_at: string;
-	creator_name: string;
-	player_names: string[];
-}
-
-interface GamePlayer {
-	user_id: string;
-	player_order: number;
-	name: string;
-	email: string;
-}
-
-interface Score {
-	user_id: string;
-	voice_id: string;
-	score: number | null;
-}
-
-type Section = "games" | "voices" | "users";
-
-function MenuIcon() {
-	return (
-		<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M4 7h16M4 12h16M4 17h16" stroke-linecap="round" />
-		</svg>
-	);
-}
-
-function TrashIcon() {
-	return (
-		<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" stroke-linecap="round" stroke-linejoin="round" />
-			<path d="M10 10v6M14 10v6" stroke-linecap="round" />
-		</svg>
-	);
-}
-
-function ArrowUpIcon() {
-	return (
-		<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M12 19V5M6 11l6-6 6 6" stroke-linecap="round" stroke-linejoin="round" />
-		</svg>
-	);
-}
-
-function ArrowDownIcon() {
-	return (
-		<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M12 5v14M18 13l-6 6-6-6" stroke-linecap="round" stroke-linejoin="round" />
-		</svg>
-	);
-}
-
-function CloseIcon() {
-	return (
-		<svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M6 6l12 12M18 6 6 18" stroke-linecap="round" />
-		</svg>
-	);
-}
-
-function EditIcon() {
-	return (
-		<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-			<path d="M12 20h9" stroke-linecap="round" />
-			<path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round" />
-		</svg>
-	);
-}
-
-function QuickInputIcon() {
-	return (
-		<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-			<rect x="4" y="3" width="16" height="18" rx="2" />
-			<path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01" stroke-linecap="round" />
-		</svg>
-	);
-}
+import GamesSection from "./GamesSection";
+import VoicesSection from "./VoicesSection";
+import UsersSection from "./UsersSection";
+import { CloseIcon, MenuIcon } from "./icons";
+import type { Game, GamePlayer, OeaUser, Score, Section, UserStatus, Voice } from "./types";
 
 const slugify = (value: string) =>
 	value
@@ -128,7 +31,7 @@ export default function Dashboard() {
 	const [users, setUsers] = createSignal<OeaUser[]>([]);
 	const [voices, setVoices] = createSignal<Voice[]>([]);
 	const [games, setGames] = createSignal<Game[]>([]);
-	const [selectedGameId, setSelectedGameId] = createSignal<string>("");
+	const [selectedGameId, setSelectedGameId] = createSignal("");
 	const [players, setPlayers] = createSignal<GamePlayer[]>([]);
 	const [scores, setScores] = createSignal<Score[]>([]);
 
@@ -140,6 +43,7 @@ export default function Dashboard() {
 	const [newVoiceName, setNewVoiceName] = createSignal("");
 	const [editingVoiceId, setEditingVoiceId] = createSignal("");
 	const [editingVoiceName, setEditingVoiceName] = createSignal("");
+
 	const [quickPlayerId, setQuickPlayerId] = createSignal("");
 	const [quickInput, setQuickInput] = createSignal("");
 	const [quickSaving, setQuickSaving] = createSignal(false);
@@ -151,6 +55,7 @@ export default function Dashboard() {
 			.sort((a, b) => a.sort_order - b.sort_order)
 	);
 	const activeUsers = createMemo(() => users().filter((user) => user.status === "ACTIVE"));
+	const selectedGame = createMemo(() => games().find((game) => game.id === selectedGameId()));
 
 	onMount(async () => {
 		const { data: sessionData } = await supabase.auth.getSession();
@@ -303,21 +208,34 @@ export default function Dashboard() {
 		);
 	};
 
+	const moveSelectedUser = (userId: string, direction: -1 | 1) => {
+		setSelectedUserIds((current) => {
+			const index = current.indexOf(userId);
+			const targetIndex = index + direction;
+
+			if (index < 0 || targetIndex < 0 || targetIndex >= current.length) return current;
+
+			const next = current.slice();
+			[next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+			return next;
+		});
+	};
+
 	const createGame = async () => {
 		setMessage("");
 
 		if (selectedUserIds().length < 2) {
 			setMessage("Seleziona almeno due giocatori.");
-			return;
+			return false;
 		}
 
 		if (activeVoices().length === 0) {
 			setMessage("Prima attiva almeno una voce di punteggio.");
-			return;
+			return false;
 		}
 
 		const user = currentUser();
-		if (!user) return;
+		if (!user) return false;
 
 		setSaving(true);
 
@@ -335,7 +253,7 @@ export default function Dashboard() {
 		if (gameError || !game) {
 			setSaving(false);
 			setMessage("Errore nella creazione della partita.");
-			return;
+			return false;
 		}
 
 		const playerRows = selectedUserIds().map((userId, index) => ({
@@ -344,14 +262,12 @@ export default function Dashboard() {
 			player_order: index + 1,
 		}));
 
-		const { error: playersError } = await supabase
-			.from("oea_game_players")
-			.insert(playerRows);
+		const { error: playersError } = await supabase.from("oea_game_players").insert(playerRows);
 
 		if (playersError) {
 			setSaving(false);
 			setMessage("Errore nel salvataggio dei giocatori.");
-			return;
+			return false;
 		}
 
 		const scoreRows = playerRows.flatMap((player) =>
@@ -363,14 +279,12 @@ export default function Dashboard() {
 			}))
 		);
 
-		const { error: scoresError } = await supabase
-			.from("oea_scores")
-			.insert(scoreRows);
+		const { error: scoresError } = await supabase.from("oea_scores").insert(scoreRows);
 
 		if (scoresError) {
 			setSaving(false);
 			setMessage("Errore nella preparazione dei punteggi.");
-			return;
+			return false;
 		}
 
 		setNotes("");
@@ -378,6 +292,7 @@ export default function Dashboard() {
 		setSaving(false);
 		await loadGames();
 		await selectGame(game.id);
+		return true;
 	};
 
 	const deleteGame = async (gameId: string) => {
@@ -386,10 +301,7 @@ export default function Dashboard() {
 
 		if (!window.confirm(`Eliminare definitivamente ${label}?`)) return;
 
-		const { error } = await supabase
-			.from("oea_games")
-			.delete()
-			.eq("id", gameId);
+		const { error } = await supabase.from("oea_games").delete().eq("id", gameId);
 
 		if (error) {
 			setMessage("Errore nell'eliminazione della partita.");
@@ -409,15 +321,13 @@ export default function Dashboard() {
 		}
 
 		const nextOrder = Math.max(0, ...voices().map((voice) => voice.sort_order)) + 10;
-		const { error } = await supabase
-			.from("oea_voices")
-			.insert({
-				code,
-				name,
-				sort_order: nextOrder,
-				is_active: true,
-				counts_in_total: true,
-			});
+		const { error } = await supabase.from("oea_voices").insert({
+			code,
+			name,
+			sort_order: nextOrder,
+			is_active: true,
+			counts_in_total: true,
+		});
 
 		if (error) {
 			setMessage("Errore nella creazione della voce. Verifica che non esista gia'.");
@@ -429,39 +339,25 @@ export default function Dashboard() {
 	};
 
 	const toggleVoice = async (voice: Voice) => {
-		const { error } = await supabase
-			.from("oea_voices")
-			.update({ is_active: !voice.is_active })
-			.eq("id", voice.id);
+		const { error } = await supabase.from("oea_voices").update({ is_active: !voice.is_active }).eq("id", voice.id);
 
 		if (error) {
 			setMessage("Errore nell'aggiornamento della voce.");
 			return;
 		}
 
-		setVoices((current) =>
-			current.map((item) =>
-				item.id === voice.id ? { ...item, is_active: !voice.is_active } : item
-			)
-		);
+		setVoices((current) => current.map((item) => item.id === voice.id ? { ...item, is_active: !voice.is_active } : item));
 	};
 
 	const toggleVoiceCountsInTotal = async (voice: Voice) => {
-		const { error } = await supabase
-			.from("oea_voices")
-			.update({ counts_in_total: !voice.counts_in_total })
-			.eq("id", voice.id);
+		const { error } = await supabase.from("oea_voices").update({ counts_in_total: !voice.counts_in_total }).eq("id", voice.id);
 
 		if (error) {
 			setMessage("Errore nell'aggiornamento della voce.");
 			return;
 		}
 
-		setVoices((current) =>
-			current.map((item) =>
-				item.id === voice.id ? { ...item, counts_in_total: !voice.counts_in_total } : item
-			)
-		);
+		setVoices((current) => current.map((item) => item.id === voice.id ? { ...item, counts_in_total: !voice.counts_in_total } : item));
 	};
 
 	const startEditVoice = (voice: Voice) => {
@@ -477,21 +373,14 @@ export default function Dashboard() {
 			return;
 		}
 
-		const { error } = await supabase
-			.from("oea_voices")
-			.update({ name })
-			.eq("id", voice.id);
+		const { error } = await supabase.from("oea_voices").update({ name }).eq("id", voice.id);
 
 		if (error) {
 			setMessage("Errore nel salvataggio della voce.");
 			return;
 		}
 
-		setVoices((current) =>
-			current.map((item) =>
-				item.id === voice.id ? { ...item, name } : item
-			)
-		);
+		setVoices((current) => current.map((item) => item.id === voice.id ? { ...item, name } : item));
 		setEditingVoiceId("");
 		setEditingVoiceName("");
 	};
@@ -507,14 +396,8 @@ export default function Dashboard() {
 		const target = ordered[targetIndex];
 
 		const [{ error: currentError }, { error: targetError }] = await Promise.all([
-			supabase
-				.from("oea_voices")
-				.update({ sort_order: target.sort_order })
-				.eq("id", current.id),
-			supabase
-				.from("oea_voices")
-				.update({ sort_order: current.sort_order })
-				.eq("id", target.id),
+			supabase.from("oea_voices").update({ sort_order: target.sort_order }).eq("id", current.id),
+			supabase.from("oea_voices").update({ sort_order: current.sort_order }).eq("id", target.id),
 		]);
 
 		if (currentError || targetError) {
@@ -533,22 +416,15 @@ export default function Dashboard() {
 		);
 	};
 
-	const updateUserStatus = async (user: OeaUser, status: "PENDING" | "ACTIVE" | "DISABLED") => {
-		const { error } = await supabase
-			.from("oea_users")
-			.update({ status })
-			.eq("id", user.id);
+	const updateUserStatus = async (user: OeaUser, status: UserStatus) => {
+		const { error } = await supabase.from("oea_users").update({ status }).eq("id", user.id);
 
 		if (error) {
 			setMessage("Errore nell'aggiornamento dello stato utente.");
 			return;
 		}
 
-		setUsers((items) =>
-			items.map((item) =>
-				item.id === user.id ? { ...item, status } : item
-			)
-		);
+		setUsers((items) => items.map((item) => item.id === user.id ? { ...item, status } : item));
 	};
 
 	const toggleUserAdmin = async (user: OeaUser) => {
@@ -557,21 +433,14 @@ export default function Dashboard() {
 			return;
 		}
 
-		const { error } = await supabase
-			.from("oea_users")
-			.update({ is_admin: !user.is_admin })
-			.eq("id", user.id);
+		const { error } = await supabase.from("oea_users").update({ is_admin: !user.is_admin }).eq("id", user.id);
 
 		if (error) {
 			setMessage("Errore nell'aggiornamento del ruolo admin.");
 			return;
 		}
 
-		setUsers((items) =>
-			items.map((item) =>
-				item.id === user.id ? { ...item, is_admin: !user.is_admin } : item
-			)
-		);
+		setUsers((items) => items.map((item) => item.id === user.id ? { ...item, is_admin: !user.is_admin } : item));
 	};
 
 	const deleteAuthUser = async (user: OeaUser) => {
@@ -607,9 +476,7 @@ export default function Dashboard() {
 				return Number.isFinite(value) ? value : null;
 			});
 
-	const quickPlayer = createMemo(() =>
-		players().find((player) => player.user_id === quickPlayerId()) ?? null
-	);
+	const quickPlayer = createMemo(() => players().find((player) => player.user_id === quickPlayerId()) ?? null);
 
 	const quickPreview = createMemo(() => {
 		const values = parseQuickValues();
@@ -620,6 +487,8 @@ export default function Dashboard() {
 		}));
 	});
 
+	const quickValuesCount = createMemo(() => parseQuickValues().length);
+
 	const quickTotal = createMemo(() =>
 		quickPreview()
 			.filter((item) => item.score !== null && item.voice.counts_in_total !== false)
@@ -627,18 +496,14 @@ export default function Dashboard() {
 	);
 
 	const openQuickInput = (player: GamePlayer) => {
-		const existingValues = activeVoices().map((voice) => getScore(player.user_id, voice.id));
-		const lastFilledIndex = existingValues.reduce(
+		const existingValues = activeVoices().map((voice) => String(getScore(player.user_id, voice.id)));
+		const lastFilledIndex = existingValues.reduce<number>(
 			(lastIndex, value, index) => value === "" ? lastIndex : index,
 			-1
 		);
 
 		setQuickPlayerId(player.user_id);
-		setQuickInput(
-			lastFilledIndex >= 0
-				? existingValues.slice(0, lastFilledIndex + 1).map(String).join("/")
-				: ""
-		);
+		setQuickInput(lastFilledIndex >= 0 ? existingValues.slice(0, lastFilledIndex + 1).join("/") : "");
 	};
 
 	const closeQuickInput = () => {
@@ -668,11 +533,9 @@ export default function Dashboard() {
 			score: item.score,
 		}));
 
-		const { error } = await supabase
-			.from("oea_scores")
-			.upsert(rows, {
-				onConflict: "game_id,user_id,voice_id",
-			});
+		const { error } = await supabase.from("oea_scores").upsert(rows, {
+			onConflict: "game_id,user_id,voice_id",
+		});
 
 		setQuickSaving(false);
 
@@ -683,9 +546,7 @@ export default function Dashboard() {
 
 		setScores((current) => {
 			const withoutPlayerActiveVoices = current.filter(
-				(score) =>
-					score.user_id !== playerId ||
-					!activeVoices().some((voice) => voice.id === score.voice_id)
+				(score) => score.user_id !== playerId || !activeVoices().some((voice) => voice.id === score.voice_id)
 			);
 
 			return [
@@ -710,24 +571,20 @@ export default function Dashboard() {
 		setScores((current) => {
 			const existing = current.find((item) => item.user_id === userId && item.voice_id === voiceId);
 			if (existing) {
-				return current.map((item) =>
-					item.user_id === userId && item.voice_id === voiceId ? { ...item, score } : item
-				);
+				return current.map((item) => item.user_id === userId && item.voice_id === voiceId ? { ...item, score } : item);
 			}
 
 			return [...current, { user_id: userId, voice_id: voiceId, score }];
 		});
 
-		const { error } = await supabase
-			.from("oea_scores")
-			.upsert({
-				game_id: gameId,
-				user_id: userId,
-				voice_id: voiceId,
-				score,
-			}, {
-				onConflict: "game_id,user_id,voice_id",
-			});
+		const { error } = await supabase.from("oea_scores").upsert({
+			game_id: gameId,
+			user_id: userId,
+			voice_id: voiceId,
+			score,
+		}, {
+			onConflict: "game_id,user_id,voice_id",
+		});
 
 		if (error) {
 			setMessage("Errore nel salvataggio del punteggio.");
@@ -748,8 +605,6 @@ export default function Dashboard() {
 
 		return result;
 	});
-
-	const selectedGame = createMemo(() => games().find((game) => game.id === selectedGameId()));
 
 	const switchSection = (section: Section) => {
 		setActiveSection(section);
@@ -792,411 +647,6 @@ export default function Dashboard() {
 		</nav>
 	);
 
-	const GameList = () => (
-		<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-			<h2 class="mb-3 text-base font-semibold text-gray-900">Partite</h2>
-
-			<div class="space-y-2">
-				<For each={games()} fallback={<p class="text-sm text-gray-500">Nessuna partita salvata.</p>}>
-					{(game) => (
-						<div
-							class={`flex items-stretch gap-2 rounded border ${
-								selectedGameId() === game.id ? "border-[#0551b5] bg-blue-50" : "border-gray-200 bg-white"
-							}`}
-						>
-							<button
-								class="min-w-0 flex-1 px-3 py-3 text-left"
-								onClick={() => selectGame(game.id)}
-							>
-								<span class="flex items-center gap-2 text-sm font-semibold text-gray-900">
-									{game.played_at}
-									<Show when={game.on_record}>
-										<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-											On record
-										</span>
-									</Show>
-								</span>
-								<span class="mt-1 block truncate text-xs text-gray-500">{game.player_names.join(", ")}</span>
-							</button>
-
-							<button
-								class="flex w-11 items-center justify-center rounded-r text-red-600 hover:bg-red-50"
-								title="Elimina partita"
-								aria-label="Elimina partita"
-								onClick={() => deleteGame(game.id)}
-							>
-								<TrashIcon />
-							</button>
-						</div>
-					)}
-				</For>
-			</div>
-		</section>
-	);
-
-	const NewGame = () => (
-		<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-			<h2 class="mb-4 text-base font-semibold text-gray-900">Nuova partita</h2>
-
-			<label class="mb-3 block">
-				<span class="mb-1 block text-sm font-medium text-gray-600">Data</span>
-				<input
-					type="date"
-					class="h-11 w-full rounded border border-gray-300 px-3"
-					value={playedAt()}
-					onInput={(event) => setPlayedAt(event.currentTarget.value)}
-				/>
-			</label>
-
-			<label class="mb-3 flex items-center justify-between gap-3 rounded border border-gray-200 px-3 py-3">
-				<span>
-					<span class="block text-sm font-medium text-gray-900">On record</span>
-					<span class="block text-xs text-gray-500">Marca questa partita nello storico ufficiale.</span>
-				</span>
-				<input
-					type="checkbox"
-					class="h-5 w-5"
-					checked={onRecord()}
-					onChange={(event) => setOnRecord(event.currentTarget.checked)}
-				/>
-			</label>
-
-			<label class="mb-4 block">
-				<span class="mb-1 block text-sm font-medium text-gray-600">Note</span>
-				<textarea
-					class="min-h-20 w-full rounded border border-gray-300 px-3 py-2"
-					value={notes()}
-					onInput={(event) => setNotes(event.currentTarget.value)}
-				/>
-			</label>
-
-			<div class="mb-4">
-				<span class="mb-2 block text-sm font-medium text-gray-600">Giocatori</span>
-				<div class="space-y-2">
-					<For each={activeUsers()}>
-						{(user) => (
-							<label class="flex items-center gap-3 rounded border border-gray-200 px-3 py-2">
-								<input
-									type="checkbox"
-									class="h-5 w-5"
-									checked={selectedUserIds().includes(user.id)}
-									onChange={() => toggleUser(user.id)}
-								/>
-								<span class="min-w-0">
-									<span class="block truncate text-sm font-medium text-gray-900">{user.name}</span>
-									<span class="block truncate text-xs text-gray-500">{user.email}</span>
-								</span>
-							</label>
-						)}
-					</For>
-				</div>
-			</div>
-
-			<button
-				class="h-11 w-full rounded-full bg-[#0551b5] px-4 font-semibold text-white disabled:opacity-60"
-				disabled={saving()}
-				onClick={createGame}
-			>
-				{saving() ? "Salvataggio..." : "Crea partita"}
-			</button>
-		</section>
-	);
-
-	const GameDetail = () => (
-		<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-			<Show when={selectedGame()} fallback={<p class="text-gray-500">Seleziona o crea una partita.</p>}>
-				<div class="mb-4">
-					<div class="flex flex-wrap items-center gap-2">
-						<h2 class="text-base font-semibold text-gray-900">Dettaglio partita</h2>
-						<Show when={selectedGame()?.on_record}>
-							<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-								On record
-							</span>
-						</Show>
-					</div>
-					<p class="text-sm text-gray-500">
-						{selectedGame()?.played_at}
-						{selectedGame()?.notes ? ` - ${selectedGame()?.notes}` : ""}
-					</p>
-				</div>
-
-				<div class={isLandscape() ? "overflow-x-auto" : "overflow-x-hidden"}>
-					<table class={isLandscape() ? "w-full min-w-[620px] border-collapse text-sm" : "w-full table-fixed border-collapse text-[11px]"}>
-						<thead>
-							<tr>
-								<th class={isLandscape()
-									? "sticky left-0 bg-white p-2 text-left font-semibold text-gray-600"
-									: "w-[32%] bg-white px-1 py-2 text-left font-semibold text-gray-600"}
-								>
-									Voce
-								</th>
-								<For each={players()}>
-									{(player) => (
-										<th class={isLandscape()
-											? "border-b border-gray-200 p-2 text-left font-semibold text-gray-900"
-											: "border-b border-gray-200 px-1 py-2 text-center font-semibold text-gray-900"}
-										>
-											<button
-												class="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-[#0551b5]"
-												title="Inserimento rapido"
-												aria-label={`Inserimento rapido ${player.name}`}
-												onClick={() => openQuickInput(player)}
-											>
-												<QuickInputIcon />
-											</button>
-											<span class="block truncate">{player.name}</span>
-										</th>
-									)}
-								</For>
-							</tr>
-						</thead>
-
-						<tbody>
-							<For each={activeVoices()}>
-								{(voice) => (
-									<tr>
-										<td class={isLandscape()
-											? "sticky left-0 border-b border-gray-100 bg-white p-2 font-medium text-gray-700"
-											: "border-b border-gray-100 bg-white px-1 py-2 font-medium leading-tight text-gray-700"}
-										>
-											{voice.name}
-										</td>
-										<For each={players()}>
-											{(player) => (
-												<td class={isLandscape() ? "border-b border-gray-100 p-2" : "border-b border-gray-100 px-1 py-2"}>
-													<input
-														type="number"
-														class={isLandscape()
-															? "h-10 w-20 rounded border border-gray-300 px-2 text-right"
-															: "h-9 w-full min-w-0 rounded border border-gray-300 px-1 text-center text-sm"}
-														value={getScore(player.user_id, voice.id)}
-														onInput={(event) => saveScore(player.user_id, voice.id, event.currentTarget.value)}
-													/>
-												</td>
-											)}
-										</For>
-									</tr>
-								)}
-							</For>
-
-							<tr>
-								<td class={isLandscape()
-									? "sticky left-0 bg-white p-2 font-bold text-gray-900"
-									: "bg-white px-1 py-2 font-bold text-gray-900"}
-								>
-									Totale
-								</td>
-								<For each={players()}>
-									{(player) => (
-										<td class={isLandscape()
-											? "p-2 text-right text-base font-bold text-gray-900"
-											: "px-1 py-2 text-center text-sm font-bold text-gray-900"}
-										>
-											{totals()[player.user_id] ?? 0}
-										</td>
-									)}
-								</For>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</Show>
-		</section>
-	);
-
-	const VoicesSection = () => (
-		<div class="space-y-4">
-			<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-				<h2 class="mb-4 text-base font-semibold text-gray-900">Nuova voce</h2>
-
-				<div class="flex gap-2">
-					<input
-						class="h-11 min-w-0 flex-1 rounded border border-gray-300 px-3"
-						placeholder="Nome voce"
-						value={newVoiceName()}
-						onInput={(event) => setNewVoiceName(event.currentTarget.value)}
-						onKeyDown={(event) => event.key === "Enter" && createVoice()}
-					/>
-					<button
-						class="h-11 rounded-full bg-[#0551b5] px-4 text-sm font-semibold text-white"
-						onClick={createVoice}
-					>
-						Aggiungi
-					</button>
-				</div>
-			</section>
-
-			<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-				<h2 class="mb-4 text-base font-semibold text-gray-900">Voci</h2>
-
-				<div class="space-y-2">
-					<For each={voices().slice().sort((a, b) => a.sort_order - b.sort_order)}>
-						{(voice, index) => (
-							<div class={`rounded border border-gray-200 p-3 ${voice.is_active ? "" : "opacity-45"}`}>
-								<Show
-									when={editingVoiceId() === voice.id}
-									fallback={
-										<div class="space-y-3">
-											<div class="flex items-center gap-3">
-												<div class="flex overflow-hidden rounded-full border border-gray-300">
-													<button
-														class="flex h-8 w-8 items-center justify-center text-gray-700 disabled:opacity-30"
-														title="Sposta su"
-														aria-label="Sposta voce su"
-														disabled={index() === 0}
-														onClick={() => moveVoice(voice.id, -1)}
-													>
-														<ArrowUpIcon />
-													</button>
-													<button
-														class="flex h-8 w-8 items-center justify-center border-l border-gray-300 text-gray-700 disabled:opacity-30"
-														title="Sposta giu"
-														aria-label="Sposta voce giu"
-														disabled={index() === voices().length - 1}
-														onClick={() => moveVoice(voice.id, 1)}
-													>
-														<ArrowDownIcon />
-													</button>
-												</div>
-												<div class="min-w-0 flex-1">
-													<p class="truncate text-sm font-semibold text-gray-900">{voice.name}</p>
-													<p class="text-xs text-gray-500">
-														{voice.code}
-														{voice.counts_in_total ? "" : " - fuori totale"}
-													</p>
-												</div>
-											</div>
-
-											<div class="flex items-center justify-between gap-3 border-t border-gray-100 pt-3">
-												<div class="flex flex-wrap items-center gap-4">
-													<label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-														<input
-															type="checkbox"
-															class="h-4 w-4"
-															checked={voice.counts_in_total}
-															onChange={() => toggleVoiceCountsInTotal(voice)}
-														/>
-														Totale
-													</label>
-													<label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-														<input
-															type="checkbox"
-															class="h-4 w-4"
-															checked={voice.is_active}
-															onChange={() => toggleVoice(voice)}
-														/>
-														Attiva
-													</label>
-												</div>
-												<button
-													class="flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 text-gray-700"
-													title="Modifica voce"
-													aria-label="Modifica voce"
-													onClick={() => startEditVoice(voice)}
-												>
-													<EditIcon />
-												</button>
-											</div>
-										</div>
-									}
-								>
-									<div class="flex gap-2">
-										<input
-											class="h-10 min-w-0 flex-1 rounded border border-gray-300 px-3"
-											value={editingVoiceName()}
-											onInput={(event) => setEditingVoiceName(event.currentTarget.value)}
-										/>
-										<button
-											class="rounded-full bg-[#0551b5] px-3 text-xs font-semibold text-white"
-											onClick={() => saveVoiceName(voice)}
-										>
-											Salva
-										</button>
-										<button
-											class="rounded-full border border-gray-300 px-3 text-xs font-semibold text-gray-700"
-											onClick={() => setEditingVoiceId("")}
-										>
-											Annulla
-										</button>
-									</div>
-								</Show>
-							</div>
-						)}
-					</For>
-				</div>
-			</section>
-		</div>
-	);
-
-	const UsersSection = () => (
-		<div class="mx-auto max-w-2xl space-y-3">
-			<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-				<h2 class="mb-1 text-base font-semibold text-gray-900">Utenti</h2>
-				<p class="mb-4 text-sm text-gray-500">
-					La cancellazione rimuove l'utente anche da Supabase Auth. Se l'utente ha storico partite, usa DISABLED.
-				</p>
-
-				<div class="space-y-2">
-					<For each={users()}>
-						{(user) => (
-							<div class="rounded border border-gray-200 p-3">
-								<div class="mb-3 flex items-start justify-between gap-3">
-									<div class="min-w-0">
-										<p class="truncate text-sm font-semibold text-gray-900">{user.name}</p>
-										<p class="truncate text-xs text-gray-500">{user.email}</p>
-									</div>
-									<span class={`shrink-0 rounded-full px-2 py-1 text-[11px] font-semibold ${
-										user.status === "ACTIVE"
-											? "bg-emerald-100 text-emerald-700"
-											: user.status === "PENDING"
-												? "bg-yellow-100 text-yellow-700"
-												: "bg-gray-100 text-gray-600"
-									}`}>
-										{user.status}
-									</span>
-								</div>
-
-								<div class="grid grid-cols-3 gap-2">
-									<button
-										class="h-9 rounded-full border border-gray-300 text-xs font-semibold text-gray-700 disabled:opacity-40"
-										disabled={user.status === "ACTIVE"}
-										onClick={() => updateUserStatus(user, "ACTIVE")}
-									>
-										Attiva
-									</button>
-									<button
-										class="h-9 rounded-full border border-gray-300 text-xs font-semibold text-gray-700 disabled:opacity-40"
-										disabled={user.status === "DISABLED"}
-										onClick={() => updateUserStatus(user, "DISABLED")}
-									>
-										Disabilita
-									</button>
-									<button
-										class="h-9 rounded-full border border-red-200 text-xs font-semibold text-red-600 disabled:opacity-40"
-										disabled={user.id === currentUser()?.id}
-										onClick={() => deleteAuthUser(user)}
-									>
-										Elimina
-									</button>
-								</div>
-
-								<label class="mt-3 flex items-center gap-2 text-xs font-semibold text-gray-700">
-									<input
-										type="checkbox"
-										checked={user.is_admin}
-										disabled={user.id === currentUser()?.id && user.is_admin}
-										onChange={() => toggleUserAdmin(user)}
-									/>
-									Admin
-								</label>
-							</div>
-						)}
-					</For>
-				</div>
-			</section>
-		</div>
-	);
-
 	return (
 		<div class="h-screen bg-gray-50 text-gray-900">
 			<div class="flex h-full">
@@ -1207,10 +657,7 @@ export default function Dashboard() {
 							<p class="truncate text-sm text-gray-500">{currentUser()?.name}</p>
 						</div>
 						<Nav />
-						<button
-							class="mt-6 w-full rounded-lg px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
-							onClick={logout}
-						>
+						<button class="mt-6 w-full rounded-lg px-4 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50" onClick={logout}>
 							Logout
 						</button>
 					</aside>
@@ -1220,11 +667,7 @@ export default function Dashboard() {
 					<header class="flex h-14 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-4">
 						<div class="flex min-w-0 items-center gap-3">
 							<Show when={!isLandscape()}>
-								<button
-									class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-[#0551b5]"
-									onClick={() => setDrawerOpen(true)}
-									aria-label="Apri menu"
-								>
+								<button class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-[#0551b5]" onClick={() => setDrawerOpen(true)} aria-label="Apri menu">
 									<MenuIcon />
 								</button>
 							</Show>
@@ -1246,23 +689,73 @@ export default function Dashboard() {
 					<Show when={!loading()} fallback={<main class="flex-1 overflow-y-auto p-4 text-gray-600">Caricamento...</main>}>
 						<main class="flex-1 overflow-y-auto p-4">
 							<Show when={activeSection() === "games"}>
-								<div class={isLandscape() ? "grid grid-cols-[340px_1fr] gap-4" : "space-y-4"}>
-									<div class="space-y-4">
-										<NewGame />
-										<GameList />
-									</div>
-									<GameDetail />
-								</div>
+								<GamesSection
+									isLandscape={isLandscape}
+									saving={saving}
+									activeUsers={activeUsers}
+									games={games}
+									selectedGameId={selectedGameId}
+									selectedGame={selectedGame}
+									players={players}
+									activeVoices={activeVoices}
+									totals={totals}
+									playedAt={playedAt}
+									setPlayedAt={setPlayedAt}
+									onRecord={onRecord}
+									setOnRecord={setOnRecord}
+									notes={notes}
+									setNotes={setNotes}
+									selectedUserIds={selectedUserIds}
+									toggleUser={toggleUser}
+									moveSelectedUser={moveSelectedUser}
+									createGame={createGame}
+									selectGame={selectGame}
+									deleteGame={deleteGame}
+									getScore={getScore}
+									saveScore={saveScore}
+									openQuickInput={openQuickInput}
+									quickPlayer={quickPlayer}
+									quickInput={quickInput}
+									setQuickInput={setQuickInput}
+									appendQuickKey={appendQuickKey}
+									backspaceQuickInput={backspaceQuickInput}
+									closeQuickInput={closeQuickInput}
+									quickPreview={quickPreview}
+									quickTotal={quickTotal}
+									quickValuesCount={quickValuesCount}
+									quickSaving={quickSaving}
+									applyQuickScores={applyQuickScores}
+								/>
 							</Show>
 
 							<Show when={activeSection() === "voices"}>
 								<div class="mx-auto max-w-2xl">
-									<VoicesSection />
+									<VoicesSection
+										voices={voices}
+										newVoiceName={newVoiceName}
+										setNewVoiceName={setNewVoiceName}
+										editingVoiceId={editingVoiceId}
+										setEditingVoiceId={setEditingVoiceId}
+										editingVoiceName={editingVoiceName}
+										setEditingVoiceName={setEditingVoiceName}
+										createVoice={createVoice}
+										moveVoice={moveVoice}
+										toggleVoice={toggleVoice}
+										toggleVoiceCountsInTotal={toggleVoiceCountsInTotal}
+										startEditVoice={startEditVoice}
+										saveVoiceName={saveVoiceName}
+									/>
 								</div>
 							</Show>
 
 							<Show when={activeSection() === "users" && currentUser()?.is_admin}>
-								<UsersSection />
+								<UsersSection
+									users={users}
+									currentUser={currentUser}
+									updateUserStatus={updateUserStatus}
+									toggleUserAdmin={toggleUserAdmin}
+									deleteAuthUser={deleteAuthUser}
+								/>
 							</Show>
 
 							{message() && (
@@ -1275,115 +768,6 @@ export default function Dashboard() {
 				</div>
 			</div>
 
-			<Show when={quickPlayer()}>
-				<div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-2">
-					<div class="flex max-h-[96vh] w-full max-w-xl flex-col rounded-2xl bg-white shadow-2xl">
-						<div class="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 p-4">
-							<div class="min-w-0">
-								<h2 class="truncate text-lg font-bold text-gray-900">Inserimento rapido</h2>
-								<p class="truncate text-sm text-gray-500">{quickPlayer()?.name}</p>
-							</div>
-							<button
-								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700"
-								aria-label="Chiudi inserimento rapido"
-								onClick={closeQuickInput}
-							>
-								<CloseIcon />
-							</button>
-						</div>
-
-						<div class="min-h-0 flex-1 overflow-y-auto p-3">
-							<input
-								class="mb-3 h-12 w-full rounded-xl border border-gray-300 px-3 text-right text-xl font-semibold"
-								value={quickInput()}
-								placeholder="23/15/16"
-								onInput={(event) => setQuickInput(event.currentTarget.value)}
-							/>
-
-							<div class="grid grid-cols-[minmax(0,1fr)_120px] gap-3">
-								<div class="grid grid-cols-3 gap-2">
-									<For each={["7", "8", "9", "4", "5", "6", "1", "2", "3"]}>
-										{(key) => (
-											<button
-												class="h-14 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200"
-												onClick={() => appendQuickKey(key)}
-											>
-												{key}
-											</button>
-										)}
-									</For>
-
-									<button
-										class="h-14 rounded-full bg-gray-200 text-lg font-semibold text-gray-900 active:bg-gray-300"
-										onClick={() => setQuickInput("")}
-									>
-										C
-									</button>
-									<button
-										class="h-14 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200"
-										onClick={() => appendQuickKey("0")}
-									>
-										0
-									</button>
-									<button
-										class="h-14 rounded-full bg-gray-200 text-lg font-semibold text-gray-900 active:bg-gray-300"
-										onClick={backspaceQuickInput}
-									>
-										⌫
-									</button>
-									<button
-										class="col-span-3 h-14 rounded-full bg-[#0551b5] text-2xl font-semibold text-white active:bg-blue-800"
-										onClick={() => appendQuickKey("/")}
-									>
-										÷
-									</button>
-								</div>
-
-								<div class="rounded-xl border border-gray-200 bg-gray-50 p-2">
-									<div class="mb-2 text-center text-xs font-bold uppercase text-gray-500">Preview</div>
-									<div class="max-h-64 space-y-1 overflow-y-auto pr-1">
-										<For each={quickPreview()}>
-											{(item) => (
-												<div class={`flex items-center justify-between gap-2 rounded bg-white px-2 py-1 text-xs ${item.voice.counts_in_total ? "" : "opacity-60"}`}>
-													<span class="min-w-0 truncate text-gray-600">{item.voice.name}</span>
-													<span class="shrink-0 font-semibold text-gray-900">{item.score ?? "-"}</span>
-												</div>
-											)}
-										</For>
-									</div>
-									<div class="mt-2 rounded-lg bg-white px-2 py-2 text-center">
-										<div class="text-[11px] font-semibold uppercase text-gray-500">Totale</div>
-										<div class="text-xl font-bold text-gray-900">{quickTotal()}</div>
-									</div>
-								</div>
-							</div>
-
-							<Show when={parseQuickValues().length > activeVoices().length}>
-								<p class="mt-3 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
-									Hai inserito piu' punteggi delle voci attive: quelli in eccesso saranno ignorati.
-								</p>
-							</Show>
-						</div>
-
-						<div class="flex shrink-0 gap-2 border-t border-gray-200 p-3">
-							<button
-								class="h-11 flex-1 rounded-full border border-gray-300 font-semibold text-gray-700"
-								onClick={closeQuickInput}
-							>
-								Annulla
-							</button>
-							<button
-								class="h-11 flex-1 rounded-full bg-[#0551b5] font-semibold text-white disabled:opacity-60"
-								disabled={quickSaving()}
-								onClick={applyQuickScores}
-							>
-								{quickSaving() ? "Salvataggio..." : "Applica"}
-							</button>
-						</div>
-					</div>
-				</div>
-			</Show>
-
 			<Show when={drawerOpen() && !isLandscape()}>
 				<div class="fixed inset-0 z-40 bg-black/40" onClick={() => setDrawerOpen(false)}></div>
 				<aside class="fixed inset-y-0 left-0 z-50 w-72 bg-white p-4 shadow-xl">
@@ -1392,11 +776,7 @@ export default function Dashboard() {
 							<h2 class="text-xl font-bold">OEA Yazzi</h2>
 							<p class="truncate text-sm text-gray-500">{currentUser()?.name}</p>
 						</div>
-						<button
-							class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700"
-							onClick={() => setDrawerOpen(false)}
-							aria-label="Chiudi menu"
-						>
+						<button class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700" onClick={() => setDrawerOpen(false)} aria-label="Chiudi menu">
 							<CloseIcon />
 						</button>
 					</div>
