@@ -300,8 +300,8 @@ export default function GamesSection(props: GamesSectionProps) {
 					</div>
 
 					<div class="min-h-0 flex-1 overflow-y-auto p-3">
-						<div class="grid grid-cols-[minmax(0,1fr)_132px] items-stretch gap-3">
-							<div class="flex min-w-0 flex-col gap-2">
+						<div class="grid min-h-0 grid-cols-[minmax(0,1fr)_100px] items-stretch gap-3">
+							<div class="flex min-h-0 min-w-0 flex-col gap-2">
 								<textarea
 									rows="2"
 									class={`min-h-[64px] w-full resize-none rounded-xl border border-gray-300 px-3 py-2 text-right font-semibold leading-tight ${props.quickInput().length > 24 ? "text-sm" : "text-lg"}`}
@@ -310,24 +310,25 @@ export default function GamesSection(props: GamesSectionProps) {
 									onInput={(event) => props.setQuickInput(event.currentTarget.value)}
 								/>
 
-								<div class="grid grid-cols-3 gap-2">
+								<div class="grid min-h-0 flex-1 grid-cols-3 grid-rows-5 gap-2">
 									<For each={["7", "8", "9", "4", "5", "6", "1", "2", "3"]}>
 										{(key) => (
-											<button class="h-14 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200" onClick={() => props.appendQuickKey(key)}>
+											<button class="h-full min-h-12 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200" onClick={() => props.appendQuickKey(key)}>
 												{key}
 											</button>
 										)}
 									</For>
-									<button class="h-14 rounded-full bg-gray-200 text-lg font-semibold text-gray-900 active:bg-gray-300" onClick={() => props.setQuickInput("")}>C</button>
-									<button class="h-14 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200" onClick={() => props.appendQuickKey("0")}>0</button>
-									<button class="h-14 rounded-full bg-gray-200 text-sm font-semibold text-gray-900 active:bg-gray-300" onClick={props.backspaceQuickInput}>Del</button>
-									<button class="col-span-3 h-14 rounded-full bg-[#0551b5] text-2xl font-semibold text-white active:bg-blue-800" onClick={() => props.appendQuickKey("/")}>/</button>
+									<button class="h-full min-h-12 rounded-full bg-gray-200 text-lg font-semibold text-gray-900 active:bg-gray-300" onClick={() => props.setQuickInput("")}>C</button>
+									<button class="h-full min-h-12 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200" onClick={() => props.appendQuickKey("0")}>0</button>
+									<button class="h-full min-h-12 rounded-full bg-gray-200 text-sm font-semibold text-gray-900 active:bg-gray-300" onClick={props.backspaceQuickInput}>Del</button>
+									<button class="h-full min-h-12 rounded-full bg-gray-200 text-2xl font-semibold text-gray-900 active:bg-gray-300" onClick={() => props.appendQuickKey("-")}>-</button>
+									<button class="col-span-2 h-full min-h-12 rounded-full bg-[#0551b5] text-2xl font-semibold text-white active:bg-blue-800" onClick={() => props.appendQuickKey("/")}>/</button>
 								</div>
 							</div>
 
-							<div class="flex min-h-0 flex-col rounded-xl border border-gray-200 bg-gray-50 p-2">
+							<div class="flex min-h-0 flex-col rounded-xl border border-gray-200 bg-gray-50 py-2">
 								{/* <div class="mb-2 shrink-0 text-center text-xs font-bold uppercase text-gray-500">Preview</div> */}
-								<div class="min-h-0 flex-1 space-y-[2px] overflow-y-auto pr-1">
+								<div class="min-h-0 flex-1 space-y-[4px] overflow-y-auto pr-1">
 									<For each={props.quickPreview()}>
 										{(item) => (
 											<div class={`flex items-center justify-between rounded bg-white px-2 text-xs ${item.voice.counts_in_total ? "" : "opacity-60"}`}>
@@ -338,7 +339,7 @@ export default function GamesSection(props: GamesSectionProps) {
 									</For>
 								</div>
 								<div class="flex justify-between items-center mt-2 shrink-0 rounded-lg bg-white px-2 py-2 text-center">
-									<div class="flex h-full items-center text-[11px] font-semibold uppercase text-gray-500">Totale</div>
+									<div class="flex h-full items-center text-[11px] font-semibold uppercase text-gray-500">TOT</div>
 									<div class="text-xl font-bold text-gray-900">{props.quickTotal()}</div>
 								</div>
 							</div>
@@ -362,11 +363,13 @@ export default function GamesSection(props: GamesSectionProps) {
 
 	return (
 		<>
-			<div class={props.isLandscape() ? "grid grid-cols-[340px_1fr] gap-4" : "space-y-4"}>
+			<div class={props.isLandscape() && props.selectedGame() ? "grid grid-cols-[340px_1fr] gap-4" : "space-y-4"}>
 				<div class="space-y-4">
 					<GameList />
 				</div>
-				<GameDetail />
+				<Show when={props.selectedGame()}>
+					<GameDetail />
+				</Show>
 			</div>
 
 			<button

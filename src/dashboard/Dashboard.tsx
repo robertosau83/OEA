@@ -161,12 +161,17 @@ export default function Dashboard() {
 			setScores([]);
 		}
 
-		if (!selectedGameId() && mapped.length > 0) {
-			await selectGame(mapped[0].id);
-		}
 	};
 
 	const selectGame = async (gameId: string) => {
+		if (selectedGameId() === gameId) {
+			setSelectedGameId("");
+			setPlayers([]);
+			setScores([]);
+			setMessage("");
+			return;
+		}
+
 		setSelectedGameId(gameId);
 		setMessage("");
 
@@ -609,6 +614,12 @@ export default function Dashboard() {
 	const switchSection = (section: Section) => {
 		setActiveSection(section);
 		setDrawerOpen(false);
+
+		if (section === "games") {
+			setSelectedGameId("");
+			setPlayers([]);
+			setScores([]);
+		}
 	};
 
 	const logout = async () => {
@@ -687,7 +698,7 @@ export default function Dashboard() {
 					</header>
 
 					<Show when={!loading()} fallback={<main class="flex-1 overflow-y-auto p-4 text-gray-600">Caricamento...</main>}>
-						<main class="flex-1 overflow-y-auto p-4">
+						<main class="flex-1 overflow-y-auto p-4 pb-40">
 							<Show when={activeSection() === "games"}>
 								<GamesSection
 									isLandscape={isLandscape}
