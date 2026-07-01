@@ -172,8 +172,8 @@ export default function GamesSection(props: GamesSectionProps) {
 	);
 
 	const GameList = () => (
-		<section class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-			<h2 class="mb-3 text-base font-semibold text-gray-900">Partite</h2>
+		<div>
+			{/* <h2 class="mb-3 text-base font-semibold text-gray-900">Partite</h2> */}
 
 			<div class="space-y-2">
 				<For each={props.games()} fallback={<p class="text-sm text-gray-500">Nessuna partita salvata.</p>}>
@@ -205,32 +205,33 @@ export default function GamesSection(props: GamesSectionProps) {
 					)}
 				</For>
 			</div>
-		</section>
+		</div>
 	);
 
 	const GameDetail = () => (
 		<section class="mx-auto max-w-5xl rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
 			<Show when={props.selectedGame()} fallback={<p class="text-gray-500">Seleziona o crea una partita.</p>}>
-				<button
-					class="mb-4 flex h-10 items-center gap-2 rounded-full bg-blue-50 px-3 text-sm font-semibold text-[#0551b5]"
-					onClick={props.backToGames}
-					aria-label="Torna alle partite"
-				>
-					<ArrowLeftIcon />
-					<span>Torna</span>
-				</button>
+				<div class="mb-4 flex items-start justify-between gap-4">
+					<button
+						class="flex h-10 shrink-0 items-center gap-2 rounded-full bg-blue-50 px-3 text-sm font-semibold text-[#0551b5]"
+						onClick={props.backToGames}
+						aria-label="Torna alle partite"
+					>
+						<ArrowLeftIcon />
+						<span>Torna</span>
+					</button>
 
-				<div class="mb-4">
-					<div class="flex flex-wrap items-center gap-2">
-						<h2 class="text-base font-semibold text-gray-900">Dettaglio partita</h2>
-						<Show when={props.selectedGame()?.on_record}>
-							<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700">On record</span>
+					<div class="min-w-0 text-right">
+						<p class="text-base font-semibold text-gray-900">{props.selectedGame()?.played_at}</p>
+						<Show when={props.selectedGame()?.notes}>
+							<p class="mt-1 break-words text-sm text-gray-500">{props.selectedGame()?.notes}</p>
 						</Show>
+						<p class={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+							props.selectedGame()?.on_record ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
+						}`}>
+							{props.selectedGame()?.on_record ? "On record" : "Non on record"}
+						</p>
 					</div>
-					<p class="text-sm text-gray-500">
-						{props.selectedGame()?.played_at}
-						{props.selectedGame()?.notes ? ` - ${props.selectedGame()?.notes}` : ""}
-					</p>
 				</div>
 
 				<div class={props.isLandscape() ? "overflow-x-auto" : "overflow-x-hidden"}>

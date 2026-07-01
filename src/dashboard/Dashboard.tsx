@@ -696,7 +696,7 @@ export default function Dashboard() {
 				<Show when={isLandscape()}>
 					<aside class="w-60 border-r border-gray-200 bg-white p-4">
 						<div class="mb-6">
-							<h1 class="text-xl font-bold">OEA Yazzi</h1>
+							<h1 class="text-xl font-bold">OEA</h1>
 							<p class="truncate text-sm text-gray-500">{currentUser()?.name}</p>
 						</div>
 						<Nav />
@@ -715,7 +715,7 @@ export default function Dashboard() {
 								</button>
 							</Show>
 							<div class="min-w-0">
-								<h1 class="truncate text-lg font-bold">OEA Yazzi</h1>
+								<h1 class="truncate text-lg font-bold">OEA</h1>
 								<p class="truncate text-xs text-gray-500">
 									{activeSection() === "games" ? isGameDetailPage() ? "Dettaglio partita" : "Partite" : activeSection() === "voices" ? "Voci" : "Utenti"}
 								</p>
@@ -818,7 +818,7 @@ export default function Dashboard() {
 				<aside class="fixed inset-y-0 left-0 z-50 w-72 bg-white p-4 shadow-xl">
 					<div class="mb-6 flex items-start justify-between gap-4">
 						<div class="min-w-0">
-							<h2 class="text-xl font-bold">OEA Yazzi</h2>
+							<h2 class="text-xl font-bold">OEA</h2>
 							<p class="truncate text-sm text-gray-500">{currentUser()?.name}</p>
 						</div>
 						<button class="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-700" onClick={() => setDrawerOpen(false)} aria-label="Chiudi menu">

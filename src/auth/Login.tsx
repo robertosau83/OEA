@@ -54,7 +54,14 @@ export default function Login() {
 	return (
 		<div class={`min-h-screen flex items-center justify-center ${isLandscape() ? "bg-gray-50" : ""}`}>
 			<div class={`bg-white ${isLandscape() ? "shadow-lg" : ""} rounded-xl p-8 w-96`}>
-				<h1 class="text-3xl font-bold text-center mb-16">OEA</h1>
+				<div class="mb-12 text-center">
+					<h1 class="text-3xl font-bold">OEA</h1>
+					<img
+						src="/icons/golden%20dice.png"
+						alt="Golden dice"
+						class="mx-auto mt-5 h-24 w-24 object-contain"
+					/>
+				</div>
 
 				<input
 					type="email"
