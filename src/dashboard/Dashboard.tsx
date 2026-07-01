@@ -96,6 +96,15 @@ function EditIcon() {
 	);
 }
 
+function QuickInputIcon() {
+	return (
+		<svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
+			<rect x="4" y="3" width="16" height="18" rx="2" />
+			<path d="M8 7h8M8 11h.01M12 11h.01M16 11h.01M8 15h.01M12 15h.01M16 15h.01" stroke-linecap="round" />
+		</svg>
+	);
+}
+
 const slugify = (value: string) =>
 	value
 		.trim()
@@ -131,6 +140,9 @@ export default function Dashboard() {
 	const [newVoiceName, setNewVoiceName] = createSignal("");
 	const [editingVoiceId, setEditingVoiceId] = createSignal("");
 	const [editingVoiceName, setEditingVoiceName] = createSignal("");
+	const [quickPlayerId, setQuickPlayerId] = createSignal("");
+	const [quickInput, setQuickInput] = createSignal("");
+	const [quickSaving, setQuickSaving] = createSignal(false);
 
 	const activeVoices = createMemo(() =>
 		voices()
@@ -585,6 +597,109 @@ export default function Dashboard() {
 	const getScore = (userId: string, voiceId: string) =>
 		scores().find((score) => score.user_id === userId && score.voice_id === voiceId)?.score ?? "";
 
+	const parseQuickValues = () =>
+		quickInput()
+			.split("/")
+			.map((part) => part.trim())
+			.map((part) => {
+				if (!part) return null;
+				const value = Number(part);
+				return Number.isFinite(value) ? value : null;
+			});
+
+	const quickPlayer = createMemo(() =>
+		players().find((player) => player.user_id === quickPlayerId()) ?? null
+	);
+
+	const quickPreview = createMemo(() => {
+		const values = parseQuickValues();
+
+		return activeVoices().map((voice, index) => ({
+			voice,
+			score: values[index] ?? null,
+		}));
+	});
+
+	const quickTotal = createMemo(() =>
+		quickPreview()
+			.filter((item) => item.score !== null && item.voice.counts_in_total !== false)
+			.reduce((sum, item) => sum + Number(item.score), 0)
+	);
+
+	const openQuickInput = (player: GamePlayer) => {
+		const existingValues = activeVoices().map((voice) => getScore(player.user_id, voice.id));
+		const lastFilledIndex = existingValues.reduce(
+			(lastIndex, value, index) => value === "" ? lastIndex : index,
+			-1
+		);
+
+		setQuickPlayerId(player.user_id);
+		setQuickInput(
+			lastFilledIndex >= 0
+				? existingValues.slice(0, lastFilledIndex + 1).map(String).join("/")
+				: ""
+		);
+	};
+
+	const closeQuickInput = () => {
+		setQuickPlayerId("");
+		setQuickInput("");
+	};
+
+	const appendQuickKey = (key: string) => {
+		setQuickInput((value) => `${value}${key}`);
+	};
+
+	const backspaceQuickInput = () => {
+		setQuickInput((value) => value.slice(0, -1));
+	};
+
+	const applyQuickScores = async () => {
+		const gameId = selectedGameId();
+		const playerId = quickPlayerId();
+
+		if (!gameId || !playerId) return;
+
+		setQuickSaving(true);
+		const rows = quickPreview().map((item) => ({
+			game_id: gameId,
+			user_id: playerId,
+			voice_id: item.voice.id,
+			score: item.score,
+		}));
+
+		const { error } = await supabase
+			.from("oea_scores")
+			.upsert(rows, {
+				onConflict: "game_id,user_id,voice_id",
+			});
+
+		setQuickSaving(false);
+
+		if (error) {
+			setMessage("Errore nel salvataggio rapido dei punteggi.");
+			return;
+		}
+
+		setScores((current) => {
+			const withoutPlayerActiveVoices = current.filter(
+				(score) =>
+					score.user_id !== playerId ||
+					!activeVoices().some((voice) => voice.id === score.voice_id)
+			);
+
+			return [
+				...withoutPlayerActiveVoices,
+				...rows.map((row) => ({
+					user_id: row.user_id,
+					voice_id: row.voice_id,
+					score: row.score,
+				})),
+			];
+		});
+		closeQuickInput();
+	};
+
 	const saveScore = async (userId: string, voiceId: string, value: string) => {
 		const gameId = selectedGameId();
 		const trimmed = value.trim();
@@ -821,6 +936,14 @@ export default function Dashboard() {
 											? "border-b border-gray-200 p-2 text-left font-semibold text-gray-900"
 											: "border-b border-gray-200 px-1 py-2 text-center font-semibold text-gray-900"}
 										>
+											<button
+												class="mx-auto mb-1 flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-[#0551b5]"
+												title="Inserimento rapido"
+												aria-label={`Inserimento rapido ${player.name}`}
+												onClick={() => openQuickInput(player)}
+											>
+												<QuickInputIcon />
+											</button>
 											<span class="block truncate">{player.name}</span>
 										</th>
 									)}
@@ -1151,6 +1274,115 @@ export default function Dashboard() {
 					</Show>
 				</div>
 			</div>
+
+			<Show when={quickPlayer()}>
+				<div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-2">
+					<div class="flex max-h-[96vh] w-full max-w-xl flex-col rounded-2xl bg-white shadow-2xl">
+						<div class="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 p-4">
+							<div class="min-w-0">
+								<h2 class="truncate text-lg font-bold text-gray-900">Inserimento rapido</h2>
+								<p class="truncate text-sm text-gray-500">{quickPlayer()?.name}</p>
+							</div>
+							<button
+								class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700"
+								aria-label="Chiudi inserimento rapido"
+								onClick={closeQuickInput}
+							>
+								<CloseIcon />
+							</button>
+						</div>
+
+						<div class="min-h-0 flex-1 overflow-y-auto p-3">
+							<input
+								class="mb-3 h-12 w-full rounded-xl border border-gray-300 px-3 text-right text-xl font-semibold"
+								value={quickInput()}
+								placeholder="23/15/16"
+								onInput={(event) => setQuickInput(event.currentTarget.value)}
+							/>
+
+							<div class="grid grid-cols-[minmax(0,1fr)_120px] gap-3">
+								<div class="grid grid-cols-3 gap-2">
+									<For each={["7", "8", "9", "4", "5", "6", "1", "2", "3"]}>
+										{(key) => (
+											<button
+												class="h-14 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200"
+												onClick={() => appendQuickKey(key)}
+											>
+												{key}
+											</button>
+										)}
+									</For>
+
+									<button
+										class="h-14 rounded-full bg-gray-200 text-lg font-semibold text-gray-900 active:bg-gray-300"
+										onClick={() => setQuickInput("")}
+									>
+										C
+									</button>
+									<button
+										class="h-14 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200"
+										onClick={() => appendQuickKey("0")}
+									>
+										0
+									</button>
+									<button
+										class="h-14 rounded-full bg-gray-200 text-lg font-semibold text-gray-900 active:bg-gray-300"
+										onClick={backspaceQuickInput}
+									>
+										⌫
+									</button>
+									<button
+										class="col-span-3 h-14 rounded-full bg-[#0551b5] text-2xl font-semibold text-white active:bg-blue-800"
+										onClick={() => appendQuickKey("/")}
+									>
+										÷
+									</button>
+								</div>
+
+								<div class="rounded-xl border border-gray-200 bg-gray-50 p-2">
+									<div class="mb-2 text-center text-xs font-bold uppercase text-gray-500">Preview</div>
+									<div class="max-h-64 space-y-1 overflow-y-auto pr-1">
+										<For each={quickPreview()}>
+											{(item) => (
+												<div class={`flex items-center justify-between gap-2 rounded bg-white px-2 py-1 text-xs ${item.voice.counts_in_total ? "" : "opacity-60"}`}>
+													<span class="min-w-0 truncate text-gray-600">{item.voice.name}</span>
+													<span class="shrink-0 font-semibold text-gray-900">{item.score ?? "-"}</span>
+												</div>
+											)}
+										</For>
+									</div>
+									<div class="mt-2 rounded-lg bg-white px-2 py-2 text-center">
+										<div class="text-[11px] font-semibold uppercase text-gray-500">Totale</div>
+										<div class="text-xl font-bold text-gray-900">{quickTotal()}</div>
+									</div>
+								</div>
+							</div>
+
+							<Show when={parseQuickValues().length > activeVoices().length}>
+								<p class="mt-3 rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
+									Hai inserito piu' punteggi delle voci attive: quelli in eccesso saranno ignorati.
+								</p>
+							</Show>
+						</div>
+
+						<div class="flex shrink-0 gap-2 border-t border-gray-200 p-3">
+							<button
+								class="h-11 flex-1 rounded-full border border-gray-300 font-semibold text-gray-700"
+								onClick={closeQuickInput}
+							>
+								Annulla
+							</button>
+							<button
+								class="h-11 flex-1 rounded-full bg-[#0551b5] font-semibold text-white disabled:opacity-60"
+								disabled={quickSaving()}
+								onClick={applyQuickScores}
+							>
+								{quickSaving() ? "Salvataggio..." : "Applica"}
+							</button>
+						</div>
+					</div>
+				</div>
+			</Show>
 
 			<Show when={drawerOpen() && !isLandscape()}>
 				<div class="fixed inset-0 z-40 bg-black/40" onClick={() => setDrawerOpen(false)}></div>
