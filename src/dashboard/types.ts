@@ -44,5 +44,5 @@ export interface QuickPreviewItem {
 	score: number | null;
 }
 
-export type Section = "games" | "voices" | "users";
+export type Section = "games" | "statistics" | "voices" | "users";
 export type UserStatus = "PENDING" | "ACTIVE" | "DISABLED";

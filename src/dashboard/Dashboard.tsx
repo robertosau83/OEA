@@ -1,4 +1,4 @@
-import { Show, createEffect, createMemo, createSignal, onMount } from "solid-js";
+import { Show, createEffect, createMemo, createSignal, lazy, onMount } from "solid-js";
 import { useNavigate, useParams } from "@solidjs/router";
 import { useOrientation } from "../context/OrientationContext";
 import { supabase } from "../supabaseClient";
@@ -16,6 +16,8 @@ const slugify = (value: string) =>
 		.replace(/[\u0300-\u036f]/g, "")
 		.replace(/[^a-z0-9]+/g, "_")
 		.replace(/^_+|_+$/g, "");
+
+const StatisticsSection = lazy(() => import("./StatisticsSection"));
 
 export default function Dashboard() {
 	const navigate = useNavigate();
@@ -651,6 +653,8 @@ export default function Dashboard() {
 
 		if (section === "games") {
 			backToGames();
+		} else if (routeGameId()) {
+			navigate("/app");
 		}
 	};
 
@@ -668,6 +672,14 @@ export default function Dashboard() {
 				onClick={() => switchSection("games")}
 			>
 				Partite
+			</button>
+			<button
+				class={`w-full rounded-lg px-4 py-3 text-left text-sm font-semibold ${
+					activeSection() === "statistics" ? "bg-[#0551b5] text-white" : "text-gray-700 hover:bg-gray-100"
+				}`}
+				onClick={() => switchSection("statistics")}
+			>
+				Statistiche
 			</button>
 			<button
 				class={`w-full rounded-lg px-4 py-3 text-left text-sm font-semibold ${
@@ -717,7 +729,7 @@ export default function Dashboard() {
 							<div class="min-w-0">
 								<h1 class="truncate text-lg font-bold">OEA</h1>
 								<p class="truncate text-xs text-gray-500">
-									{activeSection() === "games" ? isGameDetailPage() ? "Dettaglio partita" : "Partite" : activeSection() === "voices" ? "Voci" : "Utenti"}
+									{activeSection() === "games" ? isGameDetailPage() ? "Dettaglio partita" : "Partite" : activeSection() === "statistics" ? "Statistiche" : activeSection() === "voices" ? "Voci" : "Utenti"}
 								</p>
 							</div>
 						</div>
@@ -771,6 +783,10 @@ export default function Dashboard() {
 									quickSaving={quickSaving}
 									applyQuickScores={applyQuickScores}
 								/>
+							</Show>
+
+							<Show when={activeSection() === "statistics"}>
+								<StatisticsSection activeUsers={activeUsers} voices={voices} />
 							</Show>
 
 							<Show when={activeSection() === "voices"}>
