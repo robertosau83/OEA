@@ -217,6 +217,8 @@ export default function Dashboard() {
 			return;
 		}
 
+		if (routeGameId() !== gameId || activeSection() !== "games") return;
+
 		setPlayers(
 			((playerData ?? []) as any[]).map((player) => ({
 				user_id: player.user_id,
@@ -653,8 +655,6 @@ export default function Dashboard() {
 
 		if (section === "games") {
 			backToGames();
-		} else if (routeGameId()) {
-			navigate("/app");
 		}
 	};
 

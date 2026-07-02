@@ -69,6 +69,8 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 
 	let winsChartEl: HTMLDivElement | undefined;
 	let winsChart: ApexChart | undefined;
+	let totalPointsChartEl: HTMLDivElement | undefined;
+	let totalPointsChart: ApexChart | undefined;
 
 	createEffect(() => {
 		const availableIds = props.activeUsers().map((user) => user.id);
@@ -219,15 +221,34 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 	});
 
 	const winsByPlayer = createMemo(() => victoryStats().rows);
+	const totalPointsByPlayer = createMemo(() => {
+		const totals = new Map(selectedPlayerIds().map((id) => [id, 0]));
+
+		for (const result of gameResults()) {
+			for (const total of result.totals) {
+				totals.set(total.userId, (totals.get(total.userId) ?? 0) + total.total);
+			}
+		}
+
+		return selectedPlayers().map((player) => ({
+			player,
+			total: totals.get(player.id) ?? 0,
+		}));
+	});
 
 	const chartRows = createMemo(() => winsByPlayer().filter((row) => row.wins > 0));
 	const chartSeries = createMemo(() => chartRows().length > 0 ? chartRows().map((row) => row.wins) : [1]);
 	const chartLabels = createMemo(() => chartRows().length > 0 ? chartRows().map((row) => row.player.name) : ["Nessun dato"]);
+	const totalPointsChartRows = createMemo(() => totalPointsByPlayer().filter((row) => row.total > 0));
+	const totalPointsChartSeries = createMemo(() => totalPointsChartRows().length > 0 ? totalPointsChartRows().map((row) => row.total) : [1]);
+	const totalPointsChartLabels = createMemo(() => totalPointsChartRows().length > 0 ? totalPointsChartRows().map((row) => row.player.name) : ["Nessun dato"]);
 
-	const chartOptions = createMemo(() => {
-		const hasData = chartRows().length > 0;
-
-		return {
+	const buildPieOptions = (
+		labels: string[],
+		series: number[],
+		hasData: boolean,
+		tooltipSuffix: string
+	) => ({
 			chart: {
 				type: "pie",
 				height: "100%",
@@ -235,26 +256,32 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 				animations: { enabled: false },
 				toolbar: { show: false },
 			},
-			labels: chartLabels(),
-			series: chartSeries(),
+			labels,
+			series,
 			legend: { show: false },
 			dataLabels: {
 				enabled: hasData,
 				formatter: (_value: number, options: { seriesIndex: number; w: { config: { labels: string[]; series: number[] } } }) => {
 					const label = options.w.config.labels[options.seriesIndex];
-					const wins = options.w.config.series[options.seriesIndex];
-					return `${label}: ${wins}`;
+					const value = options.w.config.series[options.seriesIndex];
+					return `${label}: ${value}`;
 				},
 			},
 			tooltip: {
 				enabled: hasData,
-				y: { formatter: (value: number) => `${value} punti vittoria` },
+				y: { formatter: (value: number) => `${value} ${tooltipSuffix}` },
 			},
 			stroke: { show: true, width: 2, colors: ["#fff"] },
 			colors: hasData ? chartColors : ["#e5e7eb"],
 			states: { active: { filter: { type: "none" } } },
-		};
-	});
+		});
+
+	const chartOptions = createMemo(() =>
+		buildPieOptions(chartLabels(), chartSeries(), chartRows().length > 0, "punti vittoria")
+	);
+	const totalPointsChartOptions = createMemo(() =>
+		buildPieOptions(totalPointsChartLabels(), totalPointsChartSeries(), totalPointsChartRows().length > 0, "punti")
+	);
 
 	createEffect(() => {
 		if (loading() || loadError() || !winsChartEl) return;
@@ -270,9 +297,25 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 		void winsChart.render();
 	});
 
+	createEffect(() => {
+		if (loading() || loadError() || !totalPointsChartEl) return;
+
+		const options = totalPointsChartOptions();
+		if (totalPointsChart) {
+			void totalPointsChart.updateOptions(options, false, false);
+			void totalPointsChart.updateSeries(totalPointsChartSeries(), false);
+			return;
+		}
+
+		totalPointsChart = new ApexCharts(totalPointsChartEl, options) as ApexChart;
+		void totalPointsChart.render();
+	});
+
 	onCleanup(() => {
 		winsChart?.destroy();
 		winsChart = undefined;
+		totalPointsChart?.destroy();
+		totalPointsChart = undefined;
 	});
 
 	return (
@@ -338,6 +381,33 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 										<div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-2 text-sm">
 											<span class="min-w-0 truncate font-medium text-gray-700">{row.player.name}</span>
 											<span class="shrink-0 font-bold text-gray-900">{row.wins}</span>
+										</div>
+									)}
+								</For>
+							</div>
+						</div>
+					</div>
+
+					<div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+						<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+							<div class="mb-3 flex items-center justify-between gap-3">
+								<h3 class="text-base font-semibold text-gray-900">Punti totali</h3>
+								<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
+									{comparedGames().length} partite
+								</span>
+							</div>
+							<div class="h-[360px]" ref={(el) => { totalPointsChartEl = el; }} />
+						</div>
+
+						<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+							<h3 class="mb-1 text-base font-semibold text-gray-900">Classifica punti</h3>
+							<p class="mb-3 text-xs text-gray-500">Somma dei punti nelle partite del campione filtrato.</p>
+							<div class="space-y-2">
+								<For each={totalPointsByPlayer().slice().sort((a, b) => b.total - a.total)}>
+									{(row) => (
+										<div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-2 text-sm">
+											<span class="min-w-0 truncate font-medium text-gray-700">{row.player.name}</span>
+											<span class="shrink-0 font-bold text-gray-900">{row.total}</span>
 										</div>
 									)}
 								</For>
