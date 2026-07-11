@@ -509,7 +509,7 @@ export default function Dashboard() {
 	const getScore = (userId: string, voiceId: string) =>
 		scores().find((score) => score.user_id === userId && score.voice_id === voiceId)?.score ?? "";
 
-	const parseQuickValues = () =>
+	const quickParsedValues = createMemo(() =>
 		quickInput()
 			.split("/")
 			.map((part) => part.trim())
@@ -517,12 +517,13 @@ export default function Dashboard() {
 				if (!part) return null;
 				const value = Number(part);
 				return Number.isFinite(value) ? value : null;
-			});
+			})
+	);
 
 	const quickPlayer = createMemo(() => players().find((player) => player.user_id === quickPlayerId()) ?? null);
 
 	const quickPreview = createMemo(() => {
-		const values = parseQuickValues();
+		const values = quickParsedValues();
 
 		return activeVoices().map((voice, index) => ({
 			voice,
@@ -530,7 +531,7 @@ export default function Dashboard() {
 		}));
 	});
 
-	const quickValuesCount = createMemo(() => parseQuickValues().length);
+	const quickValuesCount = createMemo(() => quickParsedValues().length);
 
 	const quickTotal = createMemo(() =>
 		quickPreview()

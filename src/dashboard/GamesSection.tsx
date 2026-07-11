@@ -1,4 +1,4 @@
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createSignal, onCleanup } from "solid-js";
 import type { Accessor, Setter } from "solid-js";
 import { ArrowDownIcon, ArrowLeftIcon, ArrowUpIcon, CloseIcon, QuickInputIcon, TrashIcon } from "./icons";
 import type { Game, GamePlayer, OeaUser, QuickPreviewItem, Voice } from "./types";
@@ -45,6 +45,54 @@ interface GamesSectionProps {
 
 export default function GamesSection(props: GamesSectionProps) {
 	const [newGameOpen, setNewGameOpen] = createSignal(false);
+	const [pressedQuickKey, setPressedQuickKey] = createSignal("");
+	let quickKeyFeedbackTimer: number | undefined;
+
+	const formatGameDate = (value: string | undefined) => {
+		if (!value) return "";
+		const [year, month, day] = value.split("-");
+		return year && month && day ? `${day}/${month}/${year}` : value;
+	};
+
+	const quickGameDate = () => formatGameDate(props.selectedGame()?.played_at ?? props.playedAt());
+
+	const runQuickKey = (key: string, action: () => void) => {
+		if (quickKeyFeedbackTimer) window.clearTimeout(quickKeyFeedbackTimer);
+		setPressedQuickKey(key);
+		action();
+		quickKeyFeedbackTimer = window.setTimeout(() => setPressedQuickKey(""), 130);
+	};
+
+	const quickKeyClass = (key: string, variant: "number" | "control" | "primary" = "number") => {
+		const base = "h-full min-h-12 select-none rounded-full font-semibold shadow-sm transition-[background-color,box-shadow,transform] duration-75 ease-out active:scale-95";
+		const pressed = pressedQuickKey() === key ? "scale-95 ring-2 ring-[#0551b5]/35" : "";
+		if (variant === "primary") return `${base} ${pressed} bg-[#0551b5] text-2xl text-white active:bg-blue-800`;
+		if (variant === "control") return `${base} ${pressed} bg-gray-200 text-lg text-gray-900 active:bg-gray-300`;
+		return `${base} ${pressed} bg-gray-100 text-xl text-gray-900 active:bg-gray-200`;
+	};
+
+	const QuickKeyButton = (buttonProps: { keyValue: string; label?: string; variant?: "number" | "control" | "primary"; class?: string; action: () => void }) => (
+		<button
+			type="button"
+			class={`${quickKeyClass(buttonProps.keyValue, buttonProps.variant)} ${buttonProps.class ?? ""}`}
+			onPointerDown={(event) => {
+				event.preventDefault();
+				runQuickKey(buttonProps.keyValue, buttonProps.action);
+			}}
+			onKeyDown={(event) => {
+				if (event.key !== "Enter" && event.key !== " ") return;
+				event.preventDefault();
+				runQuickKey(buttonProps.keyValue, buttonProps.action);
+			}}
+		>
+			{buttonProps.label ?? buttonProps.keyValue}
+		</button>
+	);
+
+	onCleanup(() => {
+		if (quickKeyFeedbackTimer) window.clearTimeout(quickKeyFeedbackTimer);
+	});
+
 	const selectedPlayers = () =>
 		props.selectedUserIds()
 			.map((userId) => props.activeUsers().find((user) => user.id === userId))
@@ -303,8 +351,9 @@ export default function GamesSection(props: GamesSectionProps) {
 				<div class="flex max-h-[96vh] w-full max-w-xl flex-col rounded-2xl bg-white shadow-2xl">
 					<div class="flex shrink-0 items-center justify-between gap-3 border-b border-gray-200 px-4 py-2">
 						<div class="min-w-0">
-							<h2 class="truncate text-lg font-bold text-gray-900">Inserimento rapido</h2>
-							{/* <p class="truncate text-sm text-gray-500">{props.quickPlayer()?.name}</p> */}
+							<p class="truncate text-[11px] font-semibold uppercase leading-4 text-gray-400">Inserimento rapido</p>
+							<h2 class="truncate text-base font-bold leading-5 text-gray-900">{props.quickPlayer()?.name}</h2>
+							<p class="truncate text-xs leading-4 text-gray-500">{quickGameDate()}</p>
 						</div>
 						<button class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700" aria-label="Chiudi inserimento rapido" onClick={props.closeQuickInput}>
 							<CloseIcon />
@@ -325,16 +374,13 @@ export default function GamesSection(props: GamesSectionProps) {
 								<div class="grid min-h-0 flex-1 grid-cols-3 grid-rows-5 gap-2">
 									<For each={["7", "8", "9", "4", "5", "6", "1", "2", "3"]}>
 										{(key) => (
-											<button class="h-full min-h-12 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200" onClick={() => props.appendQuickKey(key)}>
-												{key}
-											</button>
+											<QuickKeyButton keyValue={key} action={() => props.appendQuickKey(key)} />
 										)}
 									</For>
-									<button class="h-full min-h-12 rounded-full bg-gray-200 text-lg font-semibold text-gray-900 active:bg-gray-300" onClick={() => props.setQuickInput("")}>C</button>
-									<button class="h-full min-h-12 rounded-full bg-gray-100 text-xl font-semibold text-gray-900 active:bg-gray-200" onClick={() => props.appendQuickKey("0")}>0</button>
-									<button class="h-full min-h-12 rounded-full bg-gray-200 text-sm font-semibold text-gray-900 active:bg-gray-300" onClick={props.backspaceQuickInput}>Del</button>
-									<button class="h-full min-h-12 rounded-full bg-gray-200 text-2xl font-semibold text-gray-900 active:bg-gray-300" onClick={() => props.appendQuickKey("-")}>-</button>
-									<button class="col-span-2 h-full min-h-12 rounded-full bg-[#0551b5] text-2xl font-semibold text-white active:bg-blue-800" onClick={() => props.appendQuickKey("/")}>/</button>
+									<QuickKeyButton keyValue="-" variant="control" action={() => props.appendQuickKey("-")} />
+									<QuickKeyButton keyValue="0" action={() => props.appendQuickKey("0")} />
+									<QuickKeyButton keyValue="backspace" label="Canc" variant="control" action={props.backspaceQuickInput} />
+									<QuickKeyButton keyValue="/" class="col-span-3" variant="primary" action={() => props.appendQuickKey("/")} />
 								</div>
 							</div>
 
@@ -345,7 +391,7 @@ export default function GamesSection(props: GamesSectionProps) {
 										{(item) => (
 											<div class={`flex items-center justify-between rounded bg-white px-2 text-xs ${item.voice.counts_in_total ? "" : "opacity-60"}`}>
 												<span class="min-w-0 truncate text-gray-600">{item.voice.name}</span>
-												<span class="shrink-0 font-semibold text-gray-900">{item.score ?? "-"}</span>
+												<span class="shrink-0 font-semibold text-gray-900">{item.score ?? ""}</span>
 											</div>
 										)}
 									</For>
