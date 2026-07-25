@@ -13,14 +13,15 @@ interface GamesSectionProps {
 	isDetailPage: Accessor<boolean>;
 	players: Accessor<GamePlayer[]>;
 	activeVoices: Accessor<Voice[]>;
+	primaryTotals: Accessor<Record<string, number>>;
+	secondaryTotals: Accessor<Record<string, number>>;
 	totals: Accessor<Record<string, number>>;
 	playedAt: Accessor<string>;
 	setPlayedAt: Setter<string>;
-	onRecord: Accessor<boolean>;
-	setOnRecord: Setter<boolean>;
 	notes: Accessor<string>;
 	setNotes: Setter<string>;
 	selectedUserIds: Accessor<string[]>;
+	resetSelectedUsers: () => void;
 	toggleUser: (userId: string) => void;
 	moveSelectedUser: (userId: string, direction: -1 | 1) => void;
 	createGame: () => Promise<boolean>;
@@ -69,6 +70,16 @@ export default function GamesSection(props: GamesSectionProps) {
 		if (variant === "primary") return `${base} ${pressed} bg-[#0551b5] text-2xl text-white active:bg-blue-800`;
 		if (variant === "control") return `${base} ${pressed} bg-gray-200 text-lg text-gray-900 active:bg-gray-300`;
 		return `${base} ${pressed} bg-gray-100 text-xl text-gray-900 active:bg-gray-200`;
+	};
+
+	const handleScoreInput = (userId: string, voiceId: string, input: HTMLInputElement) => {
+		const value = input.value;
+		if (!/^-?\d*$/.test(value)) {
+			input.value = String(props.getScore(userId, voiceId));
+			return;
+		}
+
+		if (value !== "-") props.saveScore(userId, voiceId, value);
 	};
 
 	const QuickKeyButton = (buttonProps: { keyValue: string; label?: string; variant?: "number" | "control" | "primary"; class?: string; action: () => void }) => (
@@ -123,19 +134,6 @@ export default function GamesSection(props: GamesSectionProps) {
 					class="h-11 w-full rounded border border-gray-300 px-3"
 					value={props.playedAt()}
 					onInput={(event) => props.setPlayedAt(event.currentTarget.value)}
-				/>
-			</label>
-
-			<label class="mb-3 flex items-center justify-between gap-3 rounded border border-gray-200 px-3 py-3">
-				<span>
-					<span class="block text-sm font-medium text-gray-900">On record</span>
-					<span class="block text-xs text-gray-500">Marca questa partita nello storico ufficiale.</span>
-				</span>
-				<input
-					type="checkbox"
-					class="h-5 w-5"
-					checked={props.onRecord()}
-					onChange={(event) => props.setOnRecord(event.currentTarget.checked)}
 				/>
 			</label>
 
@@ -231,14 +229,23 @@ export default function GamesSection(props: GamesSectionProps) {
 								props.selectedGameId() === game.id ? "border-[#0551b5] bg-blue-50" : "border-gray-200 bg-white"
 							}`}
 						>
-							<button class="min-w-0 flex-1 px-3 py-3 text-left" onClick={() => props.selectGame(game.id)}>
+							<button class="min-w-0 flex-1 px-3 pt-2 pb-3 text-left" onClick={() => props.selectGame(game.id)}>
 								<span class="flex items-center gap-2 text-sm font-semibold text-gray-900">
 									{game.played_at}
-									<Show when={game.on_record}>
-										<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">On record</span>
-									</Show>
 								</span>
-								<span class="mt-1 block truncate text-xs text-gray-500">{game.player_names.join(", ")}</span>
+								<span class="mt-2 flex flex-wrap items-center gap-1.5">
+									<For each={game.list_players}>
+										{(player) => (
+											<span
+												class={player.is_winner
+													? "rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-[#0551b5] ring-1 ring-blue-200"
+													: "px-0.5 text-xs font-normal text-gray-500"}
+											>
+												{player.name}
+											</span>
+										)}
+									</For>
+								</span>
 							</button>
 
 							<button
@@ -274,11 +281,6 @@ export default function GamesSection(props: GamesSectionProps) {
 						<Show when={props.selectedGame()?.notes}>
 							<p class="mt-1 break-words text-sm text-gray-500">{props.selectedGame()?.notes}</p>
 						</Show>
-						<p class={`mt-2 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-							props.selectedGame()?.on_record ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-						}`}>
-							{props.selectedGame()?.on_record ? "On record" : "Non on record"}
-						</p>
 					</div>
 				</div>
 
@@ -316,10 +318,12 @@ export default function GamesSection(props: GamesSectionProps) {
 											{(player) => (
 												<td class={props.isLandscape() ? "border-b border-gray-100 p-2" : "border-b border-gray-100 px-1 py-2"}>
 													<input
-														type="number"
+														type="text"
+														inputmode="numeric"
+														pattern="-?[0-9]*"
 														class={props.isLandscape() ? "h-10 w-20 rounded border border-gray-300 px-2 text-right" : "h-9 w-full min-w-0 rounded border border-gray-300 px-1 text-center text-sm"}
 														value={props.getScore(player.user_id, voice.id)}
-														onInput={(event) => props.saveScore(player.user_id, voice.id, event.currentTarget.value)}
+														onInput={(event) => handleScoreInput(player.user_id, voice.id, event.currentTarget)}
 													/>
 												</td>
 											)}
@@ -328,8 +332,30 @@ export default function GamesSection(props: GamesSectionProps) {
 								)}
 							</For>
 
+							<tr class="border-t-2 border-gray-200">
+								<td class={props.isLandscape() ? "sticky left-0 bg-white p-2 font-semibold text-gray-700" : "bg-white px-1 py-2 font-semibold leading-tight text-gray-700"}>Punteggio principale</td>
+								<For each={props.players()}>
+									{(player) => (
+										<td class={props.isLandscape() ? "p-2 text-right font-semibold text-gray-700" : "px-1 py-2 text-center text-sm font-semibold text-gray-700"}>
+											{props.primaryTotals()[player.user_id] ?? 0}
+										</td>
+									)}
+								</For>
+							</tr>
+
 							<tr>
-								<td class={props.isLandscape() ? "sticky left-0 bg-white p-2 font-bold text-gray-900" : "bg-white px-1 py-2 font-bold text-gray-900"}>Totale</td>
+								<td class={props.isLandscape() ? "sticky left-0 bg-white p-2 font-semibold text-gray-700" : "bg-white px-1 py-2 font-semibold leading-tight text-gray-700"}>Punteggio secondario</td>
+								<For each={props.players()}>
+									{(player) => (
+										<td class={props.isLandscape() ? "p-2 text-right font-semibold text-gray-700" : "px-1 py-2 text-center text-sm font-semibold text-gray-700"}>
+											{props.secondaryTotals()[player.user_id] ?? 0}
+										</td>
+									)}
+								</For>
+							</tr>
+
+							<tr class="border-t border-gray-300 bg-blue-50">
+								<td class={props.isLandscape() ? "sticky left-0 bg-blue-50 p-2 font-bold text-gray-900" : "bg-blue-50 px-1 py-2 font-bold text-gray-900"}>Totale</td>
 								<For each={props.players()}>
 									{(player) => (
 										<td class={props.isLandscape() ? "p-2 text-right text-base font-bold text-gray-900" : "px-1 py-2 text-center text-sm font-bold text-gray-900"}>
@@ -433,9 +459,12 @@ export default function GamesSection(props: GamesSectionProps) {
 							class="fixed bottom-5 right-5 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-[#0551b5] text-3xl font-light leading-none text-white shadow-lg active:bg-blue-800"
 							aria-label="Crea nuova partita"
 							title="Crea nuova partita"
-							onClick={() => setNewGameOpen(true)}
+							onClick={() => {
+								props.resetSelectedUsers();
+								setNewGameOpen(true);
+							}}
 						>
-							+
+							<img src="/icons/plus-white.svg" alt="" aria-hidden="true" class="h-7 w-7" />
 						</button>
 					</>
 				}

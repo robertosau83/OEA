@@ -28,14 +28,15 @@ end $$;
 create table if not exists public.oea_games (
 	id uuid primary key default gen_random_uuid(),
 	played_at date not null default current_date,
-	on_record boolean not null default false,
+	on_record boolean not null default true,
 	created_by uuid not null references public.oea_users(id) on delete restrict,
 	notes text,
 	created_at timestamptz not null default now(),
 	updated_at timestamptz not null default now()
 );
 
-alter table public.oea_games add column if not exists on_record boolean not null default false;
+alter table public.oea_games add column if not exists on_record boolean not null default true;
+alter table public.oea_games alter column on_record set default true;
 
 create table if not exists public.oea_game_players (
 	id uuid primary key default gen_random_uuid(),
@@ -48,16 +49,32 @@ create table if not exists public.oea_game_players (
 
 create table if not exists public.oea_voices (
 	id uuid primary key default gen_random_uuid(),
-	code text not null unique,
 	name text not null,
 	sort_order integer not null default 0,
 	is_active boolean not null default true,
 	counts_in_total boolean not null default true,
+	voice_type text not null default 'PRIMARY' check (voice_type in ('PRIMARY', 'SECONDARY')),
 	created_at timestamptz not null default now(),
 	updated_at timestamptz not null default now()
 );
 
+alter table public.oea_voices drop column if exists code;
 alter table public.oea_voices add column if not exists counts_in_total boolean not null default true;
+alter table public.oea_voices add column if not exists voice_type text not null default 'PRIMARY';
+
+do $$
+begin
+	if not exists (
+		select 1
+		from pg_constraint
+		where conname = 'oea_voices_voice_type_check'
+			and conrelid = 'public.oea_voices'::regclass
+	) then
+		alter table public.oea_voices
+		add constraint oea_voices_voice_type_check
+		check (voice_type in ('PRIMARY', 'SECONDARY'));
+	end if;
+end $$;
 
 create table if not exists public.oea_scores (
 	id uuid primary key default gen_random_uuid(),
@@ -184,27 +201,31 @@ after insert on auth.users
 for each row
 execute function public.create_oea_user_from_auth();
 
-insert into public.oea_voices (code, name, sort_order, counts_in_total)
-values
-	('ones', 'Uno', 10, true),
-	('twos', 'Due', 20, true),
-	('threes', 'Tre', 30, true),
-	('fours', 'Quattro', 40, true),
-	('fives', 'Cinque', 50, true),
-	('sixes', 'Sei', 60, true),
-	('pair', 'Coppia', 70, true),
-	('two_pairs', 'Doppia coppia', 80, true),
-	('three_kind', 'Tris', 90, true),
-	('four_kind', 'Poker', 100, true),
-	('small_straight', 'Scala piccola', 110, true),
-	('large_straight', 'Scala grande', 120, true),
-	('full_house', 'Full', 130, true),
-	('chance', 'Chance', 140, true),
-	('yazzi', 'Yazzi', 150, true)
-on conflict (code) do update
-set name = excluded.name,
-	sort_order = excluded.sort_order,
-	counts_in_total = excluded.counts_in_total;
+insert into public.oea_voices (name, sort_order, counts_in_total)
+select seeded.name, seeded.sort_order, seeded.counts_in_total
+from (
+	values
+		('Uno', 10, true),
+		('Due', 20, true),
+		('Tre', 30, true),
+		('Quattro', 40, true),
+		('Cinque', 50, true),
+		('Sei', 60, true),
+		('Coppia', 70, true),
+		('Doppia coppia', 80, true),
+		('Tris', 90, true),
+		('Poker', 100, true),
+		('Scala piccola', 110, true),
+		('Scala grande', 120, true),
+		('Full', 130, true),
+		('Chance', 140, true),
+		('Yazzi', 150, true)
+) as seeded(name, sort_order, counts_in_total)
+where not exists (
+	select 1
+	from public.oea_voices voice
+	where lower(voice.name) = lower(seeded.name)
+);
 
 drop policy if exists "oea_users_select_own" on public.oea_users;
 drop policy if exists "oea_users_select" on public.oea_users;

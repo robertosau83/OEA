@@ -236,6 +236,38 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 		}));
 	});
 
+	const voiceRankings = createMemo(() => {
+		const gameIds = new Set(comparedGames().map((game) => game.id));
+
+		return props.voices()
+			.filter((voice) => voice.is_active)
+			.slice()
+			.sort((a, b) => a.sort_order - b.sort_order)
+			.map((voice) => {
+				const rows = selectedPlayers()
+					.map((player) => ({
+						player,
+						total: scores()
+							.filter((score) =>
+								gameIds.has(score.game_id)
+								&& score.user_id === player.id
+								&& score.voice_id === voice.id
+								&& score.score !== null
+							)
+							.reduce((sum, score) => sum + Number(score.score), 0),
+					}))
+					.sort((a, b) => b.total - a.total || a.player.name.localeCompare(b.player.name));
+
+				return {
+					voice,
+					rows: rows.map((row) => ({
+						...row,
+						rank: rows.findIndex((candidate) => candidate.total === row.total) + 1,
+					})),
+				};
+			});
+	});
+
 	const chartRows = createMemo(() => winsByPlayer().filter((row) => row.wins > 0));
 	const chartSeries = createMemo(() => chartRows().length > 0 ? chartRows().map((row) => row.wins) : [1]);
 	const chartLabels = createMemo(() => chartRows().length > 0 ? chartRows().map((row) => row.player.name) : ["Nessun dato"]);
@@ -415,61 +447,38 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 						</div>
 					</div>
 
-					<div class="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-						<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-							<div>
-								<h3 class="text-base font-semibold text-gray-900">Partite considerate</h3>
-								<p class="text-xs text-gray-500">I punteggi evidenziati ricevono punto vittoria; se tutti sono pari non viene assegnato nulla.</p>
-							</div>
-							<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
-								{gameResults().length} righe
-							</span>
-						</div>
-
-						<div class="max-h-[520px] overflow-y-auto">
-							<table class="w-full table-fixed border-collapse text-xs sm:text-sm">
-								<thead>
-									<tr class="border-b border-gray-200 text-left text-xs font-semibold uppercase text-gray-500">
-										<th class="w-[92px] py-2 pr-2">Data</th>
-										<For each={selectedPlayers()}>
-											{(player) => (
-												<th class="py-2 px-1 text-right">
-													<span class="block truncate">{player.name}</span>
-												</th>
+					<div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+						<For each={voiceRankings()}>
+							{(ranking) => (
+								<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+									<h3 class="text-base font-semibold text-gray-900">Re del {ranking.voice.name}</h3>
+									<p class="mb-3 mt-1 text-xs text-gray-500">Somma dei punteggi sulla singola voce.</p>
+									<div class="space-y-2">
+										<For each={ranking.rows} fallback={<p class="text-sm text-gray-500">Nessun giocatore selezionato.</p>}>
+											{(row) => (
+												<div class="flex items-center gap-3 border-b border-gray-100 pb-2 text-sm last:border-b-0 last:pb-0">
+													<span class={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+														row.rank === 1 ? "bg-blue-100 text-[#0551b5]" : "bg-gray-100 text-gray-600"
+													}`}>
+														{row.rank}
+													</span>
+													<span class={`min-w-0 flex-1 truncate ${
+														row.rank === 1 ? "font-bold text-gray-900" : "font-medium text-gray-700"
+													}`}>
+														{row.player.name}
+													</span>
+													<span class={`shrink-0 ${
+														row.rank === 1 ? "font-bold text-[#0551b5]" : "font-bold text-gray-900"
+													}`}>
+														{row.total}
+													</span>
+												</div>
 											)}
 										</For>
-									</tr>
-								</thead>
-								<tbody>
-									<For each={gameResults()} fallback={
-										<tr>
-											<td class="py-6 text-center text-gray-500" colSpan={selectedPlayers().length + 1}>Nessuna partita nel campione filtrato.</td>
-										</tr>
-									}>
-										{(row) => (
-											<tr class="border-b border-gray-100">
-												<td class="py-2 pr-2 font-medium text-gray-900">{row.game.played_at}</td>
-												<For each={selectedPlayers()}>
-													{(player) => {
-														const total = row.totals.find((item) => item.userId === player.id)?.total ?? 0;
-														const earnsPoint = row.pointWinnerIds.includes(player.id);
-														return (
-															<td class="py-2 px-1 text-right">
-																<span class={`inline-flex min-w-10 justify-center rounded-full px-2 py-1 font-semibold ${
-																	earnsPoint ? "bg-blue-50 text-[#0551b5]" : "text-gray-700"
-																}`}>
-																	{total}
-																</span>
-															</td>
-														);
-													}}
-												</For>
-											</tr>
-										)}
-									</For>
-								</tbody>
-							</table>
-						</div>
+									</div>
+								</div>
+							)}
+						</For>
 					</div>
 				</Show>
 			</Show>

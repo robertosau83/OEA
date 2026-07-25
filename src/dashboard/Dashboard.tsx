@@ -6,16 +6,7 @@ import GamesSection from "./GamesSection";
 import VoicesSection from "./VoicesSection";
 import UsersSection from "./UsersSection";
 import { CloseIcon, MenuIcon } from "./icons";
-import type { Game, GamePlayer, OeaUser, Score, Section, UserStatus, Voice } from "./types";
-
-const slugify = (value: string) =>
-	value
-		.trim()
-		.toLowerCase()
-		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
-		.replace(/[^a-z0-9]+/g, "_")
-		.replace(/^_+|_+$/g, "");
+import type { Game, GamePlayer, OeaUser, Score, Section, UserStatus, Voice, VoiceFormValues, VoiceType } from "./types";
 
 const StatisticsSection = lazy(() => import("./StatisticsSection"));
 
@@ -39,13 +30,8 @@ export default function Dashboard() {
 	const [scores, setScores] = createSignal<Score[]>([]);
 
 	const [playedAt, setPlayedAt] = createSignal(new Date().toISOString().slice(0, 10));
-	const [onRecord, setOnRecord] = createSignal(false);
 	const [notes, setNotes] = createSignal("");
 	const [selectedUserIds, setSelectedUserIds] = createSignal<string[]>([]);
-
-	const [newVoiceName, setNewVoiceName] = createSignal("");
-	const [editingVoiceId, setEditingVoiceId] = createSignal("");
-	const [editingVoiceName, setEditingVoiceName] = createSignal("");
 
 	const [quickPlayerId, setQuickPlayerId] = createSignal("");
 	const [quickInput, setQuickInput] = createSignal("");
@@ -84,7 +70,6 @@ export default function Dashboard() {
 		}
 
 		setCurrentUser(profile as OeaUser);
-		setSelectedUserIds([authUser.id]);
 		await loadBaseData();
 		setLoading(false);
 	});
@@ -133,7 +118,7 @@ export default function Dashboard() {
 			usersQuery,
 			supabase
 				.from("oea_voices")
-				.select("id, code, name, sort_order, is_active, counts_in_total")
+				.select("id, name, sort_order, is_active, counts_in_total, voice_type")
 				.order("sort_order", { ascending: true }),
 		]);
 
@@ -153,15 +138,16 @@ export default function Dashboard() {
 			.select(`
 				id,
 				played_at,
-				on_record,
 				notes,
 				created_by,
 				created_at,
 				creator:oea_users!oea_games_created_by_fkey(name),
 				players:oea_game_players(
+					user_id,
 					player_order,
 					user:oea_users(name)
-				)
+				),
+				scores:oea_scores(user_id, voice_id, score)
 			`)
 			.order("played_at", { ascending: false })
 			.order("created_at", { ascending: false });
@@ -171,20 +157,42 @@ export default function Dashboard() {
 			return;
 		}
 
-		const mapped = ((data ?? []) as any[]).map((game) => ({
-			id: game.id,
-			played_at: game.played_at,
-			on_record: Boolean(game.on_record),
-			notes: game.notes,
-			created_by: game.created_by,
-			created_at: game.created_at,
-			creator_name: game.creator?.name ?? "",
-			player_names: (game.players ?? [])
+		const totalVoiceIds = new Set(voices().filter((voice) => voice.counts_in_total).map((voice) => voice.id));
+		const mapped = ((data ?? []) as any[]).map((game) => {
+			const orderedPlayers = (game.players ?? [])
 				.slice()
 				.sort((a: any, b: any) => a.player_order - b.player_order)
-				.map((player: any) => player.user?.name)
-				.filter(Boolean),
-		}));
+				.filter((player: any) => player.user_id && player.user?.name);
+			const playerTotals = new Map<string, number>(orderedPlayers.map((player: any) => [player.user_id, 0]));
+
+			for (const score of game.scores ?? []) {
+				if (score.score === null || !totalVoiceIds.has(score.voice_id) || !playerTotals.has(score.user_id)) continue;
+				playerTotals.set(score.user_id, (playerTotals.get(score.user_id) ?? 0) + Number(score.score));
+			}
+
+			const bestTotal = playerTotals.size > 0 ? Math.max(...playerTotals.values()) : 0;
+			const winnerIds = new Set(
+				orderedPlayers
+					.filter((player: any) => playerTotals.get(player.user_id) === bestTotal)
+					.map((player: any) => player.user_id)
+			);
+			if (winnerIds.size === orderedPlayers.length) winnerIds.clear();
+
+			return {
+				id: game.id,
+				played_at: game.played_at,
+				notes: game.notes,
+				created_by: game.created_by,
+				created_at: game.created_at,
+				creator_name: game.creator?.name ?? "",
+				player_names: orderedPlayers.map((player: any) => player.user.name),
+				list_players: orderedPlayers.map((player: any) => ({
+					user_id: player.user_id,
+					name: player.user.name,
+					is_winner: winnerIds.has(player.user_id),
+				})),
+			};
+		});
 
 		setGames(mapped);
 
@@ -238,6 +246,7 @@ export default function Dashboard() {
 
 	const backToGames = () => {
 		navigate("/app");
+		void loadGames();
 	};
 
 	const toggleUser = (userId: string) => {
@@ -283,7 +292,7 @@ export default function Dashboard() {
 			.from("oea_games")
 			.insert({
 				played_at: playedAt(),
-				on_record: onRecord(),
+				on_record: true,
 				notes: notes().trim() || null,
 				created_by: user.id,
 			})
@@ -328,7 +337,6 @@ export default function Dashboard() {
 		}
 
 		setNotes("");
-		setOnRecord(false);
 		setSaving(false);
 		await loadGames();
 		openGameDetail(game.id);
@@ -354,82 +362,80 @@ export default function Dashboard() {
 		}
 	};
 
-	const createVoice = async () => {
-		const name = newVoiceName().trim();
-		const code = slugify(name);
+	const createVoice = async (values: VoiceFormValues) => {
+		const name = values.name.trim();
+		const voiceType = values.counts_in_total ? values.voice_type : "PRIMARY";
 
-		if (!name || !code) {
+		if (!name) {
 			setMessage("Inserisci un nome valido per la voce.");
-			return;
+			return false;
 		}
 
 		const nextOrder = Math.max(0, ...voices().map((voice) => voice.sort_order)) + 10;
 		const { error } = await supabase.from("oea_voices").insert({
-			code,
 			name,
 			sort_order: nextOrder,
 			is_active: true,
-			counts_in_total: true,
+			counts_in_total: values.counts_in_total,
+			voice_type: voiceType,
 		});
 
 		if (error) {
-			setMessage("Errore nella creazione della voce. Verifica che non esista gia'.");
-			return;
+			setMessage("Errore nella creazione della voce.");
+			return false;
 		}
 
-		setNewVoiceName("");
 		await loadBaseData();
+		return true;
 	};
 
-	const toggleVoice = async (voice: Voice) => {
-		const { error } = await supabase.from("oea_voices").update({ is_active: !voice.is_active }).eq("id", voice.id);
-
-		if (error) {
-			setMessage("Errore nell'aggiornamento della voce.");
-			return;
-		}
-
-		setVoices((current) => current.map((item) => item.id === voice.id ? { ...item, is_active: !voice.is_active } : item));
-	};
-
-	const toggleVoiceCountsInTotal = async (voice: Voice) => {
-		const { error } = await supabase.from("oea_voices").update({ counts_in_total: !voice.counts_in_total }).eq("id", voice.id);
-
-		if (error) {
-			setMessage("Errore nell'aggiornamento della voce.");
-			return;
-		}
-
-		setVoices((current) => current.map((item) => item.id === voice.id ? { ...item, counts_in_total: !voice.counts_in_total } : item));
-	};
-
-	const startEditVoice = (voice: Voice) => {
-		setEditingVoiceId(voice.id);
-		setEditingVoiceName(voice.name);
-	};
-
-	const saveVoiceName = async (voice: Voice) => {
-		const name = editingVoiceName().trim();
+	const updateVoice = async (voice: Voice, values: VoiceFormValues) => {
+		const name = values.name.trim();
+		const voiceType = values.counts_in_total ? values.voice_type : "PRIMARY";
 
 		if (!name) {
 			setMessage("Il nome della voce non puo' essere vuoto.");
-			return;
+			return false;
 		}
 
-		const { error } = await supabase.from("oea_voices").update({ name }).eq("id", voice.id);
+		const { error } = await supabase
+			.from("oea_voices")
+			.update({
+				name,
+				voice_type: voiceType,
+				counts_in_total: values.counts_in_total,
+			})
+			.eq("id", voice.id);
 
 		if (error) {
-			setMessage("Errore nel salvataggio della voce.");
-			return;
+			setMessage("Errore nell'aggiornamento della voce.");
+			return false;
 		}
 
-		setVoices((current) => current.map((item) => item.id === voice.id ? { ...item, name } : item));
-		setEditingVoiceId("");
-		setEditingVoiceName("");
+		setVoices((current) => current.map((item) => item.id === voice.id ? {
+			...item,
+			name,
+			voice_type: voiceType,
+			counts_in_total: values.counts_in_total,
+		} : item));
+		if (voice.counts_in_total !== values.counts_in_total) await loadGames();
+		return true;
+	};
+
+	const deleteVoice = async (voice: Voice) => {
+		const { error } = await supabase.from("oea_voices").update({ is_active: false }).eq("id", voice.id);
+
+		if (error) {
+			setMessage("Errore nell'eliminazione della voce.");
+			return false;
+		}
+
+		setVoices((current) => current.map((item) => item.id === voice.id ? { ...item, is_active: false } : item));
+		return true;
 	};
 
 	const moveVoice = async (voiceId: string, direction: -1 | 1) => {
-		const ordered = voices().slice().sort((a, b) => a.sort_order - b.sort_order);
+		const ordered = voices().filter((voice) => voice.is_active).slice().sort((a, b) => a.sort_order - b.sort_order);
 		const index = ordered.findIndex((voice) => voice.id === voiceId);
 		const targetIndex = index + direction;
 
@@ -635,20 +641,28 @@ export default function Dashboard() {
 		}
 	};
 
-	const totals = createMemo(() => {
+	const totalsForType = (voiceType?: VoiceType) => {
 		const result: Record<string, number> = {};
 
 		for (const player of players()) {
 			result[player.user_id] = scores()
 				.filter((score) => {
 					const voice = voices().find((item) => item.id === score.voice_id);
-					return score.user_id === player.user_id && score.score !== null && voice?.counts_in_total !== false;
+					return score.user_id === player.user_id
+						&& score.score !== null
+						&& voice !== undefined
+						&& voice.counts_in_total
+						&& (!voiceType || voice.voice_type === voiceType);
 				})
 				.reduce((sum, score) => sum + Number(score.score), 0);
 		}
 
 		return result;
-	});
+	};
+
+	const primaryTotals = createMemo(() => totalsForType("PRIMARY"));
+	const secondaryTotals = createMemo(() => totalsForType("SECONDARY"));
+	const totals = createMemo(() => totalsForType());
 
 	const switchSection = (section: Section) => {
 		setActiveSection(section);
@@ -755,14 +769,15 @@ export default function Dashboard() {
 									isDetailPage={isGameDetailPage}
 									players={players}
 									activeVoices={activeVoices}
+									primaryTotals={primaryTotals}
+									secondaryTotals={secondaryTotals}
 									totals={totals}
 									playedAt={playedAt}
 									setPlayedAt={setPlayedAt}
-									onRecord={onRecord}
-									setOnRecord={setOnRecord}
 									notes={notes}
 									setNotes={setNotes}
 									selectedUserIds={selectedUserIds}
+									resetSelectedUsers={() => setSelectedUserIds([])}
 									toggleUser={toggleUser}
 									moveSelectedUser={moveSelectedUser}
 									createGame={createGame}
@@ -794,18 +809,10 @@ export default function Dashboard() {
 								<div class="mx-auto max-w-2xl">
 									<VoicesSection
 										voices={voices}
-										newVoiceName={newVoiceName}
-										setNewVoiceName={setNewVoiceName}
-										editingVoiceId={editingVoiceId}
-										setEditingVoiceId={setEditingVoiceId}
-										editingVoiceName={editingVoiceName}
-										setEditingVoiceName={setEditingVoiceName}
 										createVoice={createVoice}
+										updateVoice={updateVoice}
+										deleteVoice={deleteVoice}
 										moveVoice={moveVoice}
-										toggleVoice={toggleVoice}
-										toggleVoiceCountsInTotal={toggleVoiceCountsInTotal}
-										startEditVoice={startEditVoice}
-										saveVoiceName={saveVoiceName}
 									/>
 								</div>
 							</Show>
