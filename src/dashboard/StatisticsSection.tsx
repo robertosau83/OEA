@@ -34,6 +34,8 @@ type ApexChart = ApexCharts & {
 
 const chartColors = ["#0551b5", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2"];
 const pageSize = 1000;
+const numberFormatter = new Intl.NumberFormat("it-IT", { useGrouping: "always" });
+const formatNumber = (value: number) => numberFormatter.format(value);
 
 const fetchAllRows = async <T,>(table: string, select: string, orderColumn?: string) => {
 	const rows: T[] = [];
@@ -296,12 +298,12 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 				formatter: (_value: number, options: { seriesIndex: number; w: { config: { labels: string[]; series: number[] } } }) => {
 					const label = options.w.config.labels[options.seriesIndex];
 					const value = options.w.config.series[options.seriesIndex];
-					return `${label}: ${value}`;
+					return `${label}: ${formatNumber(value)}`;
 				},
 			},
 			tooltip: {
 				enabled: hasData,
-				y: { formatter: (value: number) => `${value} ${tooltipSuffix}` },
+				y: { formatter: (value: number) => `${formatNumber(value)} ${tooltipSuffix}` },
 			},
 			stroke: { show: true, width: 2, colors: ["#fff"] },
 			colors: hasData ? chartColors : ["#e5e7eb"],
@@ -357,7 +359,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 					<div>
 						<h2 class="text-lg font-bold text-gray-900">Statistiche</h2>
 						<p class="text-xs text-gray-500">
-							{comparedGames().length} partite confrontate, {victoryStats().pointsAssigned} punti vittoria, {victoryStats().gamesWithoutPoints} senza vincitori
+							{formatNumber(comparedGames().length)} partite confrontate, {formatNumber(victoryStats().pointsAssigned)} punti vittoria, {formatNumber(victoryStats().gamesWithoutPoints)} senza vincitori
 						</p>
 					</div>
 				</div>
@@ -398,7 +400,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 							<div class="mb-3 flex items-center justify-between gap-3">
 								<h3 class="text-base font-semibold text-gray-900">Punti vittoria</h3>
 								<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
-									{selectedPlayers().length} giocatori
+									{formatNumber(selectedPlayers().length)} giocatori
 								</span>
 							</div>
 							<div class="h-[360px]" ref={(el) => { winsChartEl = el; }} />
@@ -412,7 +414,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 									{(row) => (
 										<div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-2 text-sm">
 											<span class="min-w-0 truncate font-medium text-gray-700">{row.player.name}</span>
-											<span class="shrink-0 font-bold text-gray-900">{row.wins}</span>
+											<span class="shrink-0 font-bold text-gray-900">{formatNumber(row.wins)}</span>
 										</div>
 									)}
 								</For>
@@ -425,7 +427,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 							<div class="mb-3 flex items-center justify-between gap-3">
 								<h3 class="text-base font-semibold text-gray-900">Punti totali</h3>
 								<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
-									{comparedGames().length} partite
+									{formatNumber(comparedGames().length)} partite
 								</span>
 							</div>
 							<div class="h-[360px]" ref={(el) => { totalPointsChartEl = el; }} />
@@ -439,7 +441,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 									{(row) => (
 										<div class="flex items-center justify-between gap-3 border-b border-gray-100 pb-2 text-sm">
 											<span class="min-w-0 truncate font-medium text-gray-700">{row.player.name}</span>
-											<span class="shrink-0 font-bold text-gray-900">{row.total}</span>
+											<span class="shrink-0 font-bold text-gray-900">{formatNumber(row.total)}</span>
 										</div>
 									)}
 								</For>
@@ -460,7 +462,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 													<span class={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
 														row.rank === 1 ? "bg-blue-100 text-[#0551b5]" : "bg-gray-100 text-gray-600"
 													}`}>
-														{row.rank}
+														{formatNumber(row.rank)}
 													</span>
 													<span class={`min-w-0 flex-1 truncate ${
 														row.rank === 1 ? "font-bold text-gray-900" : "font-medium text-gray-700"
@@ -470,7 +472,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 													<span class={`shrink-0 ${
 														row.rank === 1 ? "font-bold text-[#0551b5]" : "font-bold text-gray-900"
 													}`}>
-														{row.total}
+														{formatNumber(row.total)}
 													</span>
 												</div>
 											)}
