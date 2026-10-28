@@ -1,8 +1,10 @@
 import ApexCharts from "apexcharts";
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, batch, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { A } from "@solidjs/router";
 import type { Accessor } from "solid-js";
 import { supabase } from "../supabaseClient";
 import type { OeaUser, Voice } from "./types";
+import { buildStatistics, loadStatisticsData } from "./statistics";
 
 interface StatisticsSectionProps {
 	activeUsers: Accessor<OeaUser[]>;
@@ -28,37 +30,15 @@ interface ScoreRow {
 
 type ApexChart = ApexCharts & {
 	updateOptions: (options: Record<string, unknown>, redrawPaths?: boolean, animate?: boolean) => Promise<void>;
-	updateSeries: (series: number[], animate?: boolean) => Promise<void>;
+	updateSeries: (series: number[] | { name: string; data: number[] }[], animate?: boolean) => Promise<void>;
 	destroy: () => void;
 };
 
 const chartColors = ["#0551b5", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2"];
-const pageSize = 1000;
 const numberFormatter = new Intl.NumberFormat("it-IT", { useGrouping: "always" });
 const formatNumber = (value: number) => numberFormatter.format(value);
 
-const fetchAllRows = async <T,>(table: string, select: string, orderColumn?: string) => {
-	const rows: T[] = [];
-
-	for (let from = 0; ; from += pageSize) {
-		let query = supabase
-			.from(table)
-			.select(select)
-			.range(from, from + pageSize - 1);
-
-		if (orderColumn) {
-			query = query.order(orderColumn, { ascending: true });
-		}
-
-		const { data, error } = await query;
-		if (error) throw error;
-
-		rows.push(...((data ?? []) as T[]));
-		if (!data || data.length < pageSize) break;
-	}
-
-	return rows;
-};
+const formatGameDate = (value: string) => value.split("-").reverse().join("/");
 
 export default function StatisticsSection(props: StatisticsSectionProps) {
 	const [selectedPlayerIds, setSelectedPlayerIds] = createSignal<string[]>([]);
@@ -73,6 +53,17 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 	let winsChart: ApexChart | undefined;
 	let totalPointsChartEl: HTMLDivElement | undefined;
 	let totalPointsChart: ApexChart | undefined;
+	let loadController: AbortController | undefined;
+	let disposed = false;
+
+	const destroyCharts = () => {
+		winsChart?.destroy();
+		winsChart = undefined;
+		totalPointsChart?.destroy();
+		totalPointsChart = undefined;
+		winsChartEl = undefined;
+		totalPointsChartEl = undefined;
+	};
 
 	createEffect(() => {
 		const availableIds = props.activeUsers().map((user) => user.id);
@@ -90,33 +81,35 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 		});
 	});
 
-	onMount(async () => {
+	const loadData = async () => {
+		loadController?.abort();
+		const controller = new AbortController();
+		loadController = controller;
+		destroyCharts();
+		setLoading(true);
+		setLoadError("");
 		try {
-			const [gamesData, playersData, scoresData] = await Promise.all([
-				fetchAllRows<GameRow>("oea_games", "id, played_at", "played_at"),
-				fetchAllRows<GamePlayerRow>("oea_game_players", "game_id, user_id"),
-				fetchAllRows<ScoreRow>("oea_scores", "game_id, user_id, voice_id, score"),
-			]);
-
-			setGames(gamesData);
-			setGamePlayers(playersData);
-			setScores(scoresData);
+			const data = await loadStatisticsData(supabase, { signal: controller.signal });
+			if (disposed || controller.signal.aborted) return;
+			batch(() => {
+				setGames(data.games);
+				setGamePlayers(data.gamePlayers);
+				setScores(data.scores);
+			});
 		} catch (error) {
+			if (disposed || controller.signal.aborted) return;
 			console.error("Errore caricamento statistiche:", error);
-			setLoadError("Errore durante il caricamento delle statistiche.");
+			setLoadError("Non e' stato possibile caricare tutte le statistiche. Controlla la connessione e premi Aggiorna.");
 		} finally {
-			setLoading(false);
+			if (!disposed && loadController === controller) setLoading(false);
 		}
-	});
+	};
+	onMount(() => { void loadData(); });
 
 	const selectedPlayers = createMemo(() =>
 		selectedPlayerIds()
 			.map((id) => props.activeUsers().find((user) => user.id === id))
 			.filter((user): user is OeaUser => Boolean(user))
-	);
-
-	const countsInTotalVoiceIds = createMemo(() =>
-		new Set(props.voices().filter((voice) => voice.counts_in_total).map((voice) => voice.id))
 	);
 
 	const togglePlayer = (userId: string) => {
@@ -131,151 +124,24 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 		setSelectedPlayerIds(props.activeUsers().map((user) => user.id));
 	};
 
-	const comparedGames = createMemo(() => {
-		const ids = selectedPlayerIds();
-		if (ids.length < 2) return [];
-
-		return games().filter((game) => {
-			const participantIds = new Set(
-				gamePlayers()
-					.filter((player) => player.game_id === game.id)
-					.map((player) => player.user_id)
-			);
-
-			return ids.every((id) => participantIds.has(id));
-		});
-	});
-
-	const totalForPlayer = (gameId: string, userId: string, voiceIds: Set<string>) =>
-		scores()
-			.filter((score) =>
-				score.game_id === gameId &&
-				score.user_id === userId &&
-				score.score !== null &&
-				voiceIds.has(score.voice_id)
-			)
-			.reduce((sum, score) => sum + Number(score.score), 0);
-
-	const gameResults = createMemo(() => {
-		const ids = selectedPlayerIds();
-		const voiceIds = countsInTotalVoiceIds();
-		const playerById = new Map(selectedPlayers().map((player) => [player.id, player]));
-
-		return comparedGames()
-			.map((game) => {
-				const totals = ids.map((userId) => ({
-					userId,
-					playerName: playerById.get(userId)?.name ?? "Giocatore",
-					total: totalForPlayer(game.id, userId, voiceIds),
-				}));
-				const bestTotal = Math.max(...totals.map((item) => item.total));
-				const winners = totals.filter((item) => item.total === bestTotal);
-
-				return {
-					game,
-					totals,
-					bestTotal,
-					pointWinnerIds: winners.length < ids.length ? winners.map((winner) => winner.userId) : [],
-				};
-			})
-			.sort((a, b) => b.game.played_at.localeCompare(a.game.played_at));
-	});
-
-	const victoryStats = createMemo(() => {
-		const ids = selectedPlayerIds();
-		const voiceIds = countsInTotalVoiceIds();
-		const wins = new Map(ids.map((id) => [id, 0]));
-		let gamesWithPoints = 0;
-		let gamesWithoutPoints = 0;
-		let pointsAssigned = 0;
-
-		for (const game of comparedGames()) {
-			const totals = ids.map((userId) => {
-				const total = totalForPlayer(game.id, userId, voiceIds);
-
-				return { userId, total };
-			});
-
-			const bestTotal = Math.max(...totals.map((item) => item.total));
-			const winners = totals.filter((item) => item.total === bestTotal);
-
-			if (winners.length === ids.length) {
-				gamesWithoutPoints += 1;
-				continue;
-			}
-
-			gamesWithPoints += 1;
-			pointsAssigned += winners.length;
-			for (const winner of winners) {
-				wins.set(winner.userId, (wins.get(winner.userId) ?? 0) + 1);
-			}
-		}
-
-		return {
-			gamesWithPoints,
-			gamesWithoutPoints,
-			pointsAssigned,
-			rows: selectedPlayers().map((player) => ({
-				player,
-				wins: wins.get(player.id) ?? 0,
-			})),
-		};
-	});
-
-	const winsByPlayer = createMemo(() => victoryStats().rows);
-	const totalPointsByPlayer = createMemo(() => {
-		const totals = new Map(selectedPlayerIds().map((id) => [id, 0]));
-
-		for (const result of gameResults()) {
-			for (const total of result.totals) {
-				totals.set(total.userId, (totals.get(total.userId) ?? 0) + total.total);
-			}
-		}
-
-		return selectedPlayers().map((player) => ({
-			player,
-			total: totals.get(player.id) ?? 0,
-		}));
-	});
-
-	const voiceRankings = createMemo(() => {
-		const gameIds = new Set(comparedGames().map((game) => game.id));
-
-		return props.voices()
-			.filter((voice) => voice.is_active)
-			.slice()
-			.sort((a, b) => a.sort_order - b.sort_order)
-			.map((voice) => {
-				const rows = selectedPlayers()
-					.map((player) => ({
-						player,
-						total: scores()
-							.filter((score) =>
-								gameIds.has(score.game_id)
-								&& score.user_id === player.id
-								&& score.voice_id === voice.id
-								&& score.score !== null
-							)
-							.reduce((sum, score) => sum + Number(score.score), 0),
-					}))
-					.sort((a, b) => b.total - a.total || a.player.name.localeCompare(b.player.name));
-
-				return {
-					voice,
-					rows: rows.map((row) => ({
-						...row,
-						rank: rows.findIndex((candidate) => candidate.total === row.total) + 1,
-					})),
-				};
-			});
-	});
+	const statistics = createMemo(() => buildStatistics({
+		games: games(), gamePlayers: gamePlayers(), scores: scores(),
+		voices: props.voices(), selectedPlayers: selectedPlayers(),
+	}));
+	const comparedGames = () => statistics().comparedGames;
+	const victoryStats = () => statistics().victoryStats;
+	const winsByPlayer = () => victoryStats().rows;
+	const totalPointsByPlayer = () => statistics().totalPointsByPlayer;
+	const voiceRankings = () => statistics().voiceRankings;
+	const recordCards = createMemo(() => [
+		{ title: "Punteggio più alto", entries: statistics().records.highest },
+		{ title: "Punteggio più basso", entries: statistics().records.lowest },
+	]);
 
 	const chartRows = createMemo(() => winsByPlayer().filter((row) => row.wins > 0));
 	const chartSeries = createMemo(() => chartRows().length > 0 ? chartRows().map((row) => row.wins) : [1]);
 	const chartLabels = createMemo(() => chartRows().length > 0 ? chartRows().map((row) => row.player.name) : ["Nessun dato"]);
-	const totalPointsChartRows = createMemo(() => totalPointsByPlayer().filter((row) => row.total > 0));
-	const totalPointsChartSeries = createMemo(() => totalPointsChartRows().length > 0 ? totalPointsChartRows().map((row) => row.total) : [1]);
-	const totalPointsChartLabels = createMemo(() => totalPointsChartRows().length > 0 ? totalPointsChartRows().map((row) => row.player.name) : ["Nessun dato"]);
+	const totalPointsChartSeries = createMemo(() => [{ name: "Punti", data: comparedGames().length ? totalPointsByPlayer().map((row) => row.total) : [] }]);
 
 	const buildPieOptions = (
 		labels: string[],
@@ -285,7 +151,8 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 	) => ({
 			chart: {
 				type: "pie",
-				height: "100%",
+				height: 360,
+				parentHeightOffset: 0,
 				width: "100%",
 				animations: { enabled: false },
 				toolbar: { show: false },
@@ -308,14 +175,31 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 			stroke: { show: true, width: 2, colors: ["#fff"] },
 			colors: hasData ? chartColors : ["#e5e7eb"],
 			states: { active: { filter: { type: "none" } } },
+			responsive: [{ breakpoint: 639, options: {
+				chart: { height: 280 },
+				legend: { show: true, position: "bottom", fontSize: "11px" },
+				dataLabels: {
+					style: { fontSize: "11px" },
+					formatter: (_value: number, options: { seriesIndex: number; w: { config: { series: number[] } } }) => formatNumber(options.w.config.series[options.seriesIndex]),
+				},
+			} }],
 		});
 
 	const chartOptions = createMemo(() =>
 		buildPieOptions(chartLabels(), chartSeries(), chartRows().length > 0, "punti vittoria")
 	);
-	const totalPointsChartOptions = createMemo(() =>
-		buildPieOptions(totalPointsChartLabels(), totalPointsChartSeries(), totalPointsChartRows().length > 0, "punti")
-	);
+	const totalPointsChartOptions = createMemo(() => ({
+		chart: { type: "bar", height: 360, parentHeightOffset: 0, width: "100%", animations: { enabled: false }, toolbar: { show: false } },
+		series: totalPointsChartSeries(),
+		plotOptions: { bar: { horizontal: true, distributed: true, borderRadius: 4 } },
+		xaxis: { categories: totalPointsByPlayer().map((row) => row.player.name), labels: { formatter: (value: string) => formatNumber(Number(value)) } },
+		dataLabels: { enabled: true, formatter: (value: number) => formatNumber(value) },
+		tooltip: { y: { formatter: (value: number) => `${formatNumber(value)} punti` } },
+		noData: { text: "Nessun dato" },
+		legend: { show: false },
+		colors: chartColors,
+		responsive: [{ breakpoint: 639, options: { chart: { height: 280 }, xaxis: { tickAmount: 3 }, dataLabels: { style: { fontSize: "11px" } } } }],
+	}));
 
 	createEffect(() => {
 		if (loading() || loadError() || !winsChartEl) return;
@@ -346,22 +230,24 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 	});
 
 	onCleanup(() => {
-		winsChart?.destroy();
-		winsChart = undefined;
-		totalPointsChart?.destroy();
-		totalPointsChart = undefined;
+		disposed = true;
+		loadController?.abort();
+		destroyCharts();
 	});
 
 	return (
 		<section class="mx-auto max-w-6xl space-y-4">
 			<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-				<div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-					<div>
+				<div class="mb-3 flex items-start justify-between gap-3">
+					<div class="min-w-0">
 						<h2 class="text-lg font-bold text-gray-900">Statistiche</h2>
 						<p class="text-xs text-gray-500">
 							{formatNumber(comparedGames().length)} partite confrontate, {formatNumber(victoryStats().pointsAssigned)} punti vittoria, {formatNumber(victoryStats().gamesWithoutPoints)} senza vincitori
 						</p>
 					</div>
+					<button type="button" class="h-11 shrink-0 rounded-full bg-blue-50 px-3 text-sm font-semibold text-[#0551b5] disabled:opacity-60" disabled={loading()} onClick={() => { void loadData(); }}>
+						{loading() ? "Caricamento..." : "Aggiorna"}
+					</button>
 				</div>
 
 				<div class="flex flex-wrap gap-2">
@@ -379,6 +265,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 										? "border-[#0551b5] bg-blue-50 text-[#0551b5]"
 										: "border-gray-200 bg-white text-gray-600"
 								}`}
+								aria-pressed={selectedPlayerIds().includes(user.id)}
 								onClick={() => togglePlayer(user.id)}
 							>
 								{user.name}
@@ -386,6 +273,10 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 						)}
 					</For>
 				</div>
+				<p class="mt-3 text-xs text-gray-500">Il campione include le partite con tutti i giocatori selezionati. Punti vittoria calcolati tra i selezionati.</p>
+				<Show when={!loading() && !loadError() && statistics().excludedIncompleteGames > 0}>
+					<p class="mt-2 text-xs text-gray-500">{formatNumber(statistics().excludedIncompleteGames)} partite escluse perché hanno punteggi da completare.</p>
+				</Show>
 				<Show when={selectedPlayers().length < 2}>
 					<p class="mt-3 rounded-lg bg-yellow-50 px-3 py-2 text-sm text-yellow-700">
 						Seleziona almeno due giocatori per confrontare i punti vittoria.
@@ -395,15 +286,18 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 
 			<Show when={!loading()} fallback={<div class="rounded-lg border border-gray-200 bg-white p-4 text-gray-500 shadow-sm">Caricamento statistiche...</div>}>
 				<Show when={!loadError()} fallback={<div class="rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-red-600">{loadError()}</div>}>
-					<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-						<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+					<Show when={comparedGames().length === 0}>
+						<p role="status" class="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-gray-600">Nessuna partita con punteggi compilati per questo filtro. Prova a selezionare altri giocatori.</p>
+					</Show>
+					<div class="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+						<div class="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
 							<div class="mb-3 flex items-center justify-between gap-3">
 								<h3 class="text-base font-semibold text-gray-900">Punti vittoria</h3>
 								<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
 									{formatNumber(selectedPlayers().length)} giocatori
 								</span>
 							</div>
-							<div class="h-[360px]" ref={(el) => { winsChartEl = el; }} />
+							<div class="h-[280px] min-w-0 sm:h-[360px]" ref={(el) => { winsChartEl = el; }} />
 						</div>
 
 						<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -422,15 +316,15 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 						</div>
 					</div>
 
-					<div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-						<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+					<div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+						<div class="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
 							<div class="mb-3 flex items-center justify-between gap-3">
 								<h3 class="text-base font-semibold text-gray-900">Punti totali</h3>
 								<span class="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-600">
 									{formatNumber(comparedGames().length)} partite
 								</span>
 							</div>
-							<div class="h-[360px]" ref={(el) => { totalPointsChartEl = el; }} />
+							<div class="h-[280px] min-w-0 sm:h-[360px]" ref={(el) => { totalPointsChartEl = el; }} />
 						</div>
 
 						<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -449,7 +343,7 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 						</div>
 					</div>
 
-					<div class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+					<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
 						<For each={voiceRankings()}>
 							{(ranking) => (
 								<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -482,6 +376,32 @@ export default function StatisticsSection(props: StatisticsSectionProps) {
 							)}
 						</For>
 					</div>
+					<section class="mt-4 rounded-lg border border-gray-200 bg-white p-4 shadow-sm" aria-label="Record partita">
+						<h3 class="text-base font-semibold text-gray-900">Record partita</h3>
+						<p class="mb-4 mt-1 text-xs text-gray-500">Punteggi individuali nelle partite del campione filtrato. Sono mostrate tutte le parità.</p>
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+							<For each={recordCards()}>
+								{(record) => (
+									<div class="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+										<h4 class="text-sm font-semibold text-gray-600">{record.title}</h4>
+										<Show when={record.entries.length > 0} fallback={<p class="mt-3 text-sm text-gray-500">Nessuna partita con punteggi compilati.</p>}>
+											<p class="my-2 text-3xl font-bold text-[#0551b5]">{formatNumber(record.entries[0]?.total ?? 0)} <span class="text-sm font-medium">punti</span></p>
+											<div class="space-y-2">
+												<For each={record.entries}>
+													{(entry) => (
+														<A href={`/app/games/${entry.game.id}`} class="flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-white px-3 py-2 text-sm hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#0551b5]" aria-label={`Apri partita di ${entry.playerName} del ${formatGameDate(entry.game.played_at)}`}>
+															<span class="font-semibold text-gray-900">{entry.playerName}</span>
+															<span class="text-gray-600">{formatGameDate(entry.game.played_at)} <span aria-hidden="true">↗</span></span>
+														</A>
+													)}
+												</For>
+											</div>
+										</Show>
+									</div>
+								)}
+							</For>
+						</div>
+					</section>
 				</Show>
 			</Show>
 		</section>

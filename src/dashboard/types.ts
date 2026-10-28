@@ -60,3 +60,72 @@ export interface QuickPreviewItem {
 
 export type Section = "games" | "statistics" | "voices" | "users";
 export type UserStatus = "PENDING" | "ACTIVE" | "DISABLED";
+
+export interface QuickScoreRow extends Score {
+	game_id: string;
+}
+
+export interface QuickScoreSaveOptions {
+	timeoutMs?: number;
+	retryDelayMs?: number;
+	pendingWrites?: Promise<unknown>;
+}
+
+export interface StatisticsGame {
+	id: string;
+	played_at: string;
+}
+
+export interface StatisticsGamePlayer {
+	game_id: string;
+	user_id: string;
+}
+
+export interface StatisticsScore extends Score {
+	game_id: string;
+}
+
+export interface StatisticsData {
+	games: StatisticsGame[];
+	gamePlayers: StatisticsGamePlayer[];
+	scores: StatisticsScore[];
+}
+
+export type StatisticsPlayer = Pick<OeaUser, "id" | "name">;
+
+export interface StatisticsInput extends StatisticsData {
+	voices: Voice[];
+	selectedPlayers: StatisticsPlayer[];
+}
+
+export interface StatisticsTotal {
+	userId: string;
+	playerName: string;
+	total: number;
+}
+
+export interface StatisticsGameResult {
+	game: StatisticsGame;
+	totals: StatisticsTotal[];
+	bestTotal: number;
+	pointWinnerIds: string[];
+}
+
+export interface StatisticsRecord extends StatisticsTotal {
+	game: StatisticsGame;
+}
+
+export interface StatisticsResult {
+	comparedGames: StatisticsGame[];
+	gameResults: StatisticsGameResult[];
+	excludedIncompleteGames: number;
+	victoryStats: {
+		gamesWithPoints: number;
+		gamesWithoutPoints: number;
+		pointsAssigned: number;
+		rows: { player: StatisticsPlayer; wins: number }[];
+	};
+	totalPointsByPlayer: { player: StatisticsPlayer; total: number }[];
+	voiceRankings: { voice: Voice; rows: { player: StatisticsPlayer; total: number; rank: number }[] }[];
+	records: { highest: StatisticsRecord[]; lowest: StatisticsRecord[] };
+}

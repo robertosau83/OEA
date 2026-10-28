@@ -41,6 +41,7 @@ interface GamesSectionProps {
 	quickTotal: Accessor<number>;
 	quickValuesCount: Accessor<number>;
 	quickSaving: Accessor<boolean>;
+	quickError: Accessor<string>;
 	applyQuickScores: () => void;
 }
 
@@ -85,6 +86,7 @@ export default function GamesSection(props: GamesSectionProps) {
 	const QuickKeyButton = (buttonProps: { keyValue: string; label?: string; variant?: "number" | "control" | "primary"; class?: string; action: () => void }) => (
 		<button
 			type="button"
+			disabled={props.quickSaving()}
 			class={`${quickKeyClass(buttonProps.keyValue, buttonProps.variant)} ${buttonProps.class ?? ""}`}
 			onPointerDown={(event) => {
 				event.preventDefault();
@@ -381,7 +383,7 @@ export default function GamesSection(props: GamesSectionProps) {
 							<h2 class="truncate text-base font-bold leading-5 text-gray-900">{props.quickPlayer()?.name}</h2>
 							<p class="truncate text-xs leading-4 text-gray-500">{quickGameDate()}</p>
 						</div>
-						<button class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700" aria-label="Chiudi inserimento rapido" onClick={props.closeQuickInput}>
+					<button class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-700 disabled:opacity-60" disabled={props.quickSaving()} aria-label="Chiudi inserimento rapido" onClick={props.closeQuickInput}>
 							<CloseIcon />
 						</button>
 					</div>
@@ -391,6 +393,7 @@ export default function GamesSection(props: GamesSectionProps) {
 							<div class="flex min-h-0 min-w-0 flex-col gap-2">
 								<textarea
 									rows="2"
+									disabled={props.quickSaving()}
 									class={`min-h-[64px] w-full resize-none rounded-xl border border-gray-300 px-3 py-2 text-right font-semibold leading-tight ${props.quickInput().length > 24 ? "text-sm" : "text-lg"}`}
 									value={props.quickInput()}
 									placeholder="23/15/16"
@@ -434,8 +437,11 @@ export default function GamesSection(props: GamesSectionProps) {
 						</Show>
 					</div>
 
+					<Show when={props.quickError()}>
+						<p role="alert" class="mx-3 mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{props.quickError()}</p>
+					</Show>
 					<div class="flex shrink-0 gap-2 border-t border-gray-200 p-3">
-						<button class="h-11 flex-1 rounded-full border border-gray-300 font-semibold text-gray-700" onClick={props.closeQuickInput}>Annulla</button>
+						<button class="h-11 flex-1 rounded-full border border-gray-300 font-semibold text-gray-700 disabled:opacity-60" disabled={props.quickSaving()} onClick={props.closeQuickInput}>Annulla</button>
 						<button class="h-11 flex-1 rounded-full bg-[#0551b5] font-semibold text-white disabled:opacity-60" disabled={props.quickSaving()} onClick={props.applyQuickScores}>
 							{props.quickSaving() ? "Salvataggio..." : "Applica"}
 						</button>

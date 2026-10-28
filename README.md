@@ -7,6 +7,8 @@ Applicazione Solid/Vite per memorizzare e consultare partite di Yazzi tra utenti
 ```bash
 npm run dev
 npm run build
+npm run typecheck
+npm run test:statistics
 ```
 
 ## Modello dati
@@ -62,3 +64,48 @@ Gli admin possono cambiare stato agli utenti e, in fase di pulizia iniziale, can
 - `/` login
 - `/register` registrazione
 - `/app` gestione partite
+
+## Statistiche e record partita
+
+Le statistiche caricano l'intero storico con pagine ordinate per ID univoco e un
+cursore, proseguendo fino alla pagina vuota anche se il limite del server e'
+inferiore alla dimensione richiesta. Errori e timeout impediscono di mostrare un
+caricamento parziale come completo. Il pulsante **Aggiorna** rilegge lo storico;
+uscire dalla sezione annulla il caricamento.
+
+Il filtro include le partite a cui partecipano **tutti i giocatori selezionati**.
+I punti vittoria sono confrontati tra questi giocatori: un primo posto condiviso
+vale un punto per ciascun vincitore se batte almeno un altro selezionato; un
+pareggio tra tutti non assegna punti. Con un solo giocatore restano disponibili
+totali e record, senza assegnare vittorie.
+
+Totali, classifiche e record usano lo stesso campione. Entrano nel totale solo le
+voci con `counts_in_total = true`, comprese quelle disattivate ma presenti nello
+storico, mantenendo anche zero e penalita'. Il grafico dei punti totali usa barre
+per poter rappresentare anche valori negativi.
+
+Sono escluse dal campione le partite con punteggi da completare per i selezionati:
+le voci richieste sono quelle conteggiate e registrate nella singola partita,
+cosi' una nuova voce non invalida automaticamente lo storico. Questa e' una
+verifica della compilazione dei dati, non un flag esplicito di fine partita.
+
+La card **Record partita** mostra il totale individuale piu' alto e piu' basso,
+con giocatore, data e collegamento al dettaglio. Mostra tutti i record a pari
+merito e segue il filtro selezionato.
+
+### Verifica del 28 ottobre 2026
+
+Controllate con query di sola lettura **103 partite, 381 partecipazioni e 7.120
+punteggi**. Con i quattro giocatori attivi selezionati il campione e' di **72
+partite**: massimo **305, Bonde, 01/10/2025**; minimo **85, Bonde, 25/09/2023**.
+I totali del frontend coincidono con una query SQL indipendente.
+
+`supabase/verify_statistics.sql` estrae il dataset e i totali SQL per ripetere la
+verifica senza scrivere sul database. Il risultato locale, contenente lo storico,
+e' escluso da Git in `.codex/statistics-verification.json`. Se presente viene
+confrontato dalla suite; se assente quel test viene saltato. Gli altri test
+verificano paginazione con limite ridotto del server, errori, annullamento,
+timeout, filtri, parita', voci storiche, punteggi incompleti, zero e negativi.
+
+Verificati anche nel browser autenticato: lettura reale dello storico, filtri,
+record, grafici, ricaricamento con **Aggiorna** e apertura del dettaglio del record.

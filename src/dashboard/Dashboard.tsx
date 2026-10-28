@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "@solidjs/router";
 import { useOrientation } from "../context/OrientationContext";
 import { supabase } from "../supabaseClient";
 import GamesSection from "./GamesSection";
+import { isValidQuickScoreInput, QuickScoreSaveError, quickScoreErrorMessage, saveQuickScoreRows } from "./quickScoreSave";
 import VoicesSection from "./VoicesSection";
 import UsersSection from "./UsersSection";
 import { CloseIcon, MenuIcon } from "./icons";
@@ -36,6 +37,8 @@ export default function Dashboard() {
 	const [quickPlayerId, setQuickPlayerId] = createSignal("");
 	const [quickInput, setQuickInput] = createSignal("");
 	const [quickSaving, setQuickSaving] = createSignal(false);
+	const [quickError, setQuickError] = createSignal("");
+	const pendingScoreWrites = new Map<string, Set<Promise<unknown>>>();
 
 	const activeVoices = createMemo(() =>
 		voices()
@@ -546,6 +549,8 @@ export default function Dashboard() {
 	);
 
 	const openQuickInput = (player: GamePlayer) => {
+		if (quickSaving()) return;
+		setQuickError("");
 		const existingValues = activeVoices().map((voice) => String(getScore(player.user_id, voice.id)));
 		const lastFilledIndex = existingValues.reduce<number>(
 			(lastIndex, value, index) => value === "" ? lastIndex : index,
@@ -557,24 +562,35 @@ export default function Dashboard() {
 	};
 
 	const closeQuickInput = () => {
+		if (quickSaving()) return;
 		setQuickPlayerId("");
 		setQuickInput("");
+		setQuickError("");
 	};
 
 	const appendQuickKey = (key: string) => {
+		if (quickSaving()) return;
 		setQuickInput((value) => `${value}${key}`);
 	};
 
 	const backspaceQuickInput = () => {
+		if (quickSaving()) return;
 		setQuickInput((value) => value.slice(0, -1));
 	};
 
 	const applyQuickScores = async () => {
+		if (quickSaving()) return;
 		const gameId = selectedGameId();
 		const playerId = quickPlayerId();
 
 		if (!gameId || !playerId) return;
 
+		setQuickError("");
+		setMessage("");
+		if (!isValidQuickScoreInput(quickInput())) {
+			setQuickError(quickScoreErrorMessage(new QuickScoreSaveError("validation")));
+			return;
+		}
 		setQuickSaving(true);
 		const rows = quickPreview().map((item) => ({
 			game_id: gameId,
@@ -583,32 +599,35 @@ export default function Dashboard() {
 			score: item.score,
 		}));
 
-		const { error } = await supabase.from("oea_scores").upsert(rows, {
-			onConflict: "game_id,user_id,voice_id",
-		});
+		try {
+			await saveQuickScoreRows(supabase, rows, {
+				pendingWrites: Promise.all([...(pendingScoreWrites.get(`${gameId}/${playerId}`) ?? [])]),
+			});
+			// A response for a previous route must not replace the current game.
+			if (selectedGameId() !== gameId || routeGameId() !== gameId) return;
+			setScores((current) => {
+				const withoutPlayerActiveVoices = current.filter(
+					(score) => score.user_id !== playerId || !rows.some((row) => row.voice_id === score.voice_id)
+				);
 
-		setQuickSaving(false);
-
-		if (error) {
-			setMessage("Errore nel salvataggio rapido dei punteggi.");
-			return;
+				return [
+					...withoutPlayerActiveVoices,
+					...rows.map((row) => ({
+						user_id: row.user_id,
+						voice_id: row.voice_id,
+						score: row.score,
+					})),
+				];
+			});
+			setQuickPlayerId("");
+			setQuickInput("");
+		} catch (error) {
+			if (selectedGameId() === gameId && quickPlayerId() === playerId) {
+				setQuickError(quickScoreErrorMessage(error));
+			}
+		} finally {
+			setQuickSaving(false);
 		}
-
-		setScores((current) => {
-			const withoutPlayerActiveVoices = current.filter(
-				(score) => score.user_id !== playerId || !activeVoices().some((voice) => voice.id === score.voice_id)
-			);
-
-			return [
-				...withoutPlayerActiveVoices,
-				...rows.map((row) => ({
-					user_id: row.user_id,
-					voice_id: row.voice_id,
-					score: row.score,
-				})),
-			];
-		});
-		closeQuickInput();
 	};
 
 	const saveScore = async (userId: string, voiceId: string, value: string) => {
@@ -627,17 +646,26 @@ export default function Dashboard() {
 			return [...current, { user_id: userId, voice_id: voiceId, score }];
 		});
 
-		const { error } = await supabase.from("oea_scores").upsert({
+		const request = Promise.resolve(supabase.from("oea_scores").upsert({
 			game_id: gameId,
 			user_id: userId,
 			voice_id: voiceId,
 			score,
 		}, {
 			onConflict: "game_id,user_id,voice_id",
-		});
-
-		if (error) {
+		}));
+		const key = `${gameId}/${userId}`;
+		const pending = pendingScoreWrites.get(key) ?? new Set<Promise<unknown>>();
+		pending.add(request);
+		pendingScoreWrites.set(key, pending);
+		try {
+			const { error } = await request;
+			if (error) setMessage("Errore nel salvataggio del punteggio.");
+		} catch (error) {
 			setMessage("Errore nel salvataggio del punteggio.");
+		} finally {
+			pending.delete(request);
+			if (!pending.size) pendingScoreWrites.delete(key);
 		}
 	};
 
@@ -797,6 +825,7 @@ export default function Dashboard() {
 									quickTotal={quickTotal}
 									quickValuesCount={quickValuesCount}
 									quickSaving={quickSaving}
+									quickError={quickError}
 									applyQuickScores={applyQuickScores}
 								/>
 							</Show>
